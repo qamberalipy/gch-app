@@ -14,7 +14,7 @@ class User(_database.Base):
     password = _sql.Column(_sql.String)
     email = _sql.Column(_sql.String, unique=True, index=True)
     # otp = _sql.Column(_sql.Integer)
-    # date_created = _sql.Column(_sql.DateTime, default=_dt.datetime.utcnow)
+    date_created = _sql.Column(_sql.DateTime, default=_dt.datetime.utcnow)
     # is_verified = _sql.Column(_sql.Boolean , default=False)
     # role_id = _sql.Column(_sql.Integer ,index=True)
     # organization_id = _sql.Column(_sql.Integer, index=True)
