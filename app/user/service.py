@@ -50,7 +50,7 @@ async def create_user(user: _schemas.UserCreate, db: _orm.Session):
     hashed_password = hash_password(user.password)
     print("Hashed Password: ", hashed_password)
     print("In Create User: ", email, user.username, hashed_password)
-    user_obj = _models.User(email=email, username=user.username, hashed_password=hashed_password)
+    user_obj = _models.User(email=email, username=user.username, password=hashed_password)
     db.add(user_obj)
     db.commit()
     db.refresh(user_obj)

@@ -9,13 +9,13 @@ class UserBase(pydantic.BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    date_created: datetime.datetime
+    # date_created: datetime.datetime
     class Config:
        from_attributes=True
 
 class User(UserBase):
     id: int
-    date_created: datetime.datetime
+    # date_created: datetime.datetime
     class Config:
        from_attributes=True
 
