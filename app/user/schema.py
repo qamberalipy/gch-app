@@ -76,7 +76,7 @@ class ClientRead(ClientBase):
 
 class ClientLogin(pydantic.BaseModel):
     email_address: str
-    password: str
+    wallet_address: str
 
 class BankAccountCreate(pydantic.BaseModel):
     bank_account_number: str

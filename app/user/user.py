@@ -123,14 +123,12 @@ async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_
 
 @router.post("/login/client", response_model=dict)
 async def login_client(client_login: _schemas.ClientLogin, db: _orm.Session = Depends(get_db)):
-    logger.debug("Here 1", client_login.email, client_login.password)
+    logger.debug("Here 1", client_login.email_address, client_login.wallet_address)
     
-    authenticated_client = await _services.authenticate_client(client_login.email_address, client_login.password, db)
+    authenticated_client = await _services.authenticate_client(client_login.email_address, client_login.wallet_address, db)
     
     if not authenticated_client:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
     
-    # Assuming your service function returns a dictionary with access token and token type
     token = await _services.create_token(authenticated_client)
-    
     return token

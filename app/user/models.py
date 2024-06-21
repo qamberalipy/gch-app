@@ -25,11 +25,12 @@ class User(_database.Base):
         return _bcrypt.checkpw(password.encode('utf-8'), self.password.encode('utf-8'))
 
 
-
 class Client(_database.Base):
     __tablename__ = "client"
     
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
+    username = _sql.Column(_sql.String(255), nullable=False)
+    wallet_address = _sql.Column(_sql.String(255), nullable=False)
     profile_url=_sql.Column(_sql.String(255))
     own_member_id = _sql.Column(_sql.String(255), nullable=False)
     first_name = _sql.Column(_sql.String(255), nullable=False)
