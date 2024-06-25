@@ -1,3 +1,4 @@
+from datetime import date
 import jwt
 import sqlalchemy.orm as _orm
 from sqlalchemy.sql import and_  
@@ -181,8 +182,8 @@ async def authenticate_user(email: str, password: str, db: _orm.Session):
         return False
 
     return user
-
-##For Coach
+#_______________________________________________________________________________________________
+#For Coach
 
 def create_coach(coach: _schemas.CoachCreate, db: _orm.Session):
     db_coach = models.Coach(coach_name=coach.coach_name)
@@ -206,4 +207,43 @@ def get_coaches_by_org_id(org_id: int, db: _orm.Session):
             models.CoachOrganization.is_deleted == False,
             models.Coach.is_deleted == False
         )
+    ).all()
+    
+#_______________________________________________________________________________________________ 
+# For Bussiness API
+
+def create_business(business: _schemas.BusinessCreate, db: _orm.Session):
+    db_business = models.Business(
+        name=business.name,
+        address=business.address,
+        email=business.email,
+        owner_id=business.owner_id,
+        org_id=business.org_id,
+        date_created=date.today()
+    )
+    db.add(db_business)
+    db.commit()
+    db.refresh(db_business)
+    return db_business
+
+def get_businesses_by_org_id(org_id: int, db: _orm.Session):
+    return db.query(models.Business).filter(
+        models.Business.org_id == org_id,
+        models.Business.is_deleted == False
+    ).all()
+    
+    
+#_________________________________________________________________________________________________
+#For Membership Plan
+def create_membership_plan(plan: _schemas.MembershipPlanCreate, db: _orm.Session):
+    db_plan = models.MembershipPlan(name=plan.name, price=plan.price, org_id=plan.org_id)
+    db.add(db_plan)
+    db.commit()
+    db.refresh(db_plan)
+    return db_plan
+
+def get_membership_plans_by_org_id(org_id: int, db: _orm.Session):
+    return db.query(models.MembershipPlan).filter(
+        models.MembershipPlan.org_id == org_id,
+        models.MembershipPlan.is_deleted == False
     ).all()
