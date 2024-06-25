@@ -89,7 +89,12 @@ async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_
     
     if not authenticated_user:
         raise HTTPException(status_code=400, detail="Invalid email or password")
-    return await _services.create_token(authenticated_user)
+    token= await _services.create_token(authenticated_user)
+    user_data = await _services.get_user_by_email(email=user.email, db=db)
+    return {
+        "user": user_data,
+        "token": token
+    }
 
 @router.post("/login/client", response_model=dict)
 async def login_client(client_login: _schemas.ClientLogin, db: _orm.Session = Depends(get_db)):

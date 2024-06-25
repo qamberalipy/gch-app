@@ -121,8 +121,6 @@ async def create_client_organization(client_organization: _schemas.CreateClient_
     db.refresh(db_client_organization)
     return db_client_organization
 
-
-
 async def create_bank_account(bank_account:_schemas.BankAccountCreate,db: _orm.Session = _fastapi.Depends(get_db)):
     db_bank_account = models.BankAccount(**bank_account.dict())
     db.add(db_bank_account)
