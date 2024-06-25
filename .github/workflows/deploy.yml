@@ -32,6 +32,9 @@ jobs:
       run: |
         echo "${{ secrets.EC2_SSH_KEY }}" | base64 --decode > /tmp/ssh_key
         chmod 600 /tmp/ssh_key
+        
+    - name: Output decoded SSH Key
+      run: cat /tmp/ssh_key
 
     - name: SSH and update Docker container
       uses: appleboy/ssh-action@v1.0.3
