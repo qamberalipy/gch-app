@@ -47,26 +47,31 @@ async def register_user(user: _schemas.UserCreate, db: _orm.Session = Depends(ge
 
 @router.post("/register/client", response_model=_schemas.ClientRead)
 async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depends(get_db)):    
-    # Check if the email is already registered
+    
     try:
         db_client = await _services.get_user_by_email(client.email_address, db)
         if db_client:
             raise HTTPException(status_code=400, detail="Email already registered")
 
         client_data = client.dict()
-        organization_id = client_data['org_id']
+        organization_id = client_data.get('org_id')
+        coach_id=client_data.get('coach_id')
+        membership_id=client_data.get('membership_id')
         client_data.pop('org_id')
+        client_data.pop('coach_id')
+        client_data.pop('membership_id')
 
         new_client = await _services.create_client(_schemas.RegisterClient(**client_data), db)
-        client_organization_detail = _schemas.CreateClient_Organization(
-            client_id=new_client.id,
-            org_id=organization_id
-        )
+        # client_organization_detail = _schemas.CreateClient_Organization(
+        #     client_id=new_client.id,
+        #     org_id=organization_id
+        # )
 
-        # Create the client organization entry
-        await _services.create_client_organization(client_organization_detail, db)
-
-        # Return the new client
+        
+        await _services.create_client_organization(_schemas.CreateClient_Organization(client_id=new_client.id,org_id=organization_id), db)
+        await _services.create_client_membership(_schemas.CreateClient_membership(client_id=new_client.id,membership_plan_id=membership_id), db)
+        await _services.create_client_coach(_schemas.CreateClient_coach(client_id=new_client.id,coach_id=coach_id), db)
+        
         return new_client
 
     except IntegrityError:

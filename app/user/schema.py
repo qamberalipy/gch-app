@@ -52,7 +52,7 @@ class ClientBase(pydantic.BaseModel):
     landline_number: Optional[str] = None
     mobile_number: Optional[str] = None
     client_since: date
-    subscription_reason: Optional[str] = None
+    notes: Optional[str] = None
     source: Optional[str] = None
     language: Optional[str] = None
     is_business: bool = False
@@ -64,6 +64,8 @@ class ClientBase(pydantic.BaseModel):
 
 class ClientCreate(ClientBase):
     org_id:int
+    coach_id:int
+    membership_id:int
     class Config:
         from_attributes=True
 
@@ -81,6 +83,20 @@ class Client_Organization(pydantic.BaseModel):
     org_id: int
 
 class CreateClient_Organization(Client_Organization):
+    pass
+    
+class Client_membership(pydantic.BaseModel):
+    client_id: int
+    membership_plan_id: int
+
+class CreateClient_membership(Client_membership):
+    pass
+
+class Client_coach(pydantic.BaseModel):
+    client_id: int
+    coach_id: int
+
+class CreateClient_coach(Client_coach):
     pass
     
 class ClientLogin(pydantic.BaseModel):

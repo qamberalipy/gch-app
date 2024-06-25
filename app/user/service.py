@@ -93,6 +93,10 @@ def generate_otp():
 async def get_user_by_email(email: str, db: _orm.Session = _fastapi.Depends(get_db)):
     return db.query(models.User).filter(models.User.email == email).first()
 
+async def get_alluser_data(email: str, db: _orm.Session = _fastapi.Depends(get_db)):
+    return db.query(models.User).filter(models.User.email == email).first()
+
+
 async def create_client(client: _schemas.RegisterClient, db: _orm.Session = _fastapi.Depends(get_db)):
     db_client = models.Client(**client.dict())
     db.add(db_client)
@@ -101,11 +105,27 @@ async def create_client(client: _schemas.RegisterClient, db: _orm.Session = _fas
     return db_client
 
 async def create_client_organization(client_organization: _schemas.CreateClient_Organization,  db: _orm.Session = _fastapi.Depends(get_db)):
-    db_client_organization = models.Client_Organization(**client_organization.dict())
+    db_client_organization = models.ClientOrganization(**client_organization.dict())
     db.add(db_client_organization)
     db.commit()
     db.refresh(db_client_organization)
     return db_client_organization
+
+async def create_client_membership(client_membership: _schemas.CreateClient_membership,  db: _orm.Session = _fastapi.Depends(get_db)):
+    db_client_membership = models.ClientMembership(**client_membership.dict())
+    db.add(db_client_membership)
+    db.commit()
+    db.refresh(db_client_membership)
+    return db_client_membership
+
+async def create_client_coach(client_coach: _schemas.CreateClient_coach,  db: _orm.Session = _fastapi.Depends(get_db)):
+    db_client_coach = models.ClientCoach(**client_coach.dict())
+    db.add(db_client_coach)
+    db.commit()
+    db.refresh(db_client_coach)
+    return db_client_coach
+
+
 
 async def create_bank_account(bank_account:_schemas.BankAccountCreate,db: _orm.Session = _fastapi.Depends(get_db)):
     db_bank_account = models.BankAccount(**bank_account.dict())
