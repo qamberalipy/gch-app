@@ -60,7 +60,7 @@ class ClientBase(pydantic.BaseModel):
     city: Optional[str] = None
     zip_code: Optional[str] = None
     address: Optional[str] = None
-    
+
 
 class ClientCreate(ClientBase):
     org_id:int
@@ -72,6 +72,19 @@ class ClientCreate(ClientBase):
 class RegisterClient(ClientBase):
     pass
 
+class CoachBase(pydantic.BaseModel):
+    coach_name: str
+
+class CoachCreate(CoachBase):
+    org_id: int
+
+class CoachRead(CoachBase):
+    id: int
+    is_deleted: bool
+
+    class Config:
+        from_attributes = True
+        
 class ClientRead(ClientBase):
     id: int
     

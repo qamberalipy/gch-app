@@ -1,3 +1,4 @@
+from typing import List
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError, DataError
 import app.user.schema as _schemas
@@ -117,7 +118,7 @@ async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_
     if not authenticated_user:
         raise HTTPException(status_code=400, detail="Invalid email or password")
     token= await _services.create_token(authenticated_user)
-    user_data = await _services.get_user_by_email(email=user.email, db=db)
+    user_data = await _services.get_alluser_data(email=user.email, db=db)
     return {
         "user": user_data,
         "token": token
@@ -142,3 +143,17 @@ async def get_client(client_id: int, db: _orm.Session = Depends(get_db)):
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     return client
+
+
+# API FOR COACHES
+
+@router.post("/coaches/", response_model=_schemas.CoachRead)
+async def register_coach(coach: _schemas.CoachCreate, db: _orm.Session = Depends(get_db)):
+    return _services.create_coach(db=db, coach=coach)
+
+@router.get("/coaches/{org_id}", response_model=List[_schemas.CoachRead])
+async def read_coaches(org_id: int, db: _orm.Session = Depends(get_db)):
+    coaches = _services.get_coaches_by_org_id(db=db, org_id=org_id)
+    if not coaches:
+        raise HTTPException(status_code=404, detail="No coaches found for this organization")
+    return coaches

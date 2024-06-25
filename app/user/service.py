@@ -1,5 +1,6 @@
 import jwt
 import sqlalchemy.orm as _orm
+from sqlalchemy.sql import and_  
 import email_validator as _email_check
 import fastapi as _fastapi
 import fastapi.security as _security
@@ -94,7 +95,26 @@ async def get_user_by_email(email: str, db: _orm.Session = _fastapi.Depends(get_
     return db.query(models.User).filter(models.User.email == email).first()
 
 async def get_alluser_data(email: str, db: _orm.Session = _fastapi.Depends(get_db)):
-    return db.query(models.User).filter(models.User.email == email).first()
+    # Retrieve a user by email from the database
+    result = (
+        db.query(_models.User, _models.Organization.org_name)
+        .join(_models.Organization, _models.User.org_id == _models.Organization.id)
+        .filter(_models.User.email == email)
+        .first()
+    )
+    
+    if result:
+        user, org_name = result
+        return {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "date_created": user.date_created,
+            "org_id": user.org_id,
+            "org_name": org_name,
+            "is_deleted": user.is_deleted
+        }
+    return None
 
 
 async def create_client(client: _schemas.RegisterClient, db: _orm.Session = _fastapi.Depends(get_db)):
@@ -161,3 +181,29 @@ async def authenticate_user(email: str, password: str, db: _orm.Session):
         return False
 
     return user
+
+##For Coach
+
+def create_coach(coach: _schemas.CoachCreate, db: _orm.Session):
+    db_coach = models.Coach(coach_name=coach.coach_name)
+    db.add(db_coach)
+    db.commit()
+    db.refresh(db_coach)
+    
+    db_coach_org = models.CoachOrganization(coach_id=db_coach.id, org_id=coach.org_id)
+    db.add(db_coach_org)
+    db.commit()
+    db.refresh(db_coach_org)
+    
+    return db_coach
+
+def get_coaches_by_org_id(org_id: int, db: _orm.Session):
+    return db.query(models.Coach).select_from(models.CoachOrganization).join(
+        models.Coach, models.CoachOrganization.coach_id == models.Coach.id
+    ).filter(
+        and_(
+            models.CoachOrganization.org_id == org_id,
+            models.CoachOrganization.is_deleted == False,
+            models.Coach.is_deleted == False
+        )
+    ).all()
