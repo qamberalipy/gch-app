@@ -47,13 +47,6 @@ class Client(_database.Base):
     address = _sql.Column(_sql.String)
     is_deleted= _sql.Column(_sql.Boolean, default=False)
 
-class MembershipPlan(_database.Base):
-    __tablename__ = "membership_plan"
-    id = _sql.Column(_sql.Integer, primary_key=True, index=True)
-    name = _sql.Column(_sql.String)
-    price = _sql.Column(_sql.String)  
-    org_id = _sql.Column(_sql.Integer)
-    is_deleted= _sql.Column(_sql.Boolean, default=False)
 
 class ClientMembership(_database.Base):
     __tablename__ = "client_membership"
@@ -69,6 +62,14 @@ class ClientOrganization(_database.Base):
     org_id = _sql.Column(_sql.Integer)
     is_deleted= _sql.Column(_sql.Boolean, default=False)
 
+class MembershipPlan(_database.Base):
+    __tablename__ = "membership_plan"
+    id = _sql.Column(_sql.Integer, primary_key=True, index=True)
+    name = _sql.Column(_sql.String)
+    price = _sql.Column(_sql.String)  
+    org_id = _sql.Column(_sql.Integer)
+    is_deleted= _sql.Column(_sql.Boolean, default=False)
+    
 class UserMembership(_database.Base):
     __tablename__ = "user_membership"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
