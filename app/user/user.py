@@ -46,36 +46,27 @@ async def register_user(user: _schemas.UserCreate, db: _orm.Session = Depends(ge
     return new_user
 
 @router.post("/register/client", response_model=_schemas.ClientRead)
-async def register_client(client: _schemas.ClientCreate,db: _orm.Session = Depends(get_db)):    
-
+async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depends(get_db)):    
+    # Check if the email is already registered
     try:
-        # Check if the email is already registered
         db_client = await _services.get_user_by_email(client.email_address, db)
         if db_client:
             raise HTTPException(status_code=400, detail="Email already registered")
 
-        # Separate bank details
-        # bank_details = _schemas.BankAccountCreate(
-        #     bank_account_number=client.bank_account_number,
-        #     bic_swift_code=client.bic_swift_code,
-        #     bank_account_holder_name=client.bank_account_holder_name,
-        #     bank_name=client.bank_name
-        # )
+        client_data = client.dict()
+        organization_id = client_data['org_id']
+        client_data.pop('org_id')
 
-        # Create bank account entry
-        # bank_account = await _services.create_bank_account(bank_details, db)
+        new_client = await _services.create_client(_schemas.RegisterClient(**client_data), db)
+        client_organization_detail = _schemas.CreateClient_Organization(
+            client_id=new_client.id,
+            org_id=organization_id
+        )
 
-        # Create client entry with the bank account ID
-        # client_data = client.dict()
-        # client_data['bank_detail_id'] = bank_account.id
+        # Create the client organization entry
+        await _services.create_client_organization(client_organization_detail, db)
 
-        # Remove bank details from client data
-        # client_data.pop('bank_account_number')
-        # client_data.pop('bic_swift_code')
-        # client_data.pop('bank_account_holder_name')
-        # client_data.pop('bank_name')
-
-        new_client = await _services.create_client(_schemas.ClientCreate(**client), db)
+        # Return the new client
         return new_client
 
     except IntegrityError:
