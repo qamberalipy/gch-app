@@ -27,6 +27,11 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 from app.core.db.session import Base  # Import your Base from the appropriate location
 from app.user.models import User
+from app.Business.models import Business
+from app.Client.models import Client
+from app.Coach.models import Coach
+from app.Membership.models import MembershipPlan
+
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

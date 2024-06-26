@@ -20,16 +20,6 @@ class User(_database.Base):
         print("In Verify Password", password, self.password.encode('utf-8'))
         return _bcrypt.checkpw(password.encode('utf-8'), self.password.encode('utf-8'))
 
-    
-class UserMembership(_database.Base):
-    __tablename__ = "user_membership"
-    id = _sql.Column(_sql.Integer, primary_key=True, index=True)
-    user_id = _sql.Column(_sql.Integer)
-    membership_plan_id = _sql.Column(_sql.Integer)
-    start_date = _sql.Column(_sql.Date)
-    end_date = _sql.Column(_sql.Date)
-    is_deleted= _sql.Column(_sql.Boolean, default=False)
-
 class Country(_database.Base):
     __tablename__ = "country"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
