@@ -12,7 +12,7 @@ load_dotenv(".env")
 
 root_router = APIRouter()
 
-app = FastAPI(title="FastAPI Boiler Plate")
+app = FastAPI(title="Lets Move API")
 
 app.add_middleware(CORSMiddleware,
     allow_origins=['*'],

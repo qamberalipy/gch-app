@@ -1,0 +1,11 @@
+venv/
+.github/
+.idea/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+letsmove (4).pdf
+lets-move-cicd_accessKeys.csv
+encoded_xoltan_key.txt
+.env

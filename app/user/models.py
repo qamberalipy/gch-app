@@ -32,7 +32,7 @@ class Client(_database.Base):
     last_name = _sql.Column(_sql.String, nullable=False)
     sex = _sql.Column(_sql.String)
     date_of_birth = _sql.Column(_sql.Date, nullable=False)
-    email_address = _sql.Column(_sql.String, nullable=False, unique=True)
+    email = _sql.Column(_sql.String, nullable=False, unique=True)
     landline_number = _sql.Column(_sql.String)
     mobile_number = _sql.Column(_sql.String)
     client_since = _sql.Column(_sql.Date, nullable=False)
@@ -138,5 +138,3 @@ class CoachOrganization(_database.Base):
     coach_id = _sql.Column(_sql.Integer)
     org_id = _sql.Column(_sql.Integer)
     is_deleted= _sql.Column(_sql.Boolean, default=False)
-
-_database.Base.metadata.create_all(_database.engine)

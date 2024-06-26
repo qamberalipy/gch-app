@@ -29,7 +29,7 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
-    - name: Build and push Docker image
+    - name: Build and push Docker image and upgrade alembic
       run: |
         docker build -t qasimshabbir786/lets-move-api-dh:latest .
         docker push qasimshabbir786/lets-move-api-dh:latest
