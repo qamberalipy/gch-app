@@ -5,6 +5,10 @@ from starlette.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from app.core.main_router import router as main_router
 from app.user import user_router
+from app.Client import client_router
+from app.Membership import membership_router
+from app.Business import business_router
+from app.Coach import coach_router
 # from app.core.logger import init_logging
 # import logging
 
@@ -23,6 +27,10 @@ app.add_middleware(CORSMiddleware,
 
 app.include_router(main_router)
 app.include_router(user_router)
+app.include_router(business_router)
+app.include_router(client_router)
+app.include_router(coach_router)
+app.include_router(membership_router)
 app.include_router(root_router)
 
 AUTH_BASE_URL = os.environ.get("AUTH_BASE_URL")
@@ -32,4 +40,4 @@ if __name__ == "__main__":
 
     import uvicorn
 
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True,)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

@@ -46,50 +46,6 @@ async def register_user(user: _schemas.UserCreate, db: _orm.Session = Depends(ge
     
     return new_user
 
-@router.post("/register/client", response_model=_schemas.ClientRead)
-async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depends(get_db)):    
-    
-    try:
-        db_client = await _services.get_user_by_email(client.email_address, db)
-        if db_client:
-            raise HTTPException(status_code=400, detail="Email already registered")
-
-        client_data = client.dict()
-        organization_id = client_data.get('org_id')
-        coach_id=client_data.get('coach_id')
-        membership_id=client_data.get('membership_id')
-        client_data.pop('org_id')
-        client_data.pop('coach_id')
-        client_data.pop('membership_id')
-
-        new_client = await _services.create_client(_schemas.RegisterClient(**client_data), db)
-        # client_organization_detail = _schemas.CreateClient_Organization(
-        #     client_id=new_client.id,
-        #     org_id=organization_id
-        # )
-
-        
-        await _services.create_client_organization(_schemas.CreateClient_Organization(client_id=new_client.id,org_id=organization_id), db)
-        await _services.create_client_membership(_schemas.CreateClient_membership(client_id=new_client.id,membership_plan_id=membership_id), db)
-        await _services.create_client_coach(_schemas.CreateClient_coach(client_id=new_client.id,coach_id=coach_id), db)
-        
-        return new_client
-
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=400, detail="Duplicate entry or integrity constraint violation")
-
-    except DataError:
-        db.rollback()
-        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
-
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
-
-
-
-
 @router.post("/login")
 async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_db)):
     logger.debug("Here 1", user.email, user.password)
@@ -105,57 +61,5 @@ async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_
     }
 
 
-@router.post("/login/client", response_model=dict)
-async def login_client(client_login: _schemas.ClientLogin, db: _orm.Session = Depends(get_db)):
-    logger.debug("Here 1", client_login.email_address, client_login.wallet_address)
-    
-    authenticated_client = await _services.authenticate_client(client_login.email_address, client_login.wallet_address, db)
-    
-    if not authenticated_client:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
-    
-    token = await _services.create_token(authenticated_client)
-    return token
-
-@router.get("/clients/{client_id}", response_model=_schemas.ClientRead)
-async def get_client(client_id: int, db: _orm.Session = Depends(get_db)):
-    client = await _services.get_client_by_id(client_id, db)
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    return client
 
 
-# API FOR COACHES
-
-@router.post("/coaches/", response_model=_schemas.CoachRead)
-async def register_coach(coach: _schemas.CoachCreate, db: _orm.Session = Depends(get_db)):
-    return _services.create_coach(db=db, coach=coach)
-
-@router.get("/coaches/{org_id}", response_model=List[_schemas.CoachRead])
-async def read_coaches(org_id: int, db: _orm.Session = Depends(get_db)):
-    coaches = _services.get_coaches_by_org_id(db=db, org_id=org_id)
-    if not coaches:
-        raise HTTPException(status_code=404, detail="No coaches found for this organization")
-    return coaches
-
-@router.post("/register/business/", response_model=_schemas.BusinessRead)
-async def register_business(business: _schemas.BusinessCreate,db: _orm.Session = Depends(get_db)):
-    return _services.create_business(db=db, business=business)
-
-@router.get("/get_all_business/{org_id}", response_model=List[_schemas.BusinessRead])
-async def read_businesses(org_id: int,db: _orm.Session = Depends(get_db)):
-    businesses = _services.get_businesses_by_org_id(db=db, org_id=org_id)
-    if not businesses:
-        raise HTTPException(status_code=404, detail="No businesses found for this organization")
-    return businesses
-
-@router.post("/register/membership_plan", response_model=_schemas.MembershipPlanRead)
-async def register_membership_plan(plan: _schemas.MembershipPlanCreate, db: _orm.Session = Depends(get_db)):
-    return _services.create_membership_plan(db=db, plan=plan)
-
-@router.get("/get_all_membership_plan/{org_id}", response_model=List[_schemas.MembershipPlanRead])
-async def read_membership_plans(org_id: int, db: _orm.Session = Depends(get_db)):
-    plans = _services.get_membership_plans_by_org_id(db=db, org_id=org_id)
-    if not plans:
-        raise HTTPException(status_code=404, detail="No membership plans found for this organization")
-    return plans

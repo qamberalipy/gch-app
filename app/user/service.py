@@ -117,37 +117,6 @@ async def get_alluser_data(email: str, db: _orm.Session = _fastapi.Depends(get_d
         }
     return None
 
-
-async def create_client(client: _schemas.RegisterClient, db: _orm.Session = _fastapi.Depends(get_db)):
-    db_client = models.Client(**client.dict())
-    db.add(db_client)
-    db.commit()
-    db.refresh(db_client)
-    return db_client
-
-async def create_client_organization(client_organization: _schemas.CreateClient_Organization,  db: _orm.Session = _fastapi.Depends(get_db)):
-    db_client_organization = models.ClientOrganization(**client_organization.dict())
-    db.add(db_client_organization)
-    db.commit()
-    db.refresh(db_client_organization)
-    return db_client_organization
-
-async def create_client_membership(client_membership: _schemas.CreateClient_membership,  db: _orm.Session = _fastapi.Depends(get_db)):
-    db_client_membership = models.ClientMembership(**client_membership.dict())
-    db.add(db_client_membership)
-    db.commit()
-    db.refresh(db_client_membership)
-    return db_client_membership
-
-async def create_client_coach(client_coach: _schemas.CreateClient_coach,  db: _orm.Session = _fastapi.Depends(get_db)):
-    db_client_coach = models.ClientCoach(**client_coach.dict())
-    db.add(db_client_coach)
-    db.commit()
-    db.refresh(db_client_coach)
-    return db_client_coach
-
-
-
 async def create_bank_account(bank_account:_schemas.BankAccountCreate,db: _orm.Session = _fastapi.Depends(get_db)):
     db_bank_account = models.BankAccount(**bank_account.dict())
     db.add(db_bank_account)
@@ -155,21 +124,6 @@ async def create_bank_account(bank_account:_schemas.BankAccountCreate,db: _orm.S
     db.refresh(db_bank_account)
     return db_bank_account
 
-def get_client_by_email(email_address,db):
-    client = db.query(_models.Client).filter(_models.Client.email_address == email_address).first()
-    print("client",client.email_address,client.wallet_address)
-    if not client:
-        return None
-    else:
-        return client
-    
-async def authenticate_client(email_address: str,db: _orm.Session = _fastapi.Depends(get_db)):
-    client = get_client_by_email(email_address , db)
-      
-    if not client:
-        return False
-   
-    return client
         
 async def authenticate_user(email: str, password: str, db: _orm.Session):
     # Authenticate a user
@@ -182,68 +136,43 @@ async def authenticate_user(email: str, password: str, db: _orm.Session):
         return False
 
     return user
-#_______________________________________________________________________________________________
-#For Coach
+# #_______________________________________________________________________________________________
+# #For Coach
 
-def create_coach(coach: _schemas.CoachCreate, db: _orm.Session):
-    db_coach = models.Coach(coach_name=coach.coach_name)
-    db.add(db_coach)
-    db.commit()
-    db.refresh(db_coach)
+# def create_coach(coach: _schemas.CoachCreate, db: _orm.Session):
+#     db_coach = models.Coach(coach_name=coach.coach_name)
+#     db.add(db_coach)
+#     db.commit()
+#     db.refresh(db_coach)
     
-    db_coach_org = models.CoachOrganization(coach_id=db_coach.id, org_id=coach.org_id)
-    db.add(db_coach_org)
-    db.commit()
-    db.refresh(db_coach_org)
+#     db_coach_org = models.CoachOrganization(coach_id=db_coach.id, org_id=coach.org_id)
+#     db.add(db_coach_org)
+#     db.commit()
+#     db.refresh(db_coach_org)
     
-    return db_coach
+#     return db_coach
 
-def get_coaches_by_org_id(org_id: int, db: _orm.Session):
-    return db.query(models.Coach).select_from(models.CoachOrganization).join(
-        models.Coach, models.CoachOrganization.coach_id == models.Coach.id
-    ).filter(
-        and_(
-            models.CoachOrganization.org_id == org_id,
-            models.CoachOrganization.is_deleted == False,
-            models.Coach.is_deleted == False
-        )
-    ).all()
+# def get_coaches_by_org_id(org_id: int, db: _orm.Session):
+#     return db.query(models.Coach).select_from(models.CoachOrganization).join(
+#         models.Coach, models.CoachOrganization.coach_id == models.Coach.id
+#     ).filter(
+#         and_(
+#             models.CoachOrganization.org_id == org_id,
+#             models.CoachOrganization.is_deleted == False,
+#             models.Coach.is_deleted == False
+#         )
+#     ).all()
     
-#_______________________________________________________________________________________________ 
-# For Bussiness API
 
-def create_business(business: _schemas.BusinessCreate, db: _orm.Session):
-    db_business = models.Business(
-        name=business.name,
-        address=business.address,
-        email=business.email,
-        owner_id=business.owner_id,
-        org_id=business.org_id,
-        date_created=date.today()
-    )
-    db.add(db_business)
-    db.commit()
-    db.refresh(db_business)
-    return db_business
+# def create_membership_plan(plan: _schemas.MembershipPlanCreate, db: _orm.Session):
+#     db_plan = models.MembershipPlan(name=plan.name, price=plan.price, org_id=plan.org_id)
+#     db.add(db_plan)
+#     db.commit()
+#     db.refresh(db_plan)
+#     return db_plan
 
-def get_businesses_by_org_id(org_id: int, db: _orm.Session):
-    return db.query(models.Business).filter(
-        models.Business.org_id == org_id,
-        models.Business.is_deleted == False
-    ).all()
-    
-    
-#_________________________________________________________________________________________________
-#For Membership Plan
-def create_membership_plan(plan: _schemas.MembershipPlanCreate, db: _orm.Session):
-    db_plan = models.MembershipPlan(name=plan.name, price=plan.price, org_id=plan.org_id)
-    db.add(db_plan)
-    db.commit()
-    db.refresh(db_plan)
-    return db_plan
-
-def get_membership_plans_by_org_id(org_id: int, db: _orm.Session):
-    return db.query(models.MembershipPlan).filter(
-        models.MembershipPlan.org_id == org_id,
-        models.MembershipPlan.is_deleted == False
-    ).all()
+# def get_membership_plans_by_org_id(org_id: int, db: _orm.Session):
+#     return db.query(models.MembershipPlan).filter(
+#         models.MembershipPlan.org_id == org_id,
+#         models.MembershipPlan.is_deleted == False
+#     ).all()
