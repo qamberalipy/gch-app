@@ -31,7 +31,7 @@ def get_db():
 async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depends(get_db)):    
     
     try:
-        db_client = await _user_service.get_user_by_email(client.email_address, db)
+        db_client = await _user_service.get_user_by_email(client.email, db)
         if db_client:
             raise HTTPException(status_code=400, detail="Email already registered")
 
@@ -46,9 +46,9 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
         new_client = await _services.create_client(_schemas.RegisterClient(**client_data), db)
 
         
-        await _services.create_client_organization(_schemas.CreateClient_Organization(client_id=new_client.id,org_id=organization_id), db)
-        await _services.create_client_membership(_schemas.CreateClient_membership(client_id=new_client.id,membership_plan_id=membership_id), db)
-        await _services.create_client_coach(_schemas.CreateClient_coach(client_id=new_client.id,coach_id=coach_id), db)
+        await _services.create_client_organization(_schemas.CreateClientOrganization(client_id=new_client.id,org_id=organization_id), db)
+        await _services.create_client_membership(_schemas.CreateClientMembership(client_id=new_client.id,membership_plan_id=membership_id), db)
+        await _services.create_client_coach(_schemas.CreateClientCoach(client_id=new_client.id,coach_id=coach_id), db)
         
         return new_client
 
@@ -84,15 +84,15 @@ async def get_client(client_id: int, db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Client not found")
     return client
 
-# @router.post("/register/business/", response_model=_schemas.BusinessRead)
-# async def register_business(business: _schemas.BusinessCreate,db: _orm.Session = Depends(get_db)):
-#     return _services.create_business(db=db, business=business)
+@router.get("/business/clients/{org_id}", response_model=List[_schemas.ClientBusinessRead], tags=["Business Client"])
+async def get_business_clients(org_id: int,db: _orm.Session = Depends(get_db)):
+    try:
+        clients = await _services.get_business_clients(org_id, db)
+        if not clients:
+            raise HTTPException(status_code=404, detail="No business clients found")
+        return clients
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
-# @router.get("/get_all_business/{org_id}", response_model=List[_schemas.BusinessRead])
-# async def read_businesses(org_id: int,db: _orm.Session = Depends(get_db)):
-#     businesses = _services.get_businesses_by_org_id(db=db, org_id=org_id)
-#     if not businesses:
-#         raise HTTPException(status_code=404, detail="No businesses found for this organization")
-#     return businesses
 
 

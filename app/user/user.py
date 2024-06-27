@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict, List
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError, DataError
 import app.user.schema as _schemas
