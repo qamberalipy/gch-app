@@ -136,43 +136,10 @@ async def authenticate_user(email: str, password: str, db: _orm.Session):
         return False
 
     return user
-# #_______________________________________________________________________________________________
-# #For Coach
 
-# def create_coach(coach: _schemas.CoachCreate, db: _orm.Session):
-#     db_coach = models.Coach(coach_name=coach.coach_name)
-#     db.add(db_coach)
-#     db.commit()
-#     db.refresh(db_coach)
-    
-#     db_coach_org = models.CoachOrganization(coach_id=db_coach.id, org_id=coach.org_id)
-#     db.add(db_coach_org)
-#     db.commit()
-#     db.refresh(db_coach_org)
-    
-#     return db_coach
 
-# def get_coaches_by_org_id(org_id: int, db: _orm.Session):
-#     return db.query(models.Coach).select_from(models.CoachOrganization).join(
-#         models.Coach, models.CoachOrganization.coach_id == models.Coach.id
-#     ).filter(
-#         and_(
-#             models.CoachOrganization.org_id == org_id,
-#             models.CoachOrganization.is_deleted == False,
-#             models.Coach.is_deleted == False
-#         )
-#     ).all()
-    
+def get_all_countries( db: _orm.Session):
+    return db.query(_models.Country).filter(_models.Country.is_deleted == False).all()
 
-# def create_membership_plan(plan: _schemas.MembershipPlanCreate, db: _orm.Session):
-#     db_plan = models.MembershipPlan(name=plan.name, price=plan.price, org_id=plan.org_id)
-#     db.add(db_plan)
-#     db.commit()
-#     db.refresh(db_plan)
-#     return db_plan
-
-# def get_membership_plans_by_org_id(org_id: int, db: _orm.Session):
-#     return db.query(models.MembershipPlan).filter(
-#         models.MembershipPlan.org_id == org_id,
-#         models.MembershipPlan.is_deleted == False
-#     ).all()
+def get_all_sources( db: _orm.Session):
+    return db.query(_models.Source).all()

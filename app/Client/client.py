@@ -27,11 +27,11 @@ def get_db():
         db.close()
         
     
-@router.post("/register/client", response_model=_schemas.ClientRead)
+@router.post("/register/client", response_model=_schemas.ClientRead,tags=["Client Router"])
 async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depends(get_db)):    
     
     try:
-        db_client = await _user_service.get_user_by_email(client.email_address, db)
+        db_client = await _user_service.get_user_by_email(client.email, db)
         if db_client:
             raise HTTPException(status_code=400, detail="Email already registered")
 
@@ -44,15 +44,11 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
         client_data.pop('membership_id')
 
         new_client = await _services.create_client(_schemas.RegisterClient(**client_data), db)
-        # client_organization_detail = _schemas.CreateClient_Organization(
-        #     client_id=new_client.id,
-        #     org_id=organization_id
-        # )
 
         
-        await _services.create_client_organization(_schemas.CreateClient_Organization(client_id=new_client.id,org_id=organization_id), db)
-        await _services.create_client_membership(_schemas.CreateClient_membership(client_id=new_client.id,membership_plan_id=membership_id), db)
-        await _services.create_client_coach(_schemas.CreateClient_coach(client_id=new_client.id,coach_id=coach_id), db)
+        await _services.create_client_organization(_schemas.CreateClientOrganization(client_id=new_client.id,org_id=organization_id), db)
+        await _services.create_client_membership(_schemas.CreateClientMembership(client_id=new_client.id,membership_plan_id=membership_id), db)
+        await _services.create_client_coach(_schemas.CreateClientCoach(client_id=new_client.id,coach_id=coach_id), db)
         
         return new_client
 
@@ -69,7 +65,7 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
 
-@router.post("/login/client", response_model=dict)
+@router.post("/login/client", response_model=dict,tags=["Client Router"])
 async def login_client(client_login: _schemas.ClientLogin, db: _orm.Session = Depends(get_db)):
     logger.debug("Here 1", client_login.email_address, client_login.wallet_address)
     
@@ -87,5 +83,16 @@ async def get_client(client_id: int, db: _orm.Session = Depends(get_db)):
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     return client
+
+@router.get("/business/clients/{org_id}", response_model=List[_schemas.ClientBusinessRead], tags=["Business Client"])
+async def get_business_clients(org_id: int,db: _orm.Session = Depends(get_db)):
+    try:
+        clients = await _services.get_business_clients(org_id, db)
+        if not clients:
+            raise HTTPException(status_code=404, detail="No business clients found")
+        return clients
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
 
 

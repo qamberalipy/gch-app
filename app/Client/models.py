@@ -16,15 +16,15 @@ class Client(_database.Base):
     last_name = _sql.Column(_sql.String, nullable=False)
     gender = _sql.Column(_sql.String(10))  # varchar(10) in the image is likely the intended length
     dob = _sql.Column(_sql.Date, nullable=False)
-    email_address = _sql.Column(_sql.String, nullable=False, unique=True)
+    email = _sql.Column(_sql.String, nullable=False, unique=True)
     phone = _sql.Column(_sql.String(11))  # Assuming phone number should not include landline
     mobile_number = _sql.Column(_sql.String(11))
     notes = _sql.Column(_sql.String)
-    source = _sql.Column(_sql.String)  # Removed foreign key reference
+    source_id= _sql.Column(_sql.Integer)  # Removed foreign key reference
     language = _sql.Column(_sql.String(50))
     is_business = _sql.Column(_sql.Boolean, default=False)
     business_id = _sql.Column(_sql.Integer)
-    country = _sql.Column(_sql.String)  # Removed foreign key reference
+    country_id = _sql.Column(_sql.Integer)  # Removed foreign key reference
     city = _sql.Column(_sql.String(20))
     zipcode = _sql.Column(_sql.String(10))
     address_1 = _sql.Column(_sql.String(100))  # address 1 renamed to address_1 for clarity
@@ -61,6 +61,3 @@ class ClientCoach(_database.Base):
     client_id = _sql.Column(_sql.Integer)
     coach_id = _sql.Column(_sql.Integer)
     is_deleted= _sql.Column(_sql.Boolean, default=False)
-
-
-_database.Base.metadata.create_all(_database.engine)
