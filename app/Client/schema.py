@@ -85,9 +85,9 @@ class BusinessRead(BusinessBase):
 class ClientBusinessRead(pydantic.BaseModel):
     id: int
     first_name: str
-
-    class Config:
-        from_attributes = True
         
 class ClientCount(pydantic.BaseModel):
     total_clients: int
+    
+class ClientLoginResponse(pydantic.BaseModel):
+    is_registered: bool
