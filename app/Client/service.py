@@ -35,34 +35,34 @@ def get_db():
         
         
 async def create_client(client: _schemas.RegisterClient, db: _orm.Session = _fastapi.Depends(get_db)):
-    db_client = models.Client(**client.dict())
+    db_client = _models.Client(**client.dict())
     db.add(db_client)
     db.commit()
     db.refresh(db_client)
     return db_client
 
-async def create_client_organization(client_organization: _schemas.CreateClient_Organization,  db: _orm.Session = _fastapi.Depends(get_db)):
-    db_client_organization = models.ClientOrganization(**client_organization.dict())
+async def create_client_organization(client_organization: _schemas.CreateClientOrganization, db: _orm.Session = _fastapi.Depends(get_db)):
+    db_client_organization = _models.ClientOrganization(**client_organization.dict())
     db.add(db_client_organization)
     db.commit()
     db.refresh(db_client_organization)
     return db_client_organization
 
-async def create_client_membership(client_membership: _schemas.CreateClient_membership,  db: _orm.Session = _fastapi.Depends(get_db)):
-    db_client_membership = models.ClientMembership(**client_membership.dict())
+async def create_client_membership(client_membership: _schemas.CreateClientMembership, db: _orm.Session = _fastapi.Depends(get_db)):
+    db_client_membership = _models.ClientMembership(**client_membership.dict())
     db.add(db_client_membership)
     db.commit()
     db.refresh(db_client_membership)
     return db_client_membership
 
-async def create_client_coach(client_coach: _schemas.CreateClient_coach,  db: _orm.Session = _fastapi.Depends(get_db)):
-    db_client_coach = models.ClientCoach(**client_coach.dict())
+async def create_client_coach(client_coach: _schemas.CreateClientCoach, db: _orm.Session = _fastapi.Depends(get_db)):
+    db_client_coach = _models.ClientCoach(**client_coach.dict())
     db.add(db_client_coach)
     db.commit()
     db.refresh(db_client_coach)
     return db_client_coach
 
-async def authenticate_client(email_address: str,db: _orm.Session = _fastapi.Depends(get_db)):
+async def authenticate_client(email_address: str, db: _orm.Session = _fastapi.Depends(get_db)):
     client = get_client_by_email(email_address , db)
       
     if not client:
@@ -70,18 +70,23 @@ async def authenticate_client(email_address: str,db: _orm.Session = _fastapi.Dep
    
     return client
 
-
-def get_client_by_email(email_address,db):
-    client = db.query(_models.Client).filter(_models.Client.email_address == email_address).first()
-    print("client",client.email_address,client.wallet_address)
+def get_client_by_email(email_address, db):
+    client = db.query(_models.Client).filter(_models.Client.email == email_address).first()
     if not client:
         return None
     else:
         return client
     
-# def get_businesses_by_org_id(org_id: int, db: _orm.Session):
-#     return db.query(_models.Business).filter(
-#         models.Business.org_id == org_id,
-#         models.Business.is_deleted == False
-#     ).all()
-    
+async def get_business_clients(org_id: int, db: _orm.Session = _fastapi.Depends(get_db)):
+    clients = db.query(
+        models.Client.id,
+        models.Client.first_name
+    ).join(
+        models.ClientOrganization,
+        models.ClientOrganization.client_id == models.Client.id
+    ).filter(
+        models.ClientOrganization.org_id == org_id,
+        models.Client.is_business == True
+    ).all()
+
+    return clients
