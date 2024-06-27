@@ -33,5 +33,5 @@ async def register_membership_plan(plan: _schemas.MembershipPlanCreate, db: _orm
 async def read_membership_plans(org_id: int, db: _orm.Session = Depends(get_db)):
     plans = _services.get_membership_plans_by_org_id(db=db, org_id=org_id)
     if not plans:
-        raise HTTPException(status_code=404, detail="No membership plans found for this organization")
+       return []
     return plans

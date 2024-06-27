@@ -96,7 +96,7 @@ async def get_business_clients(org_id: int,db: _orm.Session = Depends(get_db)):
     try:
         clients = await _services.get_business_clients(org_id, db)
         if not clients:
-            raise HTTPException(status_code=404, detail="No business clients found")
+            return []
         return clients
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")

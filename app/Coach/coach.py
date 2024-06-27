@@ -34,5 +34,5 @@ async def register_coach(coach: _schemas.CoachCreate, db: _orm.Session = Depends
 async def read_coaches(org_id: int, db: _orm.Session = Depends(get_db)):
     coaches = _services.get_coaches_by_org_id(db=db, org_id=org_id)
     if not coaches:
-        raise HTTPException(status_code=200, detail="No coaches found for this organization")
+        return []
     return coaches
