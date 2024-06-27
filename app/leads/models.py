@@ -1,5 +1,4 @@
 import datetime as _dt
-from datetime import date
 import sqlalchemy as _sql
 import sqlalchemy.orm as _orm
 import app.core.db.session as _database
@@ -7,7 +6,7 @@ import bcrypt as _bcrypt
 import sqlalchemy.ext.declarative as _declarative
 
 class Leads(_database.Base):
-    _tablename = "leads"
+    __tablename__ = "leads"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
     first_name = _sql.Column(_sql.String)
     last_name = _sql.Column(_sql.String)
@@ -19,8 +18,8 @@ class Leads(_database.Base):
     source_id = _sql.Column(_sql.Integer)
     lead_since = _sql.Column(_sql.Date)
     notes=_sql.Column(_sql.String,nullable=True)
-    created_at= _sql.Column(_sql.DateTime,default=date.datetime.now())
-    updated_at= _sql.Column(_sql.DateTime,default=date.datetime.now())
+    created_at= _sql.Column(_sql.DateTime,default=_dt.datetime.now)
+    updated_at= _sql.Column(_sql.DateTime,default=_dt.datetime.now)
     created_by= _sql.Column(_sql.Integer)
     updated_by= _sql.Column(_sql.Integer)
     is_deleted= _sql.Column(_sql.Boolean, default=False)

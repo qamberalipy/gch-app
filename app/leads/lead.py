@@ -1,10 +1,10 @@
 from typing import List
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError, DataError
-import app.leads.schema as _schemas
+import app.Leads.schema as _schemas
 import sqlalchemy.orm as _orm
-import app.leads.models as _models
-import app.leads.service as _services
+import app.Leads.models as _models
+import app.Leads.service as _services
 import app.user.service as _user_service
 import app.core.db.session as _database
 import pika

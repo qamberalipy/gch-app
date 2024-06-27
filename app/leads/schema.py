@@ -18,7 +18,7 @@ class LeadCreate(LeadBase):
     email:str
     notes:str
     created_by:int
-    updated_by:int
+    updated_by:int  
 
     class Config:
             from_attributes = True

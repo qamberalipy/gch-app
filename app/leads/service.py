@@ -6,8 +6,8 @@ import email_validator as _email_check
 import fastapi as _fastapi
 import fastapi.security as _security
 import app.core.db.session as _database
-import app.leads.schema as _schemas
-import app.leads.models as _models
+import app.Leads.schema as _schemas
+import app.Leads.models as _models
 import random
 import json
 import pika

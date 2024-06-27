@@ -13,6 +13,11 @@ class MembershipPlan(_database.Base):
     price = _sql.Column(_sql.String)  
     org_id = _sql.Column(_sql.Integer)
     is_deleted= _sql.Column(_sql.Boolean, default=False)
+    created_at=_sql.Column(_sql.DateTime)
+    updated_at=_sql.Column(_sql.DateTime)
+    created_by=_sql.Column(_sql.Integer)
+    updated_by=_sql.Column(_sql.Integer)
+    
     
 class UserMembership(_database.Base):
     __tablename__ = "user_membership"

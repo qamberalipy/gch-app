@@ -1,7 +1,7 @@
 from fastapi import APIRouter
-from app.user.user import router
+from app.Leads.lead import router
 
 API_STR = "/leads"
 
-user_router = APIRouter(prefix=API_STR)
-user_router.include_router(router)
+leads_router = APIRouter(prefix=API_STR)
+leads_router.include_router(router)
