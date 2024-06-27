@@ -30,7 +30,7 @@ from app.user.models import User
 from app.Client.models import Client
 from app.Coach.models import Coach
 from app.Membership.models import MembershipPlan
-from app.Leads1.models import Leads
+from app.Leads.models import Leads
 
 target_metadata = Base.metadata
 

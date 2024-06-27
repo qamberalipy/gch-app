@@ -8,7 +8,7 @@ from app.user import user_router
 from app.Client import client_router
 from app.Membership import membership_router
 from app.Coach import coach_router
-from app.Leads1 import leads_router
+from app.Leads import leads_router
 # from app.core.logger import init_logging
 # import logging
 
