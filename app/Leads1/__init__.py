@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.Leads.lead import router
+from app.Leads1.lead import router
 
 API_STR = "/leads"
 
