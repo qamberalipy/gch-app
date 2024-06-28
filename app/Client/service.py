@@ -243,3 +243,94 @@ def get_filtered_clients(
         )
         for client in clients
     ]
+    
+    
+async def get_client_byid(db: _orm.Session, client_id: int) -> _schemas.ClientByID:
+    query = (
+        db.query(
+            _models.Client.id,
+            _models.Client.wallet_address,
+            _models.Client.profile_img,
+            _models.Client.own_member_id,
+            _models.Client.first_name,
+            _models.Client.last_name,
+            _models.Client.gender,
+            _models.Client.dob,
+            _models.Client.email,
+            _models.Client.phone,
+            _models.Client.mobile_number,
+            _models.Client.notes,
+            _models.Client.source_id,
+            _models.Client.language,
+            _models.Client.is_business,
+            _models.Client.business_id,
+            _models.Client.country_id,
+            _models.Client.city,
+            _models.Client.zipcode,
+            _models.Client.address_1,
+            _models.Client.address_2,
+            _models.Client.activated_on,
+            _models.Client.check_in,
+            _models.Client.last_online,
+            _models.Client.client_since,
+            _models.Client.created_at,
+            _models.Client.updated_at,
+            _models.Client.created_by,
+            _models.Client.updated_by,
+            _models.Client.is_deleted,
+            _models.ClientCoach.coach_id,
+            _models.ClientOrganization.org_id,
+            _models.ClientMembership.membership_plan_id,
+        )
+        .outerjoin(_models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id)
+        .outerjoin(_models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id)
+        .outerjoin(_models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id)
+        .filter(_models.Client.id == client_id)
+    )
+    
+    result = query.first()
+    if not result:
+        return None
+    
+    business_name = None
+    if result.is_business and result.business_id:
+        business_client = db.query(_models.Client).filter(_models.Client.id == result.business_id).first()
+        if business_client:
+            business_name = business_client.first_name
+
+    return _schemas.ClientByID(
+        id=result.id,
+        wallet_address=result.wallet_address,
+        profile_img=result.profile_img,
+        own_member_id=result.own_member_id,
+        first_name=result.first_name,
+        last_name=result.last_name,
+        gender=result.gender,
+        dob=result.dob,
+        email=result.email,
+        phone=result.phone,
+        mobile_number=result.mobile_number,
+        notes=result.notes,
+        source_id=result.source_id,
+        language=result.language,
+        is_business=result.is_business,
+        business_id=result.business_id,
+        country_id=result.country_id,
+        city=result.city,
+        zipcode=result.zipcode,
+        address_1=result.address_1,
+        address_2=result.address_2,
+        activated_on=result.activated_on,
+        check_in=result.check_in,
+        last_online=result.last_online,
+        client_since=result.client_since,
+        created_at=result.created_at,
+        updated_at=result.updated_at,
+        created_by=result.created_by,
+        updated_by=result.updated_by,
+        is_deleted=result.is_deleted,
+        business_name=business_name,
+        coach_id=result.coach_id,
+        org_id=result.org_id,
+        membership_plan_id=result.membership_plan_id
+    )

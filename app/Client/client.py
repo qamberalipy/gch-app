@@ -67,13 +67,21 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
 
 @router.post("/login/client", response_model=_schemas.ClientLoginResponse,  tags=["Client Router"])
 async def login_client(email_address: str, wallet_address: str, db: _orm.Session = Depends(get_db)):
-    # try:
+    try:
         print(email_address,wallet_address)
         result = await _services.login_client(email_address, wallet_address, db)
         return result
-    # except Exception as e:
-    #     raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
-    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+@router.get("/client/{client_id}", response_model=_schemas.ClientByID, tags=["Client Router"])
+async def get_client_by_id(client_id: int, db:  _orm.Session = Depends(get_db)):
+    client = await _services.get_client_byid(db=db, client_id=client_id)
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    return client    
+
+
 # @router.post("/login/client", response_model=dict,tags=["Client Router"])
 # async def login_client(client_login: _schemas.ClientLogin, db: _orm.Session = Depends(get_db)):
 #     logger.debug("Here 1", client_login.email_address, client_login.wallet_address)

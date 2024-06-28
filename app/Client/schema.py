@@ -45,7 +45,46 @@ class ClientRead(ClientBase):
     
     class Config:
         from_attributes=True
+        
+class ClientByID(pydantic.BaseModel):
+    id: int
+    wallet_address: Optional[str] = None
+    profile_img: Optional[str] = None
+    own_member_id: str
+    first_name: str
+    last_name: str
+    gender: Optional[str] = None
+    dob: Optional[datetime.date] = None
+    email: str
+    phone: Optional[str] = None
+    mobile_number: Optional[str] = None
+    notes: Optional[str] = None
+    source_id: Optional[int] = None
+    language: Optional[str] = None
+    is_business: bool
+    business_id: Optional[int] = None
+    country_id: Optional[int] = None
+    city: Optional[str] = None
+    zipcode: Optional[str] = None
+    address_1: Optional[str] = None
+    address_2: Optional[str] = None
+    activated_on: Optional[datetime.date] = None
+    check_in: Optional[datetime.datetime] = None
+    last_online: Optional[datetime.datetime] = None
+    client_since: datetime.date
+    created_at: Optional[datetime.datetime] = None
+    updated_at: Optional[datetime.datetime] = None
+    created_by: Optional[int] = None
+    updated_by: Optional[int] = None
+    is_deleted: bool
+    business_name: Optional[str] = None
+    coach_id: Optional[int] = None
+    org_id: Optional[int] = None
+    membership_plan_id: Optional[int] = None
 
+    class Config:
+        from_attributes = True
+        
 class ClientOrganization(pydantic.BaseModel):
     client_id: int
     org_id: int
