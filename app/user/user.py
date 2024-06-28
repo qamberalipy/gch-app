@@ -88,16 +88,15 @@ async def read_sources(db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="No sources found")
     return sources
 
-# @router.get("/get_staff",response_model=List[_schemas.getStaff])
-# async def get_staff(user: _schemas.getStaff, db: _orm.Session):
-    # filtered_users=db.query(_models.User).filter(_models.User.org_id == user.org_id).all()
-    # response_users = [map_lead_to_response(lead) for lead in filtered_users]
-    # return response_users
-# 
-# def map_lead_to_response(user) -> _schemas.getStaff:
-    # return _schemas.getStaff(
-        # first_name=user.username,
-        # id=user.id,
-        # org_id=user.org_id
-        # )
+@router.post("/get_staff",response_model=List[_schemas.getStaff])
+async def get_staff(user: _schemas.getStaff, db: _orm.Session= Depends(get_db)):
+    filtered_users=  db.query(_models.User).filter(_models.User.org_id == user.org_id).all()
+    response_users = [map_lead_to_response(lead) for lead in filtered_users]
+    return response_users
+
+def map_lead_to_response(user) -> _schemas.getStaff:
+   return _schemas.getStaff(
+        name=user.username,
+        id=user.id,
+        org_id=user.org_id)
     
