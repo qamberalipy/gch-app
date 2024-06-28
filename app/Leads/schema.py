@@ -31,6 +31,7 @@ class LeadRead(pydantic.BaseModel):
     owner:Optional[str]
     status:Optional[str]
     source:Optional[str]
+    search:Optional[str]
 
     class Config:
             from_attributes = True
