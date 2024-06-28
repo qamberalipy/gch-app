@@ -17,4 +17,3 @@ class CoachRead(CoachBase):
 
     class Config:
         from_attributes = True
-        

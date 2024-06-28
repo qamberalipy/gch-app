@@ -31,6 +31,7 @@ from app.Client.models import Client
 from app.Coach.models import Coach
 from app.Membership.models import MembershipPlan
 from app.Leads.models import Leads
+from app.Event.models import Events
 
 target_metadata = Base.metadata
 

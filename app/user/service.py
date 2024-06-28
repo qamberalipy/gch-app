@@ -15,12 +15,15 @@ import time
 import os
 import bcrypt as _bcrypt
 from . import models, schema
+import logging
 
 # Load environment variables
+
+logger = logging.getLogger("uvicorn.error")
 JWT_SECRET = os.getenv("JWT_SECRET")
-oauth2schema = _security.OAuth2PasswordBearer("/token")
+JWT_EXPIRY = os.getenv("JWT_EXPIRY")
 
-
+oauth2schema = _security.OAuth2PasswordBearer(tokenUrl="api/login")
 def create_database():
     # Create database tables
     return _database.Base.metadata.create_all(bind=_database.engine)
@@ -32,6 +35,25 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def verify_jwt(token: str):
+    # Verify a JWT token
+    credentials_exception = _fastapi.HTTPException(
+        status_code=_fastapi.status.HTTP_401_UNAUTHORIZED,
+        detail="Token Expired or Invalid",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        token = token.split("Bearer ")[1]
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        print("Time Difference", time.time() - payload["token_time"])
+        if time.time() - payload["token_time"] > JWT_EXPIRY:
+            print("Token Expired")
+            raise credentials_exception
+
+        return payload
+    except:
+        raise credentials_exception
 
 def hash_password(password):
     # Hash a password
@@ -68,18 +90,19 @@ async def create_organization(organization: _schemas.OrganizationCreate, db: _or
     db.refresh(org)
     return org
 
-
-
 async def create_token(user: _models.User):
     # Create a JWT token for authentication
     user_obj = _schemas.User.from_orm(user)
     user_dict = user_obj.dict()
     print(user_dict)
     del user_dict["date_created"]
+    user_dict['token_time'] = time.time()
+    print("JWT_SECRET", JWT_SECRET)
+    print("User Dict: ", user_dict)
     token = jwt.encode(user_dict, JWT_SECRET, algorithm="HS256")
     return dict(access_token=token, token_type="bearer")
 
-async def get_current_user(db: _orm.Session = _fastapi.Depends(get_db), token: str = _fastapi.Depends(oauth2schema)):
+async def get_current_user(token: str, db: _orm.Session = _fastapi.Depends(get_db)):
     # Get the current authenticated user from the JWT token
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])

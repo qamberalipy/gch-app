@@ -24,7 +24,6 @@ def get_db():
         yield db
     finally:
         db.close()
-        
 
 @router.post("/coaches/", response_model=_schemas.CoachRead, tags=["Coach Router"])
 async def register_coach(coach: _schemas.CoachCreate, db: _orm.Session = Depends(get_db)):
