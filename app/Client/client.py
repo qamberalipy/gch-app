@@ -30,7 +30,7 @@ def get_db():
 @router.post("/register/client", response_model=_schemas.ClientRead,tags=["Client Router"])
 async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depends(get_db)):    
     
-    # try:
+    try:
         db_client = await _services.get_client_by_email(client.email, db)
         if db_client:
             raise HTTPException(status_code=400, detail="Email already registered")
@@ -53,17 +53,17 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
         
         return new_client
 
-    # except IntegrityError:
-    #     db.rollback()
-    #     raise HTTPException(status_code=400, detail="Duplicate entry or integrity constraint violation")
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Duplicate entry or integrity constraint violation")
 
-    # except DataError:
-    #     db.rollback()
-    #     raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+    except DataError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-    # except Exception as e:
-    #     db.rollback()
-    #     raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
 @router.post("/login/client", response_model=_schemas.ClientLoginResponse,  tags=["Client Router"])
 async def login_client(email_address: str, wallet_address: str, db: _orm.Session = Depends(get_db)):
