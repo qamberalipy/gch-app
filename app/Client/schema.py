@@ -1,6 +1,5 @@
 import pydantic
-import datetime
-from datetime import date,datetime
+import datetime 
 from typing import Optional
 
 class ClientBase(pydantic.BaseModel):
@@ -9,7 +8,7 @@ class ClientBase(pydantic.BaseModel):
     first_name: str
     last_name: str
     gender: str
-    dob: date
+    dob: datetime.date
     email: str
     phone: Optional[str] = None
     mobile_number: Optional[str] = None
@@ -23,7 +22,7 @@ class ClientBase(pydantic.BaseModel):
     zipcode: Optional[str] = None
     address_1: Optional[str] = None
     address_2: Optional[str] = None
-    client_since: Optional[date] = None
+    client_since: Optional[datetime.date] = None
     created_at: Optional[datetime.datetime] = None
     created_by: Optional[int] = None
 
@@ -81,7 +80,7 @@ class BusinessBase(pydantic.BaseModel):
 
 class BusinessRead(BusinessBase):
     id: int
-    date_created: date
+    date_created: datetime.date
 
     class Config:
         from_attributes=True
@@ -105,7 +104,7 @@ class ClientFilterRead(pydantic.BaseModel):
     first_name: str
     last_name: str
     gender: Optional[str]
-    dob: date
+    dob: datetime.date
     email: str
     phone: Optional[str]
     mobile_number: Optional[str]
@@ -119,12 +118,12 @@ class ClientFilterRead(pydantic.BaseModel):
     zipcode: Optional[str]
     address_1: Optional[str]
     address_2: Optional[str]
-    activated_on: Optional[date]
-    check_in: Optional[datetime]
-    last_online: Optional[datetime]
-    client_since: date
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    activated_on: Optional[datetime.date]
+    check_in: Optional[datetime.datetime]
+    last_online: Optional[datetime.datetime]
+    client_since: datetime.date
+    created_at: Optional[datetime.datetime]
+    updated_at: Optional[datetime.datetime]
     created_by: Optional[int]
     updated_by: Optional[int]
     is_deleted: Optional[bool]
