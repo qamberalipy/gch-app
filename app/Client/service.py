@@ -1,6 +1,7 @@
 from datetime import date
+from typing import List
 import jwt
-from sqlalchemy import func
+from sqlalchemy import func, or_
 import sqlalchemy.orm as _orm
 from sqlalchemy.sql import and_  
 import email_validator as _email_check
@@ -109,3 +110,48 @@ async def get_total_clients(org_id: int, db: _orm.Session = _fastapi.Depends(get
     ).scalar()
     
     return total_clients
+
+async def get_filtered_clients(params: _schemas.ClientFilterParams,db: _orm.Session = _fastapi.Depends(get_db)) -> List[_schemas.ClientFilterRead]:
+    query = db.query(_models.Client)\
+        .join(_models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id)\
+        .join(_models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id)\
+        .join(_models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id)\
+        .filter(_models.ClientOrganization.org_id == params.org_id, _models.ClientOrganization.is_deleted == False)
+
+    if params.client_name:
+        query = query.filter(or_(
+            _models.Client.first_name.ilike(f"%{params.client_name}%"),
+            _models.Client.last_name.ilike(f"%{params.client_name}%")
+        ))
+    
+    if params.status:
+        query = query.filter(_models.ClientOrganization.client_status.ilike(f"%{params.status}%"))
+    
+    if params.coach_assigned:
+        query = query.filter(_models.ClientCoach.coach_id == params.coach_assigned)
+    
+    if params.membership_plan:
+        query = query.filter(_models.ClientMembership.membership_plan_id == params.membership_plan)
+    
+    if params.search_key:
+        search_pattern = f"%{params.search_key}%"
+        query = query.filter(or_(
+            _models.Client.wallet_address.ilike(search_pattern),
+            _models.Client.profile_img.ilike(search_pattern),
+            _models.Client.own_member_id.ilike(search_pattern),
+            _models.Client.first_name.ilike(search_pattern),
+            _models.Client.last_name.ilike(search_pattern),
+            _models.Client.gender.ilike(search_pattern),
+            _models.Client.email.ilike(search_pattern),
+            _models.Client.phone.ilike(search_pattern),
+            _models.Client.mobile_number.ilike(search_pattern),
+            _models.Client.notes.ilike(search_pattern),
+            _models.Client.language.ilike(search_pattern),
+            _models.Client.city.ilike(search_pattern),
+            _models.Client.zipcode.ilike(search_pattern),
+            _models.Client.address_1.ilike(search_pattern),
+            _models.Client.address_2.ilike(search_pattern)
+        ))
+
+    clients = query.all()
+    return clients

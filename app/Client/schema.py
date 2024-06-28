@@ -1,6 +1,6 @@
 import pydantic
 import datetime
-from datetime import date
+from datetime import date,datetime
 from typing import Optional
 
 class ClientBase(pydantic.BaseModel):
@@ -97,5 +97,46 @@ class ClientCount(pydantic.BaseModel):
 class ClientLoginResponse(pydantic.BaseModel):
     is_registered: bool
 
-# class ClientFilter(pydantic.BaseModel):
+class ClientFilterRead(pydantic.BaseModel):
+    id: int
+    wallet_address: Optional[str]
+    profile_img: Optional[str]
+    own_member_id: str
+    first_name: str
+    last_name: str
+    gender: Optional[str]
+    dob: date
+    email: str
+    phone: Optional[str]
+    mobile_number: Optional[str]
+    notes: Optional[str]
+    source_id: Optional[int]
+    language: Optional[str]
+    is_business: Optional[bool]
+    business_id: Optional[int]
+    country_id: Optional[int]
+    city: Optional[str]
+    zipcode: Optional[str]
+    address_1: Optional[str]
+    address_2: Optional[str]
+    activated_on: Optional[date]
+    check_in: Optional[datetime]
+    last_online: Optional[datetime]
+    client_since: date
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
+    created_by: Optional[int]
+    updated_by: Optional[int]
+    is_deleted: Optional[bool]
+
+    class Config:
+        from_attributes=True
+
+class ClientFilterParams(pydantic.BaseModel):
+    org_id: int
+    search_key: Optional[str] = None
+    client_name: Optional[str] = None
+    status: Optional[str] = None
+    coach_assigned: Optional[int] = None
+    membership_plan: Optional[int] = None
     
