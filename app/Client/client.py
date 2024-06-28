@@ -37,16 +37,17 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
 
         client_data = client.dict()
         organization_id = client_data.get('org_id')
+        status=client_data.get('status')
         coach_id=client_data.get('coach_id')
         membership_id=client_data.get('membership_id')
         client_data.pop('org_id')
+        client_data.pop('status')
         client_data.pop('coach_id')
         client_data.pop('membership_id')
 
         new_client = await _services.create_client(_schemas.RegisterClient(**client_data), db)
 
-        
-        await _services.create_client_organization(_schemas.CreateClientOrganization(client_id=new_client.id,org_id=organization_id), db)
+        await _services.create_client_organization(_schemas.CreateClientOrganization(client_id=new_client.id,org_id=organization_id,status=status), db)
         await _services.create_client_membership(_schemas.CreateClientMembership(client_id=new_client.id,membership_plan_id=membership_id), db)
         await _services.create_client_coach(_schemas.CreateClientCoach(client_id=new_client.id,coach_id=coach_id), db)
         
@@ -84,7 +85,7 @@ async def login_client(email_address: str, wallet_address: str, db: _orm.Session
 #     token = await _services.create_token(authenticated_client)
 #     return token
 
-@router.get("/clients/{client_id}", response_model=_schemas.ClientRead)
+@router.get("/filter/", response_model=_schemas.ClientRead,tags=["Client Router"])
 async def get_client(client_id: int, db: _orm.Session = Depends(get_db)):
     client = await _services.get_client_by_id(client_id, db)
     if not client:
