@@ -1,5 +1,6 @@
 import pydantic
 import datetime 
+import datetime 
 from typing import Optional
 
 class ClientBase(pydantic.BaseModel):
@@ -8,6 +9,7 @@ class ClientBase(pydantic.BaseModel):
     first_name: str
     last_name: str
     gender: str
+    dob: datetime.date
     dob: datetime.date
     email: str
     phone: Optional[str] = None
@@ -22,6 +24,7 @@ class ClientBase(pydantic.BaseModel):
     zipcode: Optional[str] = None
     address_1: Optional[str] = None
     address_2: Optional[str] = None
+    client_since: Optional[datetime.date] = None
     client_since: Optional[datetime.date] = None
     created_at: Optional[datetime.datetime] = None
     created_by: Optional[int] = None
@@ -120,6 +123,7 @@ class BusinessBase(pydantic.BaseModel):
 class BusinessRead(BusinessBase):
     id: int
     date_created: datetime.date
+    date_created: datetime.date
 
     class Config:
         from_attributes=True
@@ -158,4 +162,3 @@ class ClientFilterParams(pydantic.BaseModel):
     status: Optional[str] = None
     coach_assigned: Optional[int] = None
     membership_plan: Optional[int] = None
-    

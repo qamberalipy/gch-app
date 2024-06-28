@@ -45,25 +45,26 @@ async def create_lead(client: _schemas.LeadCreate, db: _orm.Session = _fastapi.D
 
 
 
-async def get_leads(data, db: _orm.Session):
-    
+async def get_leads(db: _orm.Session,params):
+    params=params.model_dump()
     optional_filters = []
     search_filters=[]
+    
 
-    if data.owner:
-        optional_filters.append(_user_model.User.username.ilike(f"%{data.owner}%"))
-    if data.status:
-        optional_filters.append(_models.Leads.status.ilike(f"%{data.status}%"))
-    if data.mobile:
-        optional_filters.append(_models.Leads.mobile.ilike(f"%{data.mobile}%"))
-    if data.source:
-        optional_filters.append(_user_model.Source.source.ilike(f"%{data.source}%"))
+    if params.get('owner'):
+        optional_filters.append(_user_model.User.username.ilike(f"%{params.get('owner')}%"))
+    if params.get('status'):
+        optional_filters.append(_models.Leads.status.ilike(f"%{params.get('status')}%"))
+    if params.get('mobile'):
+        optional_filters.append(_models.Leads.mobile.ilike(f"%{params.get('mobile')}%"))
+    if params.get('source'):
+        optional_filters.append(_user_model.Source.source.ilike(f"%{params.get('source')}%"))
 
-    if data.search:
-        search_filters.append(_user_model.User.username.ilike(f"%{data.search}%"))
-        search_filters.append(_models.Leads.status.ilike(f"%{data.search}%"))
-        search_filters.append(_models.Leads.mobile.ilike(f"%{data.search}%"))
-        search_filters.append(_user_model.Source.source.ilike(f"%{data.search}%")) 
+    if params.get('search'):
+        search_filters.append(_user_model.User.username.ilike(f"%{params.get('search')}%"))
+        search_filters.append(_models.Leads.status.ilike(f"%{params.get('search')}%"))
+        search_filters.append(_models.Leads.mobile.ilike(f"%{params.get('search')}%"))
+        search_filters.append(_user_model.Source.source.ilike(f"%{params.get('search')}%")) 
     
     query = db.query(
         _models.Leads.first_name,
@@ -78,7 +79,7 @@ async def get_leads(data, db: _orm.Session):
         _models.Leads.source_id == _user_model.Source.id
     ).outerjoin (
      _user_model.User,
-     _models.Leads.staff_id ==_user_model.User.id).filter(_models.Leads.org_id == data.org_id)
+     _models.Leads.staff_id ==_user_model.User.id).filter(_models.Leads.org_id == params.get('org_id'))
     
     print(query)
  

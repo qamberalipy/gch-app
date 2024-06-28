@@ -1,5 +1,6 @@
-from typing import List
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, status
+import json
+from typing import List, Optional
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.exc import IntegrityError, DataError
 import app.Leads.schema as _schemas
 import sqlalchemy.orm as _orm
@@ -10,6 +11,7 @@ import app.core.db.session as _database
 import pika
 import logging
 import datetime
+
 
 router = APIRouter(tags=["Lead Router"])
 
@@ -40,9 +42,20 @@ async def register_lead(lead_data: _schemas.LeadCreate, db: _orm.Session = Depen
         db.rollback()
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
-@router.post("/getleads", response_model=List[_schemas.ResponseLeadRead])
-async def get_leads(data: _schemas.LeadRead, db: _orm.Session = Depends(get_db)):
-    filtered_leads = await _services.get_leads(data, db)
+@router.get("/getleads", response_model=List[_schemas.ResponseLeadRead])
+async def get_leads(org_id:int,request:Request,db: _orm.Session = Depends(get_db)):
+    params={
+       "org_id":org_id,
+        "first_name":request.query_params.get("first_name",None),
+        "mobile":request.query_params.get("mobile",None),
+        "owner":request.query_params.get("owner",None),
+        "status":request.query_params.get("status",None),
+        "source":request.query_params.get("source",None),
+        "search":request.query_params.get("search",None)
+
+    }
+
+    filtered_leads = await _services.get_leads(db,params=_schemas.LeadRead(**params))
     response_leads = [map_lead_to_response(lead) for lead in filtered_leads]
     return response_leads
 

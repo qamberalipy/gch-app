@@ -17,14 +17,14 @@ class StatusEnum(str, Enum):
 
 class EventBase(pydantic.BaseModel):
     activity: str
-    username: str
-    email: str
     description: Optional[str]
     start_time: datetime.datetime
     end_time: datetime.datetime
+    org_id: Optional[int]
     coach_id: int
     credit_type: Optional[str]
     recurrency: Optional[RecurrencyEnum]
+    participants: Optional[str]
     status: StatusEnum
     link: Optional[str]
     notes: Optional[str]
@@ -32,7 +32,6 @@ class EventBase(pydantic.BaseModel):
     updated_by: Optional[int]
 
 class EventCreate(EventBase):
-    org_id: int
     created_by: Optional[int]
     created_at: Optional[datetime.datetime]
 
