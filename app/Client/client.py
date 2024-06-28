@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError, DataError
 import app.Client.schema as _schemas
@@ -85,12 +85,11 @@ async def login_client(email_address: str, wallet_address: str, db: _orm.Session
 #     token = await _services.create_token(authenticated_client)
 #     return token
 
-@router.get("/filter/", response_model=_schemas.ClientRead,tags=["Client Router"])
-async def get_client(client_id: int, db: _orm.Session = Depends(get_db)):
-    client = await _services.get_client_by_id(client_id, db)
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    return client
+
+@router.get("/filter/", response_model=List[_schemas.ClientFilterRead], tags=["Client Router"])
+async def get_client(params: _schemas.ClientFilterParams = Depends(),db: _orm.Session = Depends(get_db)):
+    clients = await _services.get_filtered_clients(db=db, params=params)
+    return clients
 
 @router.get("/business/clients/{org_id}", response_model=List[_schemas.ClientBusinessRead], tags=["Client Router"])
 async def get_business_clients(org_id: int,db: _orm.Session = Depends(get_db)):

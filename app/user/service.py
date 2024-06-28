@@ -133,7 +133,7 @@ async def get_alluser_data(email: str, db: _orm.Session = _fastapi.Depends(get_d
             "id": user.id,
             "username": user.username,
             "email": user.email,
-            "date_created": user.date_created,
+            "date_created": user.created_at,
             "org_id": user.org_id,
             "org_name": org_name,
             "is_deleted": user.is_deleted

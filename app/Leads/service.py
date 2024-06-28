@@ -47,6 +47,24 @@ async def create_lead(client: _schemas.LeadCreate, db: _orm.Session = _fastapi.D
 
 async def get_leads(data, db: _orm.Session):
     
+    optional_filters = []
+    search_filters=[]
+
+    if data.owner:
+        optional_filters.append(_user_model.User.username.ilike(f"%{data.owner}%"))
+    if data.status:
+        optional_filters.append(_models.Leads.status.ilike(f"%{data.status}%"))
+    if data.mobile:
+        optional_filters.append(_models.Leads.mobile.ilike(f"%{data.mobile}%"))
+    if data.source:
+        optional_filters.append(_user_model.Source.source.ilike(f"%{data.source}%"))
+
+    if data.search:
+        search_filters.append(_user_model.User.username.ilike(f"%{data.search}%"))
+        search_filters.append(_models.Leads.status.ilike(f"%{data.search}%"))
+        search_filters.append(_models.Leads.mobile.ilike(f"%{data.search}%"))
+        search_filters.append(_user_model.Source.source.ilike(f"%{data.search}%")) 
+    
     query = db.query(
         _models.Leads.first_name,
         _models.Leads.mobile,
@@ -60,25 +78,17 @@ async def get_leads(data, db: _orm.Session):
         _models.Leads.source_id == _user_model.Source.id
     ).outerjoin (
      _user_model.User,
-     _models.Leads.staff_id ==_user_model.User.id).filter(_models.Leads.org_id == data.org_id).all()
+     _models.Leads.staff_id ==_user_model.User.id).filter(_models.Leads.org_id == data.org_id)
     
     print(query)
-    
-    optional_filters = []
+ 
+    if search_filters:
+         query = query.filter(or_(*search_filters))
 
-    if data.owner:
-        optional_filters.append(_user_model.User.username.ilike(f"%{data.owner}%"))
-    if data.status:
-        optional_filters.append(_models.Leads.status.ilike(f"%{data.status}%"))
-    if data.mobile:
-        optional_filters.append(_models.Leads.mobile.ilike(f"%{data.mobile}%"))
-    if data.source:
-        optional_filters.append(_user_model.Source.source.ilike(f"%{data.source}%"))
-    
     if optional_filters:
-        query = query.filter(or_(*optional_filters)).all()
+        query = query.filter(and_(*optional_filters))
     
-    leads = query
+    leads = query.all()
 
     return leads
 

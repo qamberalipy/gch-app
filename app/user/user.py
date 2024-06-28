@@ -5,11 +5,13 @@ import app.user.schema as _schemas
 import sqlalchemy.orm as _orm
 import app.user.models as _models
 import app.user.service as _services
-# from main import logger
 import app.core.db.session as _database
 import pika
 import logging
 import datetime
+from datetime import datetime as _dt
+import fastapi.security as _security
+import app.Shared.helpers as _helpers
 
 router = APIRouter()
 
@@ -67,12 +69,24 @@ async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     login_attempts[user.email] = 0
-    token = await _services.create_token(authenticated_user)
+    # token = await _services.create_token(authenticated_user)
+    token = _helpers.create_token(authenticated_user, "User")
     user_data = await _services.get_alluser_data(email=user.email, db=db)
     return {
         "user": user_data,
         "token": token
     }
+
+
+@router.post("/test_token")
+async def test_token(
+        token: str,
+        db: _orm.Session = Depends(get_db)
+    ):
+    print("Token 1: ", token)
+    payload = _helpers.verify_jwt(token, "User")
+    return payload
+
     
 @router.get("/get_all_countries/", response_model=List[_schemas.CountryRead])
 async def read_countries(db: _orm.Session = Depends(get_db)):
