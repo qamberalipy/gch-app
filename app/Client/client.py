@@ -124,10 +124,10 @@ async def delete_client(client_id: int, db: _orm.Session = Depends(get_db)):
 
 
 @router.post("/login/client", response_model=_schemas.ClientLoginResponse,  tags=["Client Router"])
-async def login_client(email_address: str, wallet_address: str, db: _orm.Session = Depends(get_db)):
+async def login_client(client_data: _schemas.ClientLogin, db: _orm.Session = Depends(get_db)):
     try:
-        print(email_address,wallet_address)
-        result = await _services.login_client(email_address, wallet_address, db)
+        print(client_data)
+        result = await _services.login_client(client_data.email_address, client_data.wallet_address, db)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
