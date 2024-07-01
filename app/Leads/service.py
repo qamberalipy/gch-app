@@ -1,5 +1,6 @@
 from datetime import date
 from typing import Optional
+
 import jwt
 from sqlalchemy import or_
 import sqlalchemy.orm as _orm
@@ -43,6 +44,28 @@ async def create_lead(client: _schemas.LeadCreate, db: _orm.Session = _fastapi.D
     db.refresh(db_lead)
     return db_lead
 
+async def update_staff(data:_schemas.UpdateStatus, db: _orm.Session = _fastapi.Depends(get_db)):
+    db_lead = db.query(_models.Leads).filter(_models.Leads.id == data.lead_id).first()
+    if not db_lead:
+        raise _fastapi.HTTPException(status_code=404, detail="lead not found")
+
+    db_lead.staff_id=data.staff_id
+    db.commit()
+    db.refresh(db_lead)
+    response={'lead_id':db_lead.id,'staff_id':db_lead.staff_id}
+    return response
+
+
+async def update_status(data:_schemas.UpdateStaff, db: _orm.Session = _fastapi.Depends(get_db)):
+    db_lead = db.query(_models.Leads).filter(_models.Leads.id == data.lead_id).first()
+    if not db_lead:
+        raise _fastapi.HTTPException(status_code=404, detail="lead not found")
+
+    db_lead.status=data.status
+    db.commit()
+    db.refresh(db_lead)
+    response={'lead_id':db_lead.id,'status':db_lead.status}
+    return response
 
 
 async def get_leads(db: _orm.Session,params):
