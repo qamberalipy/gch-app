@@ -46,10 +46,11 @@ async def register_user(user: _schemas.UserCreate, db: _orm.Session = Depends(ge
     user_data['org_id'] = organization.id
     user_data.pop('org_name')
 
-    user_register = _schemas.UserRegister(**user_data, date_created=datetime.datetime.utcnow())
+    user_register = _schemas.UserRegister(**user_data, created_at=datetime.datetime.utcnow())
     new_user = await _services.create_user(user_register, db)
     
     return new_user
+
 
 @router.post("/login")
 async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_db)):
