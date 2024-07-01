@@ -139,6 +139,17 @@ async def update_client_coach(client_id: int, coach_id: int, db: _orm.Session = 
     db.refresh(db_client_coach)
     return db_client_coach
 
+async def delete_client(client_id: int, db: _orm.Session = _fastapi.Depends(get_db)):
+    db_client = db.query(_models.Client).filter(_models.Client.id == client_id).first()
+    if not db_client:
+        raise _fastapi.HTTPException(status_code=404, detail="Client not found")
+    
+    db_client.is_deleted = True
+    db_client.updated_at = datetime.datetime.utcnow()
+    db.commit()
+    db.refresh(db_client)
+    return db_client
+
 
 async def get_total_clients(org_id: int, db: _orm.Session = _fastapi.Depends(get_db)) -> int:
     total_clients = db.query(func.count(models.Client.id)).join(

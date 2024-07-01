@@ -101,6 +101,27 @@ async def update_client(client_id: int, client: _schemas.ClientUpdate, db: _orm.
         logger.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
+@router.delete("/delete/{client_id}", response_model=_schemas.ClientRead, tags=["Client Router"])
+async def delete_client(client_id: int, db: _orm.Session = Depends(get_db)):
+    try:
+        deleted_client = await _services.delete_client(client_id, db)
+        return deleted_client
+
+    except IntegrityError as e:
+        db.rollback()
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity constraint violation")
+
+    except DataError as e:
+        db.rollback()
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+
 
 @router.post("/login/client", response_model=_schemas.ClientLoginResponse,  tags=["Client Router"])
 async def login_client(email_address: str, wallet_address: str, db: _orm.Session = Depends(get_db)):
