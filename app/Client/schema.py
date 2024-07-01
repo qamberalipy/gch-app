@@ -10,7 +10,6 @@ class ClientBase(pydantic.BaseModel):
     last_name: str
     gender: str
     dob: datetime.date
-    dob: datetime.date
     email: str
     phone: Optional[str] = None
     mobile_number: Optional[str] = None
@@ -25,13 +24,12 @@ class ClientBase(pydantic.BaseModel):
     address_1: Optional[str] = None
     address_2: Optional[str] = None
     client_since: Optional[datetime.date] = None
-    client_since: Optional[datetime.date] = None
     created_at: Optional[datetime.datetime] = None
     created_by: Optional[int] = None
 
 class ClientCreate(ClientBase):
     org_id: int
-    coach_id: int
+    coach_id: Optional[int] = None
     membership_id: int
     status: str  # Corrected type annotation
     send_invitation: bool
@@ -48,7 +46,46 @@ class ClientRead(ClientBase):
     
     class Config:
         from_attributes=True
+        
+class ClientByID(pydantic.BaseModel):
+    id: int
+    wallet_address: Optional[str] = None
+    profile_img: Optional[str] = None
+    own_member_id: str
+    first_name: str
+    last_name: str
+    gender: Optional[str] = None
+    dob: Optional[datetime.date] = None
+    email: str
+    phone: Optional[str] = None
+    mobile_number: Optional[str] = None
+    notes: Optional[str] = None
+    source_id: Optional[int] = None
+    language: Optional[str] = None
+    is_business: bool
+    business_id: Optional[int] = None
+    country_id: Optional[int] = None
+    city: Optional[str] = None
+    zipcode: Optional[str] = None
+    address_1: Optional[str] = None
+    address_2: Optional[str] = None
+    activated_on: Optional[datetime.date] = None
+    check_in: Optional[datetime.datetime] = None
+    last_online: Optional[datetime.datetime] = None
+    client_since: datetime.date
+    created_at: Optional[datetime.datetime] = None
+    updated_at: Optional[datetime.datetime] = None
+    created_by: Optional[int] = None
+    updated_by: Optional[int] = None
+    is_deleted: bool
+    business_name: Optional[str] = None
+    coach_id: Optional[int] = None
+    org_id: Optional[int] = None
+    membership_plan_id: Optional[int] = None
 
+    class Config:
+        from_attributes = True
+        
 class ClientOrganization(pydantic.BaseModel):
     client_id: int
     org_id: int
@@ -105,30 +142,13 @@ class ClientFilterRead(pydantic.BaseModel):
     own_member_id: str
     first_name: str
     last_name: str
-    gender: Optional[str]
-    dob: datetime.date
-    email: str
     phone: Optional[str]
     mobile_number: Optional[str]
-    notes: Optional[str]
-    source_id: Optional[int]
-    language: Optional[str]
-    is_business: Optional[bool]
-    business_id: Optional[int]
-    country_id: Optional[int]
-    city: Optional[str]
-    zipcode: Optional[str]
-    address_1: Optional[str]
-    address_2: Optional[str]
-    activated_on: Optional[datetime.date]
     check_in: Optional[datetime.datetime]
     last_online: Optional[datetime.datetime]
     client_since: datetime.date
-    created_at: Optional[datetime.datetime]
-    updated_at: Optional[datetime.datetime]
-    created_by: Optional[int]
-    updated_by: Optional[int]
-    is_deleted: Optional[bool]
+    business_name: Optional[str]
+    coach_name: Optional[str]
 
     class Config:
         from_attributes=True
@@ -140,3 +160,34 @@ class ClientFilterParams(pydantic.BaseModel):
     status: Optional[str] = None
     coach_assigned: Optional[int] = None
     membership_plan: Optional[int] = None
+    
+class ClientUpdate(pydantic.BaseModel):
+    profile_img: Optional[str] = None
+    own_member_id: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    gender: Optional[str] = None
+    dob: Optional[datetime.date] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    mobile_number: Optional[str] = None
+    notes: Optional[str] = None
+    source_id: Optional[int] = None
+    language: Optional[str] = None
+    is_business: Optional[bool] = None
+    business_id: Optional[int] = None
+    country_id: Optional[int] = None
+    city: Optional[str] = None
+    zipcode: Optional[str] = None
+    address_1: Optional[str] = None
+    address_2: Optional[str] = None
+    client_since: Optional[datetime.date] = None
+    updated_at: Optional[datetime.datetime] = None
+    updated_by: Optional[int] = None
+    coach_id: Optional[int] = None
+    membership_id: Optional[int] = None
+    org_id: Optional[int] = None
+    status: Optional[str] = None
+
+    class Config:
+        from_attributes = True

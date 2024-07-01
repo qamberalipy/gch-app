@@ -13,6 +13,7 @@ import datetime
 
 router = APIRouter(tags=["Event Router"])
 
+
 logger = logging.getLogger("uvicorn.error")
 logger.setLevel(logging.DEBUG)
 

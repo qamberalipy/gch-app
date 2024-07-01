@@ -43,3 +43,16 @@ class Organization(_database.Base):
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     org_name = _sql.Column(_sql.String, nullable=False)
     is_deleted= _sql.Column(_sql.Boolean, default=False)
+
+class Transaction(_database.Base):
+    __tablename__ = 'transaction'
+
+    id = _sql.Column(_sql.Integer, primary_key=True, server_default=_sql.text("nextval('transaction_id_seq'::regclass)"), autoincrement=True)
+    transaction_hash = _sql.Column(_sql.String, unique=True)
+    _from = _sql.Column('from', _sql.String)
+    to = _sql.Column(_sql.String)
+    value = _sql.Column(_sql.String)
+    event_type = _sql.Column(_sql.String)
+    status = _sql.Column(_sql.Enum('pending', 'success', 'failed', name='TransactionEnums'), nullable=False, server_default=_sql.text("'pending'::\"TransactionEnums\""))
+    created_at = _sql.Column(_sql.TIMESTAMP, nullable=False, server_default=_sql.text("CURRENT_TIMESTAMP"))
+    updated_at = _sql.Column(_sql.TIMESTAMP, nullable=False, server_default=_sql.text("CURRENT_TIMESTAMP"))

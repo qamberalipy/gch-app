@@ -14,7 +14,7 @@ class RecurrencyEnum(PyEnum):
 
 class StatusEnum(PyEnum):
     pending = "pending"
-    inprogress = "inprogress"
+    inprogress = "In Progress"
     completed = "completed"
 
 class Events(_database.Base):
