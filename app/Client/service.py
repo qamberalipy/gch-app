@@ -1,4 +1,5 @@
 from datetime import date
+import datetime
 from typing import List
 import jwt
 from sqlalchemy import func, or_
@@ -100,6 +101,43 @@ async def get_business_clients(org_id: int, db: _orm.Session = _fastapi.Depends(
     ).all()
 
     return clients
+
+async def update_client(client_id: int, client: _schemas.ClientUpdate, db: _orm.Session = _fastapi.Depends(get_db)):
+    db_client = db.query(_models.Client).filter(_models.Client.id == client_id).first()
+    if not db_client:
+        raise _fastapi.HTTPException(status_code=404, detail="Client not found")
+    
+    for key, value in client.dict(exclude_unset=True).items():
+        setattr(db_client, key, value)
+
+    db_client.updated_at = datetime.datetime.utcnow()
+    db.commit()
+    db.refresh(db_client)
+    return db_client
+
+async def update_client_membership(client_id: int, membership_id: int, db: _orm.Session = _fastapi.Depends(get_db)):
+    db_client_membership = db.query(_models.ClientMembership).filter(_models.ClientMembership.client_id == client_id).first()
+    if not db_client_membership:
+        db_client_membership = _models.ClientMembership(client_id=client_id, membership_plan_id=membership_id)
+        db.add(db_client_membership)
+    else:
+        db_client_membership.membership_plan_id = membership_id
+    
+    db.commit()
+    db.refresh(db_client_membership)
+    return db_client_membership
+
+async def update_client_coach(client_id: int, coach_id: int, db: _orm.Session = _fastapi.Depends(get_db)):
+    db_client_coach = db.query(_models.ClientCoach).filter(_models.ClientCoach.client_id == client_id).first()
+    if not db_client_coach:
+        db_client_coach = _models.ClientCoach(client_id=client_id, coach_id=coach_id)
+        db.add(db_client_coach)
+    else:
+        db_client_coach.coach_id = coach_id
+    
+    db.commit()
+    db.refresh(db_client_coach)
+    return db_client_coach
 
 
 async def get_total_clients(org_id: int, db: _orm.Session = _fastapi.Depends(get_db)) -> int:

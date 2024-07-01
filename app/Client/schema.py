@@ -160,3 +160,34 @@ class ClientFilterParams(pydantic.BaseModel):
     status: Optional[str] = None
     coach_assigned: Optional[int] = None
     membership_plan: Optional[int] = None
+    
+class ClientUpdate(pydantic.BaseModel):
+    profile_img: Optional[str] = None
+    own_member_id: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    gender: Optional[str] = None
+    dob: Optional[datetime.date] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    mobile_number: Optional[str] = None
+    notes: Optional[str] = None
+    source_id: Optional[int] = None
+    language: Optional[str] = None
+    is_business: Optional[bool] = None
+    business_id: Optional[int] = None
+    country_id: Optional[int] = None
+    city: Optional[str] = None
+    zipcode: Optional[str] = None
+    address_1: Optional[str] = None
+    address_2: Optional[str] = None
+    client_since: Optional[datetime.date] = None
+    updated_at: Optional[datetime.datetime] = None
+    updated_by: Optional[int] = None
+    coach_id: Optional[int] = None
+    membership_id: Optional[int] = None
+    org_id: Optional[int] = None
+    status: Optional[str] = None
+
+    class Config:
+        from_attributes = True
