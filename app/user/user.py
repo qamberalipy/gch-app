@@ -104,13 +104,7 @@ async def read_sources(db: _orm.Session = Depends(get_db)):
 
 @router.get("/get_staff",response_model=List[_schemas.getStaff])
 async def get_staff(org_id:int, db: _orm.Session= Depends(get_db)):
-    filtered_users=  db.query(_models.User).filter(_models.User.org_id == org_id).all()
-    response_users = [map_lead_to_response(lead) for lead in filtered_users]
-    return response_users
+    filtered_users=  db.query(_models.User.org_id,_models.User.id,_models.User.name).filter(_models.User.org_id == org_id).all()
+    return filtered_users
 
-def map_lead_to_response(user) -> _schemas.getStaff:
-   return _schemas.getStaff(
-        name=user.username,
-        id=user.id,
-        org_id=user.org_id)
     
