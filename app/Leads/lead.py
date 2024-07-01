@@ -56,19 +56,8 @@ async def get_leads(org_id:int,request:Request,db: _orm.Session = Depends(get_db
     }
 
     filtered_leads = await _services.get_leads(db,params=_schemas.LeadRead(**params))
-    response_leads = [map_lead_to_response(lead) for lead in filtered_leads]
-    return response_leads
+    return filtered_leads
 
-def map_lead_to_response(lead) -> _schemas.ResponseLeadRead:
-    return _schemas.ResponseLeadRead(
-        first_name=lead.first_name,
-        mobile=lead.mobile,
-        status=lead.status,
-        source=lead.source,
-        owner=lead.username,
-        lead_since=lead.lead_since
-    )
-    
 
 
 

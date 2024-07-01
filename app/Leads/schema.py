@@ -6,19 +6,19 @@ from typing import Optional
 class LeadBase(pydantic.BaseModel):
     first_name: str
     last_name:str
-    staff_id:int
+    staff_id:Optional[int]=None
     mobile:str
     status:str
-    source_id:int
+    source_id:Optional[int]=None
     lead_since:date
     
    
 class LeadCreate(LeadBase):
-    phone:str
+    phone:Optional[str]=None
     email:str
-    notes:str
-    created_by:int
-    updated_by:int  
+    notes:Optional[str]=None
+    created_by:Optional[int]=None
+    updated_by:Optional[int]=None  
     org_id:int
 
     class Config:

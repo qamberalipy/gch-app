@@ -71,7 +71,7 @@ async def get_leads(db: _orm.Session,params):
         _models.Leads.mobile,
         _models.Leads.status,
         _user_model.Source.source,
-        _user_model.User.username,
+        _user_model.User.name.label('owner'),
         _models.Leads.lead_since
         
     ).join(
