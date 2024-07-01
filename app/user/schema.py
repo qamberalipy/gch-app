@@ -54,7 +54,7 @@ class getStaff(pydantic.BaseModel):
     
     org_id:int
     id:Optional[int]
-    name:Optional[str]
+    username:Optional[str]
     class Config:
        from_attributes=True
 
