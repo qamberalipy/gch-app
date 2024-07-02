@@ -122,7 +122,7 @@ async def register_mobileclient(client: _schemas.ClientCreateApp, db: _orm.Sessi
  
     
     
-@router.put("/update/{client_id}", response_model=_schemas.ClientRead, tags=["Client App Router"])
+@router.put("/update/{client_id}", response_model=_schemas.ClientRead, tags=["Client Router"])
 async def update_client(client_id: int, client: _schemas.ClientUpdate, db: _orm.Session = Depends(get_db)):
     try:
         # Update client details
