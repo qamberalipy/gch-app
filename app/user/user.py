@@ -103,9 +103,15 @@ async def read_sources(db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="No sources found")
     return sources
 
-@router.get("/get_staff",response_model=List[_schemas.getStaff])
+@router.get("/get_staff",response_model=List[_schemas.getStaff],tags=["Staff APIs"])
 async def get_staff(org_id:int, db: _orm.Session= Depends(get_db)):
     filtered_users=  db.query(_models.User.org_id,_models.User.id,_models.User.first_name).filter(_models.User.org_id == org_id).all()
     return filtered_users
+
+@router.get("/get_staff",response_model=List[_schemas.getStaff],tags=["Staff APIs"])
+async def get_staff(org_id:int, db: _orm.Session= Depends(get_db)):
+    filtered_users=  db.query(_models.User.org_id,_models.User.id,_models.User.first_name).filter(_models.User.org_id == org_id).all()
+    return filtered_users
+
 
     
