@@ -4,7 +4,7 @@ from datetime import date
 from typing import Optional
 
 class UserBase(pydantic.BaseModel):
-    username: str
+    first_name: str
     email: str
     class Config:
         from_attributes=True
@@ -54,7 +54,7 @@ class getStaff(pydantic.BaseModel):
     
     org_id:int
     id:Optional[int]
-    username:Optional[str]
+    first_name:Optional[str]
     class Config:
        from_attributes=True
 

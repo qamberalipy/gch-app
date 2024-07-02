@@ -32,7 +32,7 @@ def get_db():
 
 @router.post("/register/admin")
 async def register_user(user: _schemas.UserCreate, db: _orm.Session = Depends(get_db)):
-    print("Here 1", user.email, user.password, user.username)
+    print("Here 1", user.email, user.password, user.first_name)
     db_user = await _services.get_user_by_email(user.email, db)
     print(f"User: {db_user}")
     print("Here 2")
@@ -105,7 +105,7 @@ async def read_sources(db: _orm.Session = Depends(get_db)):
 
 @router.get("/get_staff",response_model=List[_schemas.getStaff])
 async def get_staff(org_id:int, db: _orm.Session= Depends(get_db)):
-    filtered_users=  db.query(_models.User.org_id,_models.User.id,_models.User.username).filter(_models.User.org_id == org_id).all()
+    filtered_users=  db.query(_models.User.org_id,_models.User.id,_models.User.first_name).filter(_models.User.org_id == org_id).all()
     return filtered_users
 
     

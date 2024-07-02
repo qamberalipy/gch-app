@@ -74,7 +74,7 @@ async def create_user(user: _schemas.UserRegister, db: _orm.Session):
     hashed_password = hash_password(user.password)
     user_obj = _models.User(
         email=email, 
-        username=user.username, 
+        first_name=user.first_name, 
         password=hashed_password,
         org_id=user.org_id
     )
@@ -131,7 +131,7 @@ async def get_alluser_data(email: str, db: _orm.Session = _fastapi.Depends(get_d
         user, org_name = result
         return {
             "id": user.id,
-            "username": user.username,
+            "first_name": user.first_name,
             "email": user.email,
             "date_created": user.created_at,
             "org_id": user.org_id,
