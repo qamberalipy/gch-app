@@ -9,6 +9,7 @@ import app.Leads.service as _services
 import app.user.service as _user_service
 import app.core.db.session as _database
 import pika
+import fastapi as _fastapi
 import logging
 import datetime
 
@@ -58,6 +59,14 @@ async def get_leads(org_id:int,request:Request,db: _orm.Session = Depends(get_db
     filtered_leads = await _services.get_leads(db,params=_schemas.LeadRead(**params))
     return filtered_leads
 
+@router.put('/updateStaff', response_model=_schemas.UpdateStaff)
+async def update_status(data: _schemas.UpdateStaff, db: _orm.Session = Depends(get_db)):
+    db_lead = await _services.update_staff(data,db)    
+    return db_lead
 
+@router.put('/updateStatus', response_model=_schemas.UpdateStatus)
+async def update_status(data: _schemas.UpdateStatus, db: _orm.Session = Depends(get_db)):
+    db_lead = await _services.update_status(data,db)    
+    return db_lead
 
 

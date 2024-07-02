@@ -7,7 +7,7 @@ class LeadBase(pydantic.BaseModel):
     first_name: str
     last_name:str
     staff_id:Optional[int]=None
-    mobile:str
+    mobile:Optional[str]=None
     status:str
     source_id:Optional[int]=None
     lead_since:date
@@ -15,7 +15,7 @@ class LeadBase(pydantic.BaseModel):
    
 class LeadCreate(LeadBase):
     phone:Optional[str]=None
-    email:str
+    email:Optional[str]=None
     notes:Optional[str]=None
     created_by:Optional[int]=None
     updated_by:Optional[int]=None  
@@ -35,8 +35,14 @@ class LeadRead(pydantic.BaseModel):
 
     class Config:
             from_attributes = True
+class UpdateStaff(pydantic.BaseModel):
+      lead_id :int
+      staff_id:int
 
-    
+class UpdateStatus(pydantic.BaseModel):
+      lead_id :int
+      status:str    
+
 class ResponseLeadRead(pydantic.BaseModel):
     first_name:Optional[str]
     mobile:Optional[str]
@@ -48,4 +54,17 @@ class ResponseLeadRead(pydantic.BaseModel):
             from_attributes = True
 
     
-    
+class LeadUpdate(pydantic.BaseModel):
+    first_name: Optional[str]=None
+    last_name:Optional[str]=None
+    staff_id:Optional[int]=None
+    mobile:Optional[str]=None
+    status:Optional[str]=None
+    source_id:Optional[int]=None
+    phone:Optional[str]=None
+    email:Optional[str]=None
+    notes:Optional[str]=None
+    updated_by:Optional[int]=None  
+    class Config:
+            from_attributes = True
+          
