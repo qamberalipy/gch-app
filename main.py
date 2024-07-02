@@ -16,7 +16,10 @@ load_dotenv(".env")
 
 root_router = APIRouter()
 
-app = FastAPI(title="Lets Move API")
+app = FastAPI(
+    title="Lets Move API",
+    root_path="/fastapi"
+)
 
 app.add_middleware(CORSMiddleware,
     allow_origins=['*'],
