@@ -70,9 +70,59 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
         db.rollback()
         logger.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
+
+
+@router.post("/register/client/mobile", response_model=_schemas.ClientRead, tags=["Client App Router"])
+async def register_mobileclient(client: _schemas.ClientCreateApp, db: _orm.Session = Depends(get_db)):
+    try:
+        db_client = await _services.get_client_by_email(client.email, db)
+        if db_client:
+            raise HTTPException(status_code=400, detail="Email already registered")
+
+        client_data = client.dict()
+        organization_id = client_data.pop('org_id', 0)
+        status = client_data.pop('status', 'pending')
+        coach_id = client_data.pop('coach_id', None)
+        membership_id = client_data.pop('membership_id', 0)
+
+        # Generate random own_member_id
+        client_data['own_member_id'] = _services.generate_own_member_id()
+
+        new_client = await _services.create_client_for_app(_schemas.RegisterClientApp(**client_data), db)
+
+        await _services.create_client_organization(
+            _schemas.CreateClientOrganization(client_id=new_client.id, org_id=organization_id, client_status=status), db
+        )
+
+        await _services.create_client_membership(
+            _schemas.CreateClientMembership(client_id=new_client.id, membership_plan_id=membership_id), db
+        )
+
+        if coach_id is not None:
+            await _services.create_client_coach(
+                _schemas.CreateClientCoach(client_id=new_client.id, coach_id=coach_id), db
+            )
+
+        return new_client
+
+    except IntegrityError as e:
+        db.rollback()
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Duplicate entry or integrity constraint violation")
+        
+    except DataError as e:
+        db.rollback()
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+ 
     
     
-@router.put("/update/{client_id}", response_model=_schemas.ClientRead, tags=["Client Router"])
+@router.put("/update/{client_id}", response_model=_schemas.ClientRead, tags=["Client App Router"])
 async def update_client(client_id: int, client: _schemas.ClientUpdate, db: _orm.Session = Depends(get_db)):
     try:
         # Update client details
