@@ -147,6 +147,19 @@ async def create_bank_account(bank_account:_schemas.BankAccountCreate,db: _orm.S
     db.refresh(db_bank_account)
     return db_bank_account
 
+async def create_staff(staff: _schemas.CreateStaff, db: _orm.Session = _fastapi.Depends(get_db)):
+    staff_data = staff.dict()
+    try:
+       _email_check.validate_email(staff_data.get('email'))
+
+    except _email_check.EmailNotValidError:
+        raise _fastapi.HTTPException(status_code=400, detail="Please enter a valid email")
+    
+    db_staff = _models.User(**staff_data)
+    db.add(db_staff)
+    db.commit()
+    db.refresh(db_staff)
+    return db_staff
         
 async def authenticate_user(email: str, password: str, db: _orm.Session):
     # Authenticate a user

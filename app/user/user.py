@@ -108,10 +108,35 @@ async def get_staff(org_id:int, db: _orm.Session= Depends(get_db)):
     filtered_users=  db.query(_models.User.org_id,_models.User.id,_models.User.first_name).filter(_models.User.org_id == org_id).all()
     return filtered_users
 
-@router.get("/get_staff",response_model=List[_schemas.getStaff],tags=["Staff APIs"])
-async def get_staff(org_id:int, db: _orm.Session= Depends(get_db)):
-    filtered_users=  db.query(_models.User.org_id,_models.User.id,_models.User.first_name).filter(_models.User.org_id == org_id).all()
-    return filtered_users
+@router.get("/get_privileges",response_model=List[_schemas.getPrivileges],tags=["Staff APIs"])
+async def get_privileges(org_id:int, db: _orm.Session= Depends(get_db)):
+    organization_roles=  db.query(_models.Role).filter(_models.Role.org_id == org_id and _models.Role.is_deleted==False).all()
+    return organization_roles
+
+@router.post("/register/staff", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
+async def register_staff(staff: _schemas.CreateStaff, db: _orm.Session = Depends(get_db)):
+    try:
+        db_staff = await _services.get_user_by_email(staff.email, db)
+        if db_staff:
+            raise HTTPException(status_code=400, detail="Email already registered")
+
+        new_staff = await _services.create_staff(staff, db)
+        return new_staff
+
+    except IntegrityError as e:
+        db.rollback()
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Duplicate entry or integrity constraint violation")
+
+    except DataError as e:
+        db.rollback()
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
 
     
