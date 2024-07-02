@@ -58,6 +58,9 @@ class getStaff(pydantic.BaseModel):
     class Config:
        from_attributes=True
 
+class getPrivileges(pydantic.BaseModel):
+    id:int
+    name:str
     
     
     
@@ -76,3 +79,33 @@ class SourceRead(pydantic.BaseModel):
 
     class Config:
         from_attributes = True
+        
+class StaffBase(pydantic.BaseModel):
+    profile_img: Optional[str] = None
+    first_name: str
+    last_name: str
+    gender: str
+    dob: datetime.datetime
+    email: str
+    phone: Optional[str] = None
+    mobile: Optional[str] = None
+    notes: Optional[str] = None
+    source_id: Optional[int] = None
+    org_id: Optional[int] = None
+    role_id: Optional[int] = None
+    country_id: Optional[int] = None
+    city: Optional[str] = None
+    zipcode: Optional[str] = None
+    address_1: Optional[str] = None
+    address_2: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class CreateStaff(StaffBase):
+        
+    created_at: Optional[datetime.datetime]=None
+    created_by: Optional[int] = None
+    
+class ReadStaff(StaffBase):
+    pass

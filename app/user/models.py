@@ -11,6 +11,7 @@ class User(_database.Base):
     __tablename__ = "staff"
 
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
+    own_staff_id=_sql.Column(_sql.String)
     profile_img = _sql.Column(_sql.String(150))
     password = _sql.Column(_sql.String(100))
     first_name = _sql.Column(_sql.String(50))
@@ -78,7 +79,7 @@ class Permission(_database.Base):
     __tablename__ = 'permission'
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     role_id= _sql.Column(_sql.Integer)
-    resource_id= _sql.column(_sql.Integer)
+    resource_id= _sql.Column(_sql.Integer)
     access= _sql.Column(_sql.String(50))
     is_deleted=_sql.Column(_sql.Boolean)
 
