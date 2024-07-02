@@ -1,5 +1,6 @@
 from datetime import date
 import datetime
+import string
 from typing import List
 import jwt
 from sqlalchemy import func, or_
@@ -37,8 +38,18 @@ def get_db():
     finally:
         db.close()
         
-        
+def generate_own_member_id():
+    random_string = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+    return f"guest{random_string}"
+    
 async def create_client(client: _schemas.RegisterClient, db: _orm.Session = _fastapi.Depends(get_db)):
+    db_client = _models.Client(**client.dict())
+    db.add(db_client)
+    db.commit()
+    db.refresh(db_client)
+    return db_client
+
+async def create_client_for_app(client: _schemas.RegisterClientApp, db: _orm.Session = _fastapi.Depends(get_db)):
     db_client = _models.Client(**client.dict())
     db.add(db_client)
     db.commit()

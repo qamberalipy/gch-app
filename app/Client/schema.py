@@ -37,7 +37,37 @@ class ClientCreate(ClientBase):
     class Config:
         from_attributes = True
 
+class ClientCreateApp(pydantic.BaseModel):
+    first_name: str
+    last_name: str
+    gender: str
+    dob: datetime.date
+    email: str
+    notes: Optional[str] = None
+    is_business: Optional[bool] = False
+    country_id: Optional[int] = None
+    zipcode: Optional[str] = None
+    client_since: Optional[datetime.date] = None
+    org_id: Optional[int] = 0
+    coach_id: Optional[int] = None
+    status: Optional[str] = "pending"
+    membership_id: Optional[int] = 0
 
+
+class RegisterClientApp(pydantic.BaseModel):
+    own_member_id:str
+    first_name: str
+    last_name: str
+    gender: str
+    dob: datetime.date
+    email: str
+    notes: Optional[str] = None
+    is_business: Optional[bool] = False
+    country_id: Optional[int] = None
+    zipcode: Optional[str] = None
+    client_since: Optional[datetime.date] = None
+    
+        
 class RegisterClient(ClientBase):
     pass
 
