@@ -1,5 +1,7 @@
-from datetime import date
+from datetime import date,datetime
+from typing import List
 import jwt
+from sqlalchemy import func, or_
 import sqlalchemy.orm as _orm
 from sqlalchemy.sql import and_  
 import email_validator as _email_check
@@ -180,8 +182,39 @@ def get_all_countries( db: _orm.Session):
 def get_all_sources( db: _orm.Session):
     return db.query(_models.Source).all()
 
-async def get_all_staff(org_id: int, db: _orm.Session):
-    staff_list = db.query(
+async def get_one_staff(staff_id: int, db: _orm.Session):
+    staff_detail = db.query(_models.User).filter( _models.User.is_deleted == False and _models.User.id==staff_id).first()
+    return staff_detail
+
+async def update_staff(staff_id: int, staff_update: _schemas.UpdateStaff, db: _orm.Session):
+    staff = db.query(_models.User).filter(_models.User.id == staff_id).first()
+    if staff is None:
+        raise _fastapi.HTTPException(status_code=404, detail="Staff not found")
+    
+    update_data = staff_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(staff, key, value)
+    
+    staff.updated_at = datetime.now()
+    db.commit()
+    db.refresh(staff)
+    return staff
+
+
+async def delete_staff(staff_id: int, db: _orm.Session):
+    staff = db.query(_models.User).filter(_models.User.id == staff_id).first()
+    if staff is None:
+        raise _fastapi.HTTPException(status_code=404, detail="Staff not found")
+    
+    staff.is_deleted = True
+    db.commit()
+    return {"detail": "Staff deleted successfully"}
+
+def get_filtered_staff(
+    db: _orm.Session,
+    params: _schemas.StaffFilterParams
+) -> List[_schemas.StaffFilterRead]:
+    query = db.query(
         _models.User.id,
         _models.User.own_staff_id,
         _models.User.first_name,
@@ -189,16 +222,53 @@ async def get_all_staff(org_id: int, db: _orm.Session):
         _models.User.email,
         _models.User.mobile,
         _models.User.role_id,
-        _models.Role.name.label('role_name'),
         _models.User.profile_img,
-        _models.User.activated_on,
-        _models.User.last_online
+        _models.Role.name.label("role_name")    
     ).join(
         _models.Role, _models.User.role_id == _models.Role.id
     ).filter(
-        _models.User.org_id == org_id,
-        _models.User.is_deleted == False,
-        _models.Role.is_deleted == False
-    ).all()
+        _models.User.org_id == params.org_id,
+        _models.User.is_deleted == False
+    )
 
-    return staff_list
+    if params.staff_name:
+        query = query.filter(or_(
+            _models.User.first_name.ilike(f"%{params.staff_name}%"),
+            _models.User.last_name.ilike(f"%{params.staff_name}%")
+        ))
+
+    if params.role_name:
+        query = query.filter(_models.Role.name.ilike(f"%{params.role_name}%"))
+
+    if params.search_key:
+        search_pattern = f"%{params.search_key}%"
+        query = query.filter(or_(
+            _models.User.own_staff_id.ilike(search_pattern),
+            _models.User.first_name.ilike(search_pattern),
+            _models.User.last_name.ilike(search_pattern),
+            _models.User.email.ilike(search_pattern),
+            _models.User.mobile.ilike(search_pattern),
+            _models.User.profile_img.ilike(search_pattern),
+            _models.User.notes.ilike(search_pattern),
+            _models.User.city.ilike(search_pattern),
+            _models.User.zipcode.ilike(search_pattern),
+            _models.User.address_1.ilike(search_pattern),
+            _models.User.address_2.ilike(search_pattern)
+        ))
+
+    staff = query.all()
+
+    return [
+        _schemas.StaffFilterRead(
+            id=st.id,
+            own_staff_id=st.own_staff_id,
+            first_name=st.first_name,
+            last_name=st.last_name,
+            email=st.email,
+            mobile=st.mobile,
+            role_id=st.role_id,
+            role_name=st.role_name,
+            profile_img=st.profile_img
+        )
+        for st in staff
+    ]

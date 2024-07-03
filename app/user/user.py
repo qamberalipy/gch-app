@@ -1,5 +1,5 @@
 from typing import Dict, List
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, status
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.exc import IntegrityError, DataError
 import app.user.schema as _schemas
 import sqlalchemy.orm as _orm
@@ -138,10 +138,69 @@ async def register_staff(staff: _schemas.CreateStaff, db: _orm.Session = Depends
         logger.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
-@router.get("/staff/list", response_model=List[_schemas.StaffDetail], tags=["Staff APIs"])
-async def get_all_staff(org_id: int, db: _orm.Session = Depends(get_db)):
-    staff_list = await _services.get_all_staff(org_id, db)
-    return staff_list
+@router.get("/staff/get/{staff_id}",response_model=_schemas.ReadStaff, tags=["Staff APIs"])
+async def get_all_staff(staff_id: int, db: _orm.Session = Depends(get_db)):
+    try:
+        staff_list = await _services.get_one_staff(staff_id, db)
+        return staff_list
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+
+
+@router.put("/staff/update/{staff_id}", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
+async def update_staff(staff_id: int, staff_update: _schemas.UpdateStaff, db: _orm.Session = Depends(get_db)):
+    try:
+        updated_staff = await _services.update_staff(staff_id, staff_update, db)
+        return updated_staff
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+
+
+@router.delete("/staff/delete/{staff_id}", tags=["Staff APIs"])
+async def delete_staff(staff_id: int, db: _orm.Session = Depends(get_db)):
+    try:
+        return await _services.delete_staff(staff_id, db)
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+    
+@router.get("/staff/filter", response_model=List[_schemas.StaffFilterRead], tags=["Staff APIs"])
+async def get_staff(
+    org_id: int,
+    request: Request,
+    db: _orm.Session = Depends(get_db)
+):
+    params = {
+        "org_id": org_id,
+        "search_key": request.query_params.get("search_key"),
+        "staff_name": request.query_params.get("staff_name"),
+        "role_name": request.query_params.get("role_name"),
+    }
+    staff = _services.get_filtered_staff(db=db, params=_schemas.StaffFilterParams(**params))
+    return staff
+
+
+
 
     
 
