@@ -179,3 +179,26 @@ def get_all_countries( db: _orm.Session):
 
 def get_all_sources( db: _orm.Session):
     return db.query(_models.Source).all()
+
+async def get_all_staff(org_id: int, db: _orm.Session):
+    staff_list = db.query(
+        _models.User.id,
+        _models.User.own_staff_id,
+        _models.User.first_name,
+        _models.User.last_name,
+        _models.User.email,
+        _models.User.mobile,
+        _models.User.role_id,
+        _models.Role.name.label('role_name'),
+        _models.User.profile_img,
+        _models.User.activated_on,
+        _models.User.last_online
+    ).join(
+        _models.Role, _models.User.role_id == _models.Role.id
+    ).filter(
+        _models.User.org_id == org_id,
+        _models.User.is_deleted == False,
+        _models.Role.is_deleted == False
+    ).all()
+
+    return staff_list

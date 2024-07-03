@@ -113,7 +113,7 @@ async def get_privileges(org_id:int, db: _orm.Session= Depends(get_db)):
     organization_roles=  db.query(_models.Role).filter(_models.Role.org_id == org_id and _models.Role.is_deleted==False).all()
     return organization_roles
 
-@router.post("/register/staff", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
+@router.post("/staff/register", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
 async def register_staff(staff: _schemas.CreateStaff, db: _orm.Session = Depends(get_db)):
     try:
         db_staff = await _services.get_user_by_email(staff.email, db)
@@ -137,6 +137,12 @@ async def register_staff(staff: _schemas.CreateStaff, db: _orm.Session = Depends
         db.rollback()
         logger.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
+
+@router.get("/staff/list", response_model=List[_schemas.StaffDetail], tags=["Staff APIs"])
+async def get_all_staff(org_id: int, db: _orm.Session = Depends(get_db)):
+    staff_list = await _services.get_all_staff(org_id, db)
+    return staff_list
+
     
 
 

@@ -109,3 +109,19 @@ class CreateStaff(StaffBase):
     
 class ReadStaff(StaffBase):
     pass
+
+class StaffDetail(pydantic.BaseModel):
+    id: int
+    own_staff_id: Optional[str] = None
+    first_name: str
+    last_name: Optional[str] = None
+    email: str
+    mobile: Optional[str] = None
+    role_id: Optional[int] = None
+    role_name: Optional[str] = None
+    profile_img: Optional[str] = None
+    activated_on: Optional[datetime.date] = None
+    last_online: Optional[datetime.datetime] = None
+
+    class Config:
+        from_attributes = True
