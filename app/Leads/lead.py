@@ -29,7 +29,7 @@ def get_db():
         db.close()
         
     
-@router.post("/register/lead", response_model=_schemas.LeadCreate)
+@router.post("/register", response_model=_schemas.LeadCreate)
 async def register_lead(lead_data: _schemas.LeadCreate, db: _orm.Session = Depends(get_db)):   
     try:
         new_lead = await _services.create_lead(_schemas.LeadCreate(**lead_data.model_dump()), db)
