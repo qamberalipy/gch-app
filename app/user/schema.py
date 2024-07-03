@@ -82,10 +82,10 @@ class SourceRead(pydantic.BaseModel):
         
 class StaffBase(pydantic.BaseModel):
     profile_img: Optional[str] = None
-    first_name: str
-    last_name: str
-    gender: str
-    dob: datetime.datetime
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    gender: Optional[str] = None
+    dob: Optional[datetime.datetime]=None
     email: str
     phone: Optional[str] = None
     mobile: Optional[str] = None
@@ -122,6 +122,52 @@ class StaffDetail(pydantic.BaseModel):
     profile_img: Optional[str] = None
     activated_on: Optional[datetime.date] = None
     last_online: Optional[datetime.datetime] = None
+
+    class Config:
+        from_attributes = True
+        
+class UpdateStaff(pydantic.BaseModel):
+    profile_img: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    gender: Optional[str] = None
+    dob: Optional[datetime.datetime] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    mobile: Optional[str] = None
+    notes: Optional[str] = None
+    source_id: Optional[int] = None
+    org_id: Optional[int] = None
+    role_id: Optional[int] = None
+    country_id: Optional[int] = None
+    city: Optional[str] = None
+    zipcode: Optional[str] = None
+    address_1: Optional[str] = None
+    address_2: Optional[str] = None
+    activated_on: Optional[datetime.date] = None
+    last_online: Optional[datetime.datetime] = None
+    updated_by: Optional[int] = None
+    updated_at: Optional[datetime.datetime] = None
+    
+    class Config:
+        from_attributes = True
+        
+class StaffFilterParams(pydantic.BaseModel):
+    org_id: int
+    search_key: Optional[str] = None
+    staff_name: Optional[str] = None
+    role_name: Optional[str] = None
+
+class StaffFilterRead(pydantic.BaseModel):
+    id: Optional[int] = None
+    own_staff_id: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    mobile: Optional[str] = None
+    role_id: Optional[int] = None
+    role_name: Optional[str] = None
+    profile_img: Optional[str] = None
 
     class Config:
         from_attributes = True
