@@ -13,6 +13,7 @@ import app.core.db.session as _database
 import app.Client.schema as _schemas
 import app.Client.models as _models
 import app.Coach.models as _coach_models
+import app.Shared.helpers as _helpers
 import random
 import json
 import pika
@@ -94,7 +95,13 @@ async def login_client(email_address: str, wallet_address: str, db: _orm.Session
     client.wallet_address = wallet_address
     db.commit()
     db.refresh(client)
-    return {"is_registered": True}
+    
+    token = _helpers.create_token(client, "User")
+    
+    return {"is_registered": True,
+            "client":client,
+            "access_token":token
+            }
 
 async def get_client_by_email(email_address: str, db: _orm.Session = _fastapi.Depends(get_db)) -> models.Client:
     return db.query(models.Client).filter(models.Client.email == email_address).first()

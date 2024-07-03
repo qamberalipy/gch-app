@@ -1,7 +1,7 @@
 import pydantic
 import datetime 
 import datetime 
-from typing import Optional
+from typing import Dict, Optional
 
 class ClientBase(pydantic.BaseModel):
     profile_img: Optional[str] = None
@@ -36,6 +36,7 @@ class ClientCreate(ClientBase):
     
     class Config:
         from_attributes = True
+        
 
 class ClientCreateApp(pydantic.BaseModel):
     first_name: str
@@ -77,6 +78,11 @@ class ClientRead(ClientBase):
     class Config:
         from_attributes=True
         
+class ClientLoginResponse(pydantic.BaseModel):
+    is_registered: bool
+    client: Optional[ClientRead] = None
+    access_token: Optional[Dict[str, str]] = None
+    
 class ClientByID(pydantic.BaseModel):
     id: int
     wallet_address: Optional[str] = None
@@ -164,8 +170,8 @@ class ClientBusinessRead(pydantic.BaseModel):
 class ClientCount(pydantic.BaseModel):
     total_clients: int
     
-class ClientLoginResponse(pydantic.BaseModel):
-    is_registered: bool
+# class ClientLoginResponse(pydantic.BaseModel):
+#     is_registered: bool
 
 class ClientFilterRead(pydantic.BaseModel):
     id: int
