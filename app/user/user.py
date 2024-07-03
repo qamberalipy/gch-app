@@ -137,6 +137,8 @@ async def register_staff(staff: _schemas.CreateStaff, db: _orm.Session = Depends
         db.rollback()
         logger.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
+    
+
 
 
     
