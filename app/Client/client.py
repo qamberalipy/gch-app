@@ -6,6 +6,7 @@ import sqlalchemy.orm as _orm
 import app.Client.models as _models
 import app.Client.service as _services
 import app.user.service as _user_service
+import app.Shared.helpers as _helpers
 # from main import logger
 import app.core.db.session as _database
 import pika
@@ -72,7 +73,7 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
 
-@router.post("/register/client/mobile", response_model=_schemas.ClientRead, tags=["Client App Router"])
+@router.post("/mobile/register", response_model=_schemas.ClientLoginResponse, tags=["App Router"])
 async def register_mobileclient(client: _schemas.ClientCreateApp, db: _orm.Session = Depends(get_db)):
     try:
         db_client = await _services.get_client_by_email(client.email, db)
@@ -102,8 +103,12 @@ async def register_mobileclient(client: _schemas.ClientCreateApp, db: _orm.Sessi
             await _services.create_client_coach(
                 _schemas.CreateClientCoach(client_id=new_client.id, coach_id=coach_id), db
             )
-
-        return new_client
+        token = _helpers.create_token(new_client, "User")
+        return {
+            "is_registered":True,
+            "client":new_client,
+            "access_token":token
+        }
 
     except IntegrityError as e:
         db.rollback()
@@ -173,7 +178,7 @@ async def delete_client(client_id: int, db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
 
-@router.post("/login/client", response_model=_schemas.ClientLoginResponse,  tags=["Client Router"])
+@router.post("/login/client", response_model=_schemas.ClientLoginResponse,  tags=["App Router"])
 async def login_client(client_data: _schemas.ClientLogin, db: _orm.Session = Depends(get_db)):
     try:
         print(client_data)
