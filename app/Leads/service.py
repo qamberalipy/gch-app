@@ -75,7 +75,9 @@ async def get_leads(db: _orm.Session,params):
     
 
     if params.get('owner'):
-        optional_filters.append(_user_model.User.username.ilike(f"%{params.get('owner')}%"))
+        optional_filters.append(_user_model.User.first_name.ilike(f"%{params.get('owner')}%"))
+        optional_filters.append(_user_model.User.last_name.ilike(f"%{params.get('owner')}%"))
+
     if params.get('status'):
         optional_filters.append(_models.Leads.status.ilike(f"%{params.get('status')}%"))
     if params.get('mobile'):
@@ -84,7 +86,8 @@ async def get_leads(db: _orm.Session,params):
         optional_filters.append(_user_model.Source.source.ilike(f"%{params.get('source')}%"))
 
     if params.get('search'):
-        search_filters.append(_user_model.User.username.ilike(f"%{params.get('search')}%"))
+        search_filters.append(_user_model.User.first_name.ilike(f"%{params.get('search')}%"))
+        search_filters.append(_user_model.User.last_name.ilike(f"%{params.get('search')}%"))
         search_filters.append(_models.Leads.status.ilike(f"%{params.get('search')}%"))
         search_filters.append(_models.Leads.mobile.ilike(f"%{params.get('search')}%"))
         search_filters.append(_user_model.Source.source.ilike(f"%{params.get('search')}%")) 
