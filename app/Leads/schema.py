@@ -44,6 +44,7 @@ class UpdateStatus(pydantic.BaseModel):
       status:str    
 
 class ResponseLeadRead(pydantic.BaseModel):
+    id:Optional[int]
     first_name:Optional[str]
     mobile:Optional[str]
     status:Optional[str]

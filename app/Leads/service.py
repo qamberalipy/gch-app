@@ -117,6 +117,7 @@ async def get_leads(db: _orm.Session,params):
         search_filters.append(_user_model.Source.source.ilike(f"%{params.get('search')}%")) 
     
     query = db.query(
+        _models.Leads.id,
         _models.Leads.first_name,
         _models.Leads.mobile,
         _models.Leads.status,
