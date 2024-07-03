@@ -2,7 +2,7 @@ from datetime import date
 from typing import Optional
 
 import jwt
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 import sqlalchemy.orm as _orm
 from sqlalchemy.sql import and_  
 import email_validator as _email_check
@@ -94,7 +94,7 @@ async def get_leads(db: _orm.Session,params):
         _models.Leads.mobile,
         _models.Leads.status,
         _user_model.Source.source,
-        _user_model.User.name.label('owner'),
+        func.concat(_user_model.User.first_name,' ',_user_model.User.last_name).label('owner'),
         _models.Leads.lead_since
         
     ).join(

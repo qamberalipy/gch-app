@@ -178,6 +178,7 @@ async def login_client(client_data: _schemas.ClientLogin, db: _orm.Session = Dep
     try:
         print(client_data)
         result = await _services.login_client(client_data.email_address, client_data.wallet_address, db)
+        print(result)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
@@ -214,12 +215,11 @@ async def get_client(
     params = {
         "org_id": org_id,
         "search_key": request.query_params.get("search_key"),
-        "client_name": request.query_params.get("client_name"),
+        "p": request.query_params.get("client_name"),
         "status": request.query_params.get("status"),
         "coach_assigned": int(request.query_params.get("coach_assigned")) if request.query_params.get("coach_assigned") else None,
         "membership_plan": int(request.query_params.get("membership_plan")) if request.query_params.get("membership_plan") else None,
     }
-
     clients = _services.get_filtered_clients(db=db, params=_schemas.ClientFilterParams(**params))
     return clients
 
