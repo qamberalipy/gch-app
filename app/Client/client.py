@@ -245,4 +245,3 @@ async def get_total_clients(org_id: int, db: _orm.Session = Depends(get_db)):
         return {"total_clients": total_clients}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
-
