@@ -73,7 +73,7 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
 
-@router.post("/mobile/register", response_model=_schemas.ClientLoginResponse, tags=["App Api"])
+@router.post("/mobile/register", response_model=_schemas.ClientLoginResponse, tags=["App Routers"])
 async def register_mobileclient(client: _schemas.ClientCreateApp, db: _orm.Session = Depends(get_db)):
     try:
         db_client = await _services.get_client_by_email(client.email, db)
@@ -178,7 +178,7 @@ async def delete_client(client_id: int, db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
 
-@router.post("/login/client", response_model=_schemas.ClientLoginResponse,  tags=["App Api"])
+@router.post("/login/client", response_model=_schemas.ClientLoginResponse,  tags=["App Routers"])
 async def login_client(client_data: _schemas.ClientLogin, db: _orm.Session = Depends(get_db)):
     try:
         print(client_data)
