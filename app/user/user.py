@@ -88,6 +88,12 @@ async def test_token(
     payload = _helpers.verify_jwt(token, "User")
     return payload
 
+@router.post("/refresh_token", tags=["Auth"])
+async def refresh_token(refresh_token: str):
+    
+    return _helpers.refresh_jwt(refresh_token)
+    
+    
     
 @router.get("/get_all_countries/", response_model=List[_schemas.CountryRead])
 async def read_countries(db: _orm.Session = Depends(get_db)):

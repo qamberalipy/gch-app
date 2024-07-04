@@ -196,6 +196,8 @@ class ClientFilterParams(pydantic.BaseModel):
     status: Optional[str] = None
     coach_assigned: Optional[int] = None
     membership_plan: Optional[int] = None
+    limit:Optional[int] = None
+    offset:Optional[int] = None
     
 class ClientUpdate(pydantic.BaseModel):
     profile_img: Optional[str] = None

@@ -230,8 +230,10 @@ async def get_client(
             "search_key": request.query_params.get("search_key"),
             "client_name": request.query_params.get("client_name"),
             "status": request.query_params.get("status"),
-            "coach_assigned": int(request.query_params.get("coach_assigned")) if request.query_params.get("coach_assigned") else None,
-            "membership_plan": int(request.query_params.get("membership_plan")) if request.query_params.get("membership_plan") else None,
+            "coach_assigned": request.query_params.get("coach_assigned"),
+            "membership_plan": request.query_params.get("membership_plan"),
+            "limit":request.query_params.get('limit') ,
+            "offset":request.query_params.get('offset')
         }
         clients = _services.get_filtered_clients(db=db, params=_schemas.ClientFilterParams(**params))
         return clients

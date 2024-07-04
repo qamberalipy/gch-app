@@ -291,7 +291,7 @@ def get_filtered_clients(
             _models.Client.address_1.ilike(search_pattern),
             _models.Client.address_2.ilike(search_pattern)
         ))
-
+    query = query.offset(params.offset).limit(params.limit)
     clients = query.all()
 
     return [

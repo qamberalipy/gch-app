@@ -31,8 +31,10 @@ def create_token(obj, obj_type: str):
         del user_dict["date_created"]
     user_dict['token_time'] = time.time()
     user_dict['user_type'] = obj_type.lower()
-    token = jwt.encode(user_dict, JWT_SECRET, algorithm="HS256")
-    return dict(access_token=token, token_type="bearer")
+    
+    access_token = jwt.encode(user_dict, JWT_SECRET, algorithm="HS256")
+    refresh_token= jwt.encode(user_dict, JWT_SECRET, algorithm="HS256")
+    return dict(access_token=access_token,refresh_token=refresh_token,token_type="bearer")
 
 
 def verify_jwt(token: str, obj_type: str = "User"):
@@ -59,6 +61,27 @@ def verify_jwt(token: str, obj_type: str = "User"):
     except:
         raise credentials_exception
 
+def refresh_jwt(refresh_token: str):
+    try:
+        payload = jwt.decode(refresh_token, JWT_SECRET, algorithms=["HS256"])
+        
+        if payload["user_type"] != "user":
+            raise _fastapi.HTTPException(status_code=400, detail="Invalid user type")
+        
+        new_expiry_time = time.time() + int(JWT_EXPIRY)
+        new_access_token = jwt.encode(
+            {**payload, "exp": new_expiry_time},
+            JWT_SECRET,
+            algorithm="HS256"
+        )
+        
+        return dict(access_token=new_access_token, token_type="bearer")
+    
+    except jwt.ExpiredSignatureError:
+        raise _fastapi.HTTPException(status_code=400, detail="Refresh token expired")
+    except jwt.InvalidTokenError:
+        raise _fastapi.HTTPException(status_code=400, detail="Invalid refresh token")
+    
 def get_current_user(request: _fastapi.Request):
     authorization: str = request.headers.get("Authorization")
     if not authorization:
