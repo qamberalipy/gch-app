@@ -43,10 +43,12 @@ def verify_jwt(token: str, obj_type: str = "User"):
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
+        print(JWT_EXPIRY)
         token = token.split("Bearer ")[1]
         payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        print("Payload",payload)
         print("Time Difference", time.time() - payload["token_time"])
-        print(payload)
+       
         if (time.time() - payload["token_time"]) > int(JWT_EXPIRY):
             print("Token Expired")
             raise credentials_exception

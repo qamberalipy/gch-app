@@ -1,6 +1,6 @@
 import json
 from typing import List, Optional
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, Request, status
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, Header, Request, status
 from sqlalchemy.exc import IntegrityError, DataError
 import app.Leads.schema as _schemas
 import sqlalchemy.orm as _orm
@@ -13,7 +13,7 @@ import pika
 import fastapi as _fastapi
 import logging
 import datetime
-
+import app.Shared.helpers as _helpers
 
 router = APIRouter(tags=["Lead Router"])
 
@@ -32,9 +32,14 @@ def get_db():
     
 
 @router.post("/register")
-async def register_lead(lead_data: _schemas.LeadCreate, db: _orm.Session = Depends(get_db)):
+async def register_lead(lead_data: _schemas.LeadCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
-        # Check if the email already exists
+        
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        _helpers.verify_jwt(authorization, "User")
+        
         existing_lead = await _services.get_lead_by_email(lead_data.email, db)
         if existing_lead:
             raise HTTPException(
@@ -58,39 +63,101 @@ async def get_leads(
     request: Request,
     limit: Optional[int]=None, 
     offset: Optional[int]=None,  
-    db: _orm.Session = Depends(get_db)):
-    params = {
-        "org_id": org_id,
-        "limit": limit,
-        "offset": offset,
-        "first_name": request.query_params.get("first_name", None),
-        "mobile": request.query_params.get("mobile", None),
-        "owner": request.query_params.get("owner", None),
-        "status": request.query_params.get("status", None),
-        "source": request.query_params.get("source", None),
-        "search": request.query_params.get("search", None)
-    }
+    db: _orm.Session = Depends(get_db), 
+    authorization: str = Header(None)):
+    try:
+        
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
 
-    filtered_leads = await _services.get_leads(db, params=_schemas.LeadRead(**params))
-    return filtered_leads
+        _helpers.verify_jwt(authorization, "User")
+        params = {
+            "org_id": org_id,
+            "limit": limit,
+            "offset": offset,
+            "first_name": request.query_params.get("first_name", None),
+            "mobile": request.query_params.get("mobile", None),
+            "owner": request.query_params.get("owner", None),
+            "status": request.query_params.get("status", None),
+            "source": request.query_params.get("source", None),
+            "search": request.query_params.get("search", None)
+        }
+
+        filtered_leads = await _services.get_leads(db, params=_schemas.LeadRead(**params))
+        return filtered_leads
+    
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 @router.put('/updateStaff', response_model=_schemas.UpdateStaff)
-async def update_status(data: _schemas.UpdateStaff, db: _orm.Session = Depends(get_db)):
-    db_lead = await _services.update_staff(data,db)    
-    return db_lead
+async def update_status(data: _schemas.UpdateStaff, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:    
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        _helpers.verify_jwt(authorization, "User")
+        db_lead = await _services.update_staff(data,db)    
+        return db_lead
+    
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 @router.put('/updateStatus', response_model=_schemas.UpdateStatus)
-async def update_status(data: _schemas.UpdateStatus, db: _orm.Session = Depends(get_db)):
-    db_lead = await _services.update_status(data,db)    
-    return db_lead
+async def update_status(data: _schemas.UpdateStatus, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        _helpers.verify_jwt(authorization, "User")
+        db_lead = await _services.update_status(data,db)    
+        return db_lead
+    
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 @router.put('/update', response_model=_schemas.LeadUpdate)
-async def update_data(lead_id:int,data: _schemas.LeadUpdate, db: _orm.Session = Depends(get_db)):
-    db_lead = await _services.update_data(lead_id,data,db)    
-    return db_lead
+async def update_data(lead_id:int,data: _schemas.LeadUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        _helpers.verify_jwt(authorization, "User")
+        db_lead = await _services.update_data(lead_id,data,db)    
+        return db_lead
+    
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 @router.get("/getleadsById")
-async def register_lead(lead_id:int,db: _orm.Session = Depends(get_db)):
+async def register_lead(lead_id:int,db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        _helpers.verify_jwt(authorization, "User")
+        
+        existing_lead = await _services.get_lead_by_id(lead_id, db)
+        return existing_lead
     
-    existing_lead = await _services.get_lead_by_id(lead_id, db)
-    return existing_lead
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
