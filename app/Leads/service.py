@@ -118,7 +118,8 @@ async def get_leads(db: _orm.Session,params):
     
     query = db.query(
         _models.Leads.id,
-        _models.Leads.first_name,
+        func.concat(_models.Leads.first_name,' ',_models.Leads.last_name).label('name'),
+        _models.Leads.email,
         _models.Leads.mobile,
         _models.Leads.status,
         _user_model.Source.source,
@@ -139,9 +140,12 @@ async def get_leads(db: _orm.Session,params):
 
     if optional_filters:
         query = query.filter(and_(*optional_filters))
-    
+
+    print("this is offset",params.get('offset'))
+    print("this is limit",params.get('limit'))    
+
+    query = query.offset(params.get('offset')).limit(params.get('limit'))
     leads = query.all()
-
     return leads
-
+    
 

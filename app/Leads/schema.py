@@ -26,6 +26,8 @@ class LeadCreate(LeadBase):
 
 class LeadRead(pydantic.BaseModel):
     org_id:int
+    limit:Optional[int]=None
+    offset:Optional[int]=None
     first_name:Optional[str]
     mobile:Optional[str]
     owner:Optional[str]
@@ -45,7 +47,8 @@ class UpdateStatus(pydantic.BaseModel):
 
 class ResponseLeadRead(pydantic.BaseModel):
     id:Optional[int]
-    first_name:Optional[str]
+    name:Optional[str]
+    email:Optional[str]
     mobile:Optional[str]
     status:Optional[str]
     source:Optional[str]

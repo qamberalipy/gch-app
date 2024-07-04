@@ -56,3 +56,10 @@ def verify_jwt(token: str, obj_type: str = "User"):
         return payload
     except:
         raise credentials_exception
+
+def get_current_user(request: _fastapi.Request):
+    authorization: str = request.headers.get("Authorization")
+    if not authorization:
+        raise _fastapi.HTTPException(status_code=_fastapi.status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    token = authorization
+    return verify_jwt(token)        

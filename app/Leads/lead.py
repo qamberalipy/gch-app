@@ -6,6 +6,7 @@ import app.Leads.schema as _schemas
 import sqlalchemy.orm as _orm
 import app.Leads.models as _models
 import app.Leads.service as _services
+from app.Shared.helpers import get_current_user
 import app.user.service as _user_service
 import app.core.db.session as _database
 import pika
@@ -52,19 +53,25 @@ async def register_lead(lead_data: _schemas.LeadCreate, db: _orm.Session = Depen
     
 
 @router.get("/getleads", response_model=List[_schemas.ResponseLeadRead])
-async def get_leads(org_id:int,request:Request,db: _orm.Session = Depends(get_db)):
-    params={
-       "org_id":org_id,
-        "first_name":request.query_params.get("first_name",None),
-        "mobile":request.query_params.get("mobile",None),
-        "owner":request.query_params.get("owner",None),
-        "status":request.query_params.get("status",None),
-        "source":request.query_params.get("source",None),
-        "search":request.query_params.get("search",None)
-
+async def get_leads(
+    org_id: int, 
+    request: Request,
+    limit: Optional[int]=None, 
+    offset: Optional[int]=None,  
+    db: _orm.Session = Depends(get_db)):
+    params = {
+        "org_id": org_id,
+        "limit": limit,
+        "offset": offset,
+        "first_name": request.query_params.get("first_name", None),
+        "mobile": request.query_params.get("mobile", None),
+        "owner": request.query_params.get("owner", None),
+        "status": request.query_params.get("status", None),
+        "source": request.query_params.get("source", None),
+        "search": request.query_params.get("search", None)
     }
 
-    filtered_leads = await _services.get_leads(db,params=_schemas.LeadRead(**params))
+    filtered_leads = await _services.get_leads(db, params=_schemas.LeadRead(**params))
     return filtered_leads
 
 @router.put('/updateStaff', response_model=_schemas.UpdateStaff)
