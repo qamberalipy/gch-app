@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, status
+from fastapi import FastAPI, Header,APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError, DataError
 import app.Membership.schema as _schemas
 import sqlalchemy.orm as _orm
@@ -10,7 +10,7 @@ import app.core.db.session as _database
 import pika
 import logging
 import datetime
-
+import app.Shared.helpers as _helpers
 router = APIRouter()
 
 logger = logging.getLogger("uvicorn.error")
@@ -26,12 +26,36 @@ def get_db():
         db.close()
         
 @router.post("/register", response_model=_schemas.MembershipPlanRead)
-async def register_membership_plan(plan: _schemas.MembershipPlanCreate, db: _orm.Session = Depends(get_db)):
-    return _services.create_membership_plan(db=db, plan=plan)
+async def register_membership_plan(plan: _schemas.MembershipPlanCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:
+        
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
 
+        _helpers.verify_jwt(authorization, "User")
+        return _services.create_membership_plan(db=db, plan=plan)
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+    
 @router.get("/get_all/{org_id}", response_model=List[_schemas.MembershipPlanRead])
-async def read_membership_plans(org_id: int, db: _orm.Session = Depends(get_db)):
-    plans = _services.get_membership_plans_by_org_id(db=db, org_id=org_id)
-    if not plans:
-       return []
-    return plans
+async def read_membership_plans(org_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:    
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        _helpers.verify_jwt(authorization, "User")
+        plans = _services.get_membership_plans_by_org_id(db=db, org_id=org_id)
+        if not plans:
+            return []
+        return plans
+    
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")

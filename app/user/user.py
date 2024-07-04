@@ -1,5 +1,5 @@
 from typing import Dict, List
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, Request, status
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, Header, Request, status
 from sqlalchemy.exc import IntegrityError, DataError
 import app.user.schema as _schemas
 import sqlalchemy.orm as _orm
@@ -104,18 +104,34 @@ async def read_sources(db: _orm.Session = Depends(get_db)):
     return sources
 
 @router.get("/get_staff",response_model=List[_schemas.getStaff],tags=["Staff APIs"])
-async def get_staff(org_id:int, db: _orm.Session= Depends(get_db)):
+async def get_staff(org_id:int, db: _orm.Session= Depends(get_db), authorization: str = Header(None)):
+    
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+    _helpers.verify_jwt(authorization, "User")
     filtered_users=  db.query(_models.User.org_id,_models.User.id,_models.User.first_name).filter(_models.User.org_id == org_id).all()
     return filtered_users
 
 @router.get("/get_privileges",response_model=List[_schemas.getPrivileges],tags=["Staff APIs"])
-async def get_privileges(org_id:int, db: _orm.Session= Depends(get_db)):
+async def get_privileges(org_id:int, db: _orm.Session= Depends(get_db), authorization: str = Header(None)):
+    
+    if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+    _helpers.verify_jwt(authorization, "User")
     organization_roles=  db.query(_models.Role).filter(_models.Role.org_id == org_id and _models.Role.is_deleted==False).all()
     return organization_roles
 
 @router.post("/staff/register", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
-async def register_staff(staff: _schemas.CreateStaff, db: _orm.Session = Depends(get_db)):
+async def register_staff(staff: _schemas.CreateStaff, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
+        
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        _helpers.verify_jwt(authorization, "User")
+        
         db_staff = await _services.get_user_by_email(staff.email, db)
         if db_staff:
             raise HTTPException(status_code=400, detail="Email already registered")
@@ -133,30 +149,40 @@ async def register_staff(staff: _schemas.CreateStaff, db: _orm.Session = Depends
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
-@router.get("/staff/get/{staff_id}",response_model=_schemas.ReadStaff, tags=["Staff APIs"])
-async def get_all_staff(staff_id: int, db: _orm.Session = Depends(get_db)):
+@router.get("/staff/get/{staff_id}", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
+async def get_all_staff(staff_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
+        
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        _helpers.verify_jwt(authorization, "User")
+
+        print("Fetching staff with ID:", staff_id)
         staff_list = await _services.get_one_staff(staff_id, db)
+        print("Staff list:", staff_list)
         return staff_list
+
     except IntegrityError as e:
         logger.error(f"IntegrityError: {e}")
+        print(f"IntegrityError: {e}")
         raise HTTPException(status_code=400, detail="Integrity error occurred")
     except DataError as e:
         logger.error(f"DataError: {e}")
+        print(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
-    except Exception as e:
-        logger.error(f"Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+    
 
 
 @router.put("/staff/update/{staff_id}", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
-async def update_staff(staff_id: int, staff_update: _schemas.UpdateStaff, db: _orm.Session = Depends(get_db)):
+async def update_staff(staff_id: int, staff_update: _schemas.UpdateStaff, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
+        
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+        _helpers.verify_jwt(authorization, "User")
+        
         updated_staff = await _services.update_staff(staff_id, staff_update, db)
         return updated_staff
     except IntegrityError as e:
@@ -165,14 +191,18 @@ async def update_staff(staff_id: int, staff_update: _schemas.UpdateStaff, db: _o
     except DataError as e:
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
-    except Exception as e:
-        logger.error(f"Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+    
 
 
 @router.delete("/staff/delete/{staff_id}", tags=["Staff APIs"])
-async def delete_staff(staff_id: int, db: _orm.Session = Depends(get_db)):
+async def delete_staff(staff_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
+        
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        _helpers.verify_jwt(authorization, "User")
+        
         return await _services.delete_staff(staff_id, db)
     except IntegrityError as e:
         logger.error(f"IntegrityError: {e}")
@@ -180,25 +210,35 @@ async def delete_staff(staff_id: int, db: _orm.Session = Depends(get_db)):
     except DataError as e:
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
-    except Exception as e:
-        logger.error(f"Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+    
     
 @router.get("/staff/filter", response_model=List[_schemas.StaffFilterRead], tags=["Staff APIs"])
 async def get_staff(
     org_id: int,
     request: Request,
-    db: _orm.Session = Depends(get_db)
-):
-    params = {
-        "org_id": org_id,
-        "search_key": request.query_params.get("search_key"),
-        "staff_name": request.query_params.get("staff_name"),
-        "role_name": request.query_params.get("role_name"),
-    }
-    staff = _services.get_filtered_staff(db=db, params=_schemas.StaffFilterParams(**params))
-    return staff
+    db: _orm.Session = Depends(get_db),
+    authorization: str = Header(None)):
+    try:
+        
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
 
+        _helpers.verify_jwt(authorization, "User")
+        params = {
+            "org_id": org_id,
+            "search_key": request.query_params.get("search_key"),
+            "staff_name": request.query_params.get("staff_name"),
+            "role_name": request.query_params.get("role_name"),
+        }
+        staff = _services.get_filtered_staff(db=db, params=_schemas.StaffFilterParams(**params))
+        return staff
+    
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 
 

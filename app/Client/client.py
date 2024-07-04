@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, Request, status
+from fastapi import Header,FastAPI, APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.exc import IntegrityError, DataError
 import app.Client.schema as _schemas
 import sqlalchemy.orm as _orm
@@ -28,8 +28,14 @@ def get_db():
         db.close()
         
 @router.post("/register", response_model=_schemas.ClientRead, tags=["Client Router"])
-async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depends(get_db)):    
+async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
+        
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        _helpers.verify_jwt(authorization, "User")
+        
         db_client = await _services.get_client_by_email(client.email, db)
         if db_client:
             raise HTTPException(status_code=400, detail="Email already registered")
@@ -67,10 +73,7 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+    
 
 
 @router.post("/mobile/register", response_model=_schemas.ClientLoginResponse, tags=["App Router"])
@@ -120,16 +123,19 @@ async def register_mobileclient(client: _schemas.ClientCreateApp, db: _orm.Sessi
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+    
  
     
     
 @router.put("/update/{client_id}", response_model=_schemas.ClientRead, tags=["Client Router"])
-async def update_client(client_id: int, client: _schemas.ClientUpdate, db: _orm.Session = Depends(get_db)):
+async def update_client(client_id: int, client: _schemas.ClientUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
+        
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        _helpers.verify_jwt(authorization, "User")
+        
         # Update client details
         updated_client = await _services.update_client(client_id, client, db)
         
@@ -151,14 +157,17 @@ async def update_client(client_id: int, client: _schemas.ClientUpdate, db: _orm.
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+    
 
 @router.delete("/delete/{client_id}", response_model=_schemas.ClientRead, tags=["Client Router"])
-async def delete_client(client_id: int, db: _orm.Session = Depends(get_db)):
+async def delete_client(client_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
+        
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        _helpers.verify_jwt(authorization, "User")
+        
         deleted_client = await _services.delete_client(client_id, db)
         return deleted_client
 
@@ -172,10 +181,7 @@ async def delete_client(client_id: int, db: _orm.Session = Depends(get_db)):
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+    
 
 
 @router.post("/login", response_model=_schemas.ClientLoginResponse,  tags=["App Router"])
@@ -189,48 +195,62 @@ async def login_client(client_data: _schemas.ClientLogin, db: _orm.Session = Dep
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
 @router.get("/{client_id}", response_model=_schemas.ClientByID, tags=["Client Router"])
-async def get_client_by_id(client_id: int, db:  _orm.Session = Depends(get_db)):
-    client = await _services.get_client_byid(db=db, client_id=client_id)
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    return client    
+async def get_client_by_id(client_id: int, db:  _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:    
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
 
-
-# @router.post("/login/client", response_model=dict,tags=["Client Router"])
-# async def login_client(client_login: _schemas.ClientLogin, db: _orm.Session = Depends(get_db)):
-#     logger.debug("Here 1", client_login.email_address, client_login.wallet_address)
+        _helpers.verify_jwt(authorization, "User")
+        client = await _services.get_client_byid(db=db, client_id=client_id)
+        if not client:
+            raise HTTPException(status_code=404, detail="Client not found")
+        return client    
     
-#     authenticated_client = await _services.authenticate_client(client_login.email_address, client_login.wallet_address, db)
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
-#     if not authenticated_client:
-#         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
-    
-#     token = await _services.create_token(authenticated_client)
-#     return token
-
-
-
 @router.get("/filter/", response_model=List[_schemas.ClientFilterRead], tags=["Client Router"])
 async def get_client(
     org_id: int,
     request: Request,
-    db: _orm.Session = Depends(get_db)
-):
-    print("MY LIST ",Request)
-    params = {
-        "org_id": org_id,
-        "search_key": request.query_params.get("search_key"),
-        "client_name": request.query_params.get("client_name"),
-        "status": request.query_params.get("status"),
-        "coach_assigned": int(request.query_params.get("coach_assigned")) if request.query_params.get("coach_assigned") else None,
-        "membership_plan": int(request.query_params.get("membership_plan")) if request.query_params.get("membership_plan") else None,
-    }
-    clients = _services.get_filtered_clients(db=db, params=_schemas.ClientFilterParams(**params))
-    return clients
+    db: _orm.Session = Depends(get_db),
+    authorization: str = Header(None)):
+    try:    
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        _helpers.verify_jwt(authorization, "User")
+        print("MY LIST ",Request)
+        params = {
+            "org_id": org_id,
+            "search_key": request.query_params.get("search_key"),
+            "client_name": request.query_params.get("client_name"),
+            "status": request.query_params.get("status"),
+            "coach_assigned": int(request.query_params.get("coach_assigned")) if request.query_params.get("coach_assigned") else None,
+            "membership_plan": int(request.query_params.get("membership_plan")) if request.query_params.get("membership_plan") else None,
+        }
+        clients = _services.get_filtered_clients(db=db, params=_schemas.ClientFilterParams(**params))
+        return clients
+    
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+    
 
 @router.get("/business/{org_id}", response_model=List[_schemas.ClientBusinessRead], tags=["Client Router"])
-async def get_business_clients(org_id: int,db: _orm.Session = Depends(get_db)):
+async def get_business_clients(org_id: int,db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        _helpers.verify_jwt(authorization, "User")
         clients = await _services.get_business_clients(org_id, db)
         if not clients:
             return []
@@ -239,8 +259,13 @@ async def get_business_clients(org_id: int,db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
     
 @router.get("/getTotalClient/{org_id}", response_model=_schemas.ClientCount, tags=["Client Router"])
-async def get_total_clients(org_id: int, db: _orm.Session = Depends(get_db)):
+async def get_total_clients(org_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        _helpers.verify_jwt(authorization, "User")
+        
         total_clients = await _services.get_total_clients(org_id, db)
         return {"total_clients": total_clients}
     except Exception as e:
