@@ -3,7 +3,7 @@ import datetime
 from typing import Optional
 
 import jwt
-from sqlalchemy import func, or_
+from sqlalchemy import desc, func, or_
 import sqlalchemy.orm as _orm
 from sqlalchemy.sql import and_  
 import email_validator as _email_check
@@ -131,7 +131,8 @@ async def get_leads(db: _orm.Session,params):
         _models.Leads.source_id == _user_model.Source.id
     ).outerjoin (
      _user_model.User,
-     _models.Leads.staff_id ==_user_model.User.id).filter(_models.Leads.org_id == params.get('org_id'))
+     _models.Leads.staff_id ==_user_model.User.id).filter(_models.Leads.org_id == params.get('org_id')).order_by(
+        desc(_models.Leads.created_at))
     
     print(query)
  

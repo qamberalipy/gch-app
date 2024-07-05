@@ -1,7 +1,7 @@
 from datetime import date,datetime
 from typing import List
 import jwt
-from sqlalchemy import func, or_
+from sqlalchemy import desc, func, or_
 import sqlalchemy.orm as _orm
 from sqlalchemy.sql import and_  
 import email_validator as _email_check
@@ -229,7 +229,8 @@ def get_filtered_staff(
     ).filter(
         _models.User.org_id == params.org_id,
         _models.User.is_deleted == False
-    )
+    ).order_by(
+        desc(_models.User.created_at))
 
     if params.staff_name:
         query = query.filter(or_(
