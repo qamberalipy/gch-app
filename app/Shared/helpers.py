@@ -33,8 +33,7 @@ def create_token(obj, obj_type: str):
     user_dict['user_type'] = obj_type.lower()
     
     access_token = jwt.encode(user_dict, JWT_SECRET, algorithm="HS256")
-    refresh_token= jwt.encode(user_dict, JWT_SECRET, algorithm="HS256")
-    return dict(access_token=access_token,refresh_token=refresh_token,token_type="bearer")
+    return dict(access_token=access_token,token_type="bearer")
 
 
 def verify_jwt(token: str, obj_type: str = "User"):
@@ -45,14 +44,9 @@ def verify_jwt(token: str, obj_type: str = "User"):
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        print(JWT_EXPIRY)
         token = token.split("Bearer ")[1]
         payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-        print("Payload",payload)
-        print("Time Difference", time.time() - payload["token_time"])
-       
         if (time.time() - payload["token_time"]) > int(JWT_EXPIRY):
-            print("Token Expired")
             raise credentials_exception
         if payload['user_type'] != obj_type.lower():
             raise credentials_exception
@@ -68,14 +62,9 @@ def refresh_jwt(refresh_token: str):
         if payload["user_type"] != "user":
             raise _fastapi.HTTPException(status_code=400, detail="Invalid user type")
         
-        new_expiry_time = time.time() + int(JWT_EXPIRY)
-        new_access_token = jwt.encode(
-            {**payload, "exp": new_expiry_time},
-            JWT_SECRET,
-            algorithm="HS256"
-        )
-        
-        return dict(access_token=new_access_token, token_type="bearer")
+        payload["token_time"] = time.time()
+        token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+        return dict(access_token=token, token_type="bearer")
     
     except jwt.ExpiredSignatureError:
         raise _fastapi.HTTPException(status_code=400, detail="Refresh token expired")
@@ -87,4 +76,4 @@ def get_current_user(request: _fastapi.Request):
     if not authorization:
         raise _fastapi.HTTPException(status_code=_fastapi.status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     token = authorization
-    return verify_jwt(token)        
+    return verify_jwt(token)
