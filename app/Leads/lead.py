@@ -67,6 +67,7 @@ async def get_leads(
     authorization: str = Header(None)):
     try:
         
+        
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid or missing access token")
 
