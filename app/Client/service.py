@@ -229,6 +229,7 @@ def get_filtered_clients(
     db: _orm.Session,
     params: _schemas.ClientFilterParams
 ) -> List[_schemas.ClientFilterRead]:
+    # Create a base query with the necessary joins
     query = db.query(
         _models.Client.id,
         _models.Client.own_member_id,
@@ -246,17 +247,18 @@ def get_filtered_clients(
         _coach_models.Coach.coach_name
     ).join(
         _models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id
-    ).join(
+    ).outerjoin(
         _models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id
-    ).join(
+    ).outerjoin(
         _models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id
-    ).join(
+    ).outerjoin(
         _coach_models.Coach, _models.ClientCoach.coach_id == _coach_models.Coach.id
     ).filter(
         _models.ClientOrganization.org_id == params.org_id,
         _models.ClientOrganization.is_deleted == False
     )
 
+    # Apply filters conditionally
     if params.client_name:
         query = query.filter(or_(
             _models.Client.first_name.ilike(f"%{params.client_name}%"),
@@ -291,7 +293,9 @@ def get_filtered_clients(
             _models.Client.address_1.ilike(search_pattern),
             _models.Client.address_2.ilike(search_pattern)
         ))
-    query = query.offset(params.offset).limit(params.limit)
+
+    # Add order by created_at and limit/offset for pagination
+    query = query.order_by(_models.Client.created_at).offset(params.offset).limit(params.limit)
     clients = query.all()
 
     return [
@@ -310,8 +314,7 @@ def get_filtered_clients(
         )
         for client in clients
     ]
-    
-    
+  
 async def get_client_byid(db: _orm.Session, client_id: int) -> _schemas.ClientByID:
     query = (
         db.query(
