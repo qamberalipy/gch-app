@@ -41,7 +41,7 @@ async def register_membership_plan(plan: _schemas.MembershipPlanCreate, db: _orm
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
-@router.get("/get_all/{org_id}", response_model=List[_schemas.MembershipPlanRead])
+@router.get("/get_all", response_model=List[_schemas.MembershipPlanRead])
 async def read_membership_plans(org_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:    
         if not authorization or not authorization.startswith("Bearer "):

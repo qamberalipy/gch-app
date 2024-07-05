@@ -42,7 +42,7 @@ async def register_coach(coach: _schemas.CoachCreate, db: _orm.Session = Depends
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-@router.get("/getCoach/{org_id}", response_model=List[_schemas.CoachRead], tags=["Coach Router"])
+@router.get("/getCoach", response_model=List[_schemas.CoachRead], tags=["Coach Router"])
 async def read_coaches(org_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         

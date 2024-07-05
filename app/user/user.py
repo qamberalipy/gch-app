@@ -156,7 +156,7 @@ async def register_staff(staff: _schemas.CreateStaff, db: _orm.Session = Depends
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 
-@router.get("/staff/get/{staff_id}", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
+@router.get("/staff/get", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
 async def get_all_staff(staff_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         
@@ -181,7 +181,7 @@ async def get_all_staff(staff_id: int, db: _orm.Session = Depends(get_db), autho
     
 
 
-@router.put("/staff/update/{staff_id}", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
+@router.put("/staff/update", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
 async def update_staff(staff_id: int, staff_update: _schemas.UpdateStaff, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         
@@ -200,7 +200,7 @@ async def update_staff(staff_id: int, staff_update: _schemas.UpdateStaff, db: _o
     
 
 
-@router.delete("/staff/delete/{staff_id}", tags=["Staff APIs"])
+@router.delete("/staff/delete", tags=["Staff APIs"])
 async def delete_staff(staff_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         
