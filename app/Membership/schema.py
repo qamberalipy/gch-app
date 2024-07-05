@@ -17,3 +17,23 @@ class MembershipPlanRead(MembershipPlanBase):
 
     class Config:
         from_attributes = True
+        
+class CreditBase(pydantic.BaseModel):
+    name: str
+    org_id: int
+    min_limit: int
+
+class CreditCreate(CreditBase):
+    created_by: Optional[int] = None
+
+class CreditUpdate(CreditBase):
+    updated_by: Optional[int] = None
+
+class CreditRead(CreditBase):
+    id: int
+    is_deleted: bool
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
+
+    class Config:
+        from_attributes = True

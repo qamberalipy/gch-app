@@ -59,3 +59,70 @@ async def read_membership_plans(org_id: int, db: _orm.Session = Depends(get_db),
     except DataError as e:
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+  
+    
+@router.post("/credits/", response_model=_schemas.CreditRead, tags=["Credits APIs"])
+def create_credit(credit: _schemas.CreditCreate,  db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:    
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        return _services.create_credit(credit,db)
+    
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
+@router.put("/credits/{credit_id}", response_model=_schemas.CreditRead, tags=["Credits APIs"])
+def update_credit(credit_id: int, credit: _schemas.CreditUpdate,  db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:    
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        db_credit = _services.update_credit(credit_id, credit,db)
+        if db_credit is None:
+            raise HTTPException(status_code=404, detail="Credit not found")
+        return db_credit
+    
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
+@router.delete("/credits/{credit_id}", response_model=_schemas.CreditRead, tags=["Credits APIs"])
+def delete_credit(credit_id: int,  db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:    
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        db_credit = _services.delete_credit(credit_id,db)
+        if db_credit is None:
+            raise HTTPException(status_code=404, detail="Credit not found")
+        return db_credit
+    
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
+@router.get("/credits/{org_id}", response_model=List[_schemas.CreditRead], tags=["Credits APIs"])
+def get_credits_by_org_id(org_id: int,  db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:    
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        return _services.get_credits_by_org_id(org_id,db)
+    
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")

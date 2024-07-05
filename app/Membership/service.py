@@ -47,3 +47,40 @@ def get_membership_plans_by_org_id(org_id: int, db: _orm.Session):
         models.MembershipPlan.org_id == org_id,
         models.MembershipPlan.is_deleted == False
     ).all()
+
+def create_credit(credit: _schemas.CreditCreate,db: _orm.Session):
+    db_credit = _models.Credits(
+        name=credit.name,
+        org_id=credit.org_id,
+        min_limit=credit.min_limit,
+        created_by=credit.created_by
+    )
+    db.add(db_credit)
+    db.commit()
+    db.refresh(db_credit)
+    return db_credit
+
+def update_credit(credit_id: int, credit: _schemas.CreditUpdate,db: _orm.Session):
+    db_credit = db.query(_models.Credits).filter(_models.Credits.id == credit_id).first()
+    if not db_credit:
+        return None
+    
+    db_credit.name = credit.name
+    db_credit.org_id = credit.org_id
+    db_credit.min_limit = credit.min_limit
+    db_credit.updated_by = credit.updated_by
+    db.commit()
+    db.refresh(db_credit)
+    return db_credit
+
+def delete_credit( credit_id: int,db: _orm.Session):
+    db_credit = db.query(_models.Credits).filter(_models.Credits.id == credit_id).first()
+    if not db_credit:
+        return None
+    
+    db_credit.is_deleted = True
+    db.commit()
+    return db_credit
+
+def get_credits_by_org_id( org_id: int,db: _orm.Session):
+    return db.query(_models.Credits).filter(_models.Credits.org_id == org_id, _models.Credits.is_deleted == False).all()
