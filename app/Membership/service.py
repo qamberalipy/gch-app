@@ -84,3 +84,6 @@ def delete_credit( credit_id: int,db: _orm.Session):
 
 def get_credits_by_org_id( org_id: int,db: _orm.Session):
     return db.query(_models.Credits).filter(_models.Credits.org_id == org_id, _models.Credits.is_deleted == False).all()
+
+def get_credit_by_id(credit_id: int,db: _orm.Session):
+    return db.query(_models.Credits).filter(_models.Credits.id == credit_id, _models.Credits.is_deleted == False).first()
