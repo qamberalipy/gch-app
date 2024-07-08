@@ -2,7 +2,7 @@
 import datetime 
 import jwt
 import sqlalchemy.orm as _orm
-from sqlalchemy.sql import and_  
+from sqlalchemy.sql import and_  ,desc
 import email_validator as _email_check
 import fastapi as _fastapi
 import fastapi.security as _security
@@ -91,7 +91,7 @@ def delete_credit( credit_id: int,db: _orm.Session):
     return db_credit
 
 def get_credits_by_org_id( org_id: int,db: _orm.Session):
-    return db.query(_models.Credits).filter(_models.Credits.org_id == org_id, _models.Credits.is_deleted == False).all()
+    return db.query(_models.Credits).filter(_models.Credits.org_id == org_id, _models.Credits.is_deleted == False).order_by(desc(_models.Credits.created_at)).all()
 
 def get_credit_by_id(credit_id: int,db: _orm.Session):
     return db.query(_models.Credits).filter(_models.Credits.id == credit_id, _models.Credits.is_deleted == False).first()
@@ -105,7 +105,7 @@ def create_sale_tax(sale_tax: _schemas.SaleTaxCreate,db: _orm.Session):
     return db_sale_tax
 
 def get_all_sale_taxes_by_org_id(org_id: int,db: _orm.Session):
-    return db.query(_models.Sale_tax).filter(_models.Sale_tax.org_id == org_id, _models.Sale_tax.is_deleted == False).all()
+    return db.query(_models.Sale_tax).filter(_models.Sale_tax.org_id == org_id, _models.Sale_tax.is_deleted == False).order_by(desc(_models.Sale_tax.created_at)).all()
 
 def get_sale_tax_by_id(sale_tax_id: int,db: _orm.Session):
     return db.query(_models.Sale_tax).filter(_models.Sale_tax.id == sale_tax_id, _models.Sale_tax.is_deleted == False).first()
