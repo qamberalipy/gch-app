@@ -44,7 +44,36 @@ class CreditRead(CreditBase):
 
     class Config:
         from_attributes = True
+        
+class IncomeCategoryBase(pydantic.BaseModel):
+    name: Optional[str] = None
+    position: Optional[int] = None
+    sale_tax_id: Optional[int] = None
+    org_id: Optional[int] = None
 
+class IncomeCategoryCreate(IncomeCategoryBase):
+    created_by: Optional[int] = None
+
+class IncomeCategoryUpdate(IncomeCategoryBase):
+    id: Optional[int] = None
+    updated_by: Optional[int] = None
+
+class IncomeCategoryDelete(pydantic.BaseModel):
+    id: int 
+    class Config:
+        from_attributes = True
+
+class IncomeCategoryRead(IncomeCategoryBase):
+    id: Optional[int] = None
+    is_deleted: bool
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
+    created_by: Optional[int] = None
+    updated_by: Optional[int] = None
+
+    class Config:
+        from_attributes = True      
+        
 class SaleTaxBase(pydantic.BaseModel):
     name: Optional[str] = None
     percentage: Optional[float] = None

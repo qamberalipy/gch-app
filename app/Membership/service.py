@@ -96,6 +96,50 @@ def get_credits_by_org_id( org_id: int,db: _orm.Session):
 def get_credit_by_id(credit_id: int,db: _orm.Session):
     return db.query(_models.Credits).filter(_models.Credits.id == credit_id, _models.Credits.is_deleted == False).first()
 
+def create_income_category(income_category: _schemas.IncomeCategoryCreate, db: _orm.Session):
+    db_income_category = _models.Income_category(**income_category.dict())
+    db.add(db_income_category)
+    db.commit()
+    db.refresh(db_income_category)
+    return db_income_category
+
+def get_all_income_categories_by_org_id(org_id: int, db: _orm.Session):
+    return db.query(_models.Income_category).filter(_models.Income_category.org_id == org_id, _models.Income_category.is_deleted == False).order_by(desc(_models.Income_category.created_at)).all()
+
+def get_income_category_by_id(income_category_id: int, db: _orm.Session):
+    return db.query(_models.Income_category).filter(_models.Income_category.id == income_category_id, _models.Income_category.is_deleted == False).first()
+
+def update_income_category(income_category: _schemas.IncomeCategoryUpdate, db: _orm.Session):
+    db_income_category = db.query(_models.Income_category).filter(_models.Income_category.id == income_category.id).first()
+    if not db_income_category:
+        return None
+
+    if income_category.name is not None:
+        db_income_category.name = income_category.name
+    if income_category.position is not None:
+        db_income_category.position = income_category.position
+    if income_category.sale_tax_id is not None:
+        db_income_category.sale_tax_id = income_category.sale_tax_id
+    if income_category.org_id is not None:
+        db_income_category.org_id = income_category.org_id
+    if income_category.updated_by is not None:
+        db_income_category.updated_by = income_category.updated_by
+
+    db_income_category.updated_at = datetime.datetime.now()
+
+    db.commit()
+    db.refresh(db_income_category)
+    return db_income_category
+
+def delete_income_category(income_category_id: int, db: _orm.Session):
+    db_income_category = db.query(_models.Income_category).filter(_models.Income_category.id == income_category_id).first()
+    if db_income_category is None:
+        return None
+    db_income_category.is_deleted = True
+    db_income_category.updated_at = datetime.datetime.now()
+    db.commit()
+    db.refresh(db_income_category)
+    return db_income_category
 
 def create_sale_tax(sale_tax: _schemas.SaleTaxCreate,db: _orm.Session):
     db_sale_tax = _models.Sale_tax(**sale_tax.dict())

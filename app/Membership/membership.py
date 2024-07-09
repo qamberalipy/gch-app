@@ -135,6 +135,79 @@ def get_credit_by_id(credit_id: int, db: _orm.Session = Depends(get_db), authori
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
+@router.post("/income_category", response_model=_schemas.IncomeCategoryRead, tags=["Income Category APIs"])
+def create_income_category(income_category: _schemas.IncomeCategoryCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:    
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+        _helpers.verify_jwt(authorization, "User")
+            
+        return _services.create_income_category(income_category=income_category, db=db)
+    except IntegrityError as e:
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
+@router.get("/income_category/getAll", response_model=list[_schemas.IncomeCategoryRead], tags=["Income Category APIs"])
+def get_all_income_categories(org_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:    
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+        _helpers.verify_jwt(authorization, "User")
+        return _services.get_all_income_categories_by_org_id(org_id=org_id, db=db)
+    
+    except IntegrityError as e:
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
+@router.get("/income_category", response_model=_schemas.IncomeCategoryRead, tags=["Income Category APIs"])
+def get_income_category(income_category_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:    
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+        _helpers.verify_jwt(authorization, "User")
+        db_income_category = _services.get_income_category_by_id(income_category_id=income_category_id, db=db)
+        if db_income_category is None:
+            raise HTTPException(status_code=404, detail="Income category not found")
+        return db_income_category
+    
+    except IntegrityError as e:
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
+@router.put("/income_category", response_model=_schemas.IncomeCategoryRead, tags=["Income Category APIs"])
+def update_income_category(income_category: _schemas.IncomeCategoryUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:    
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+        _helpers.verify_jwt(authorization, "User")
+        db_income_category = _services.update_income_category(income_category=income_category, db=db)
+        if db_income_category is None:
+            raise HTTPException(status_code=404, detail="Income category not found")
+        return db_income_category
+    
+    except IntegrityError as e:
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
+@router.delete("/income_category", response_model=_schemas.IncomeCategoryRead, tags=["Income Category APIs"])
+def delete_income_category(income_category: _schemas.IncomeCategoryDelete, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:    
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+        _helpers.verify_jwt(authorization, "User")
+        db_income_category = _services.delete_income_category(income_category_id=income_category.id, db=db)
+        if db_income_category is None:
+            raise HTTPException(status_code=404, detail="Income category not found")
+        return db_income_category  
+    
+    except IntegrityError as e:
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
 @router.post("/sale_taxes", response_model=_schemas.SaleTaxRead, tags=["Sale_tax APIs"])
 def create_sale_tax(sale_tax: _schemas.SaleTaxCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
