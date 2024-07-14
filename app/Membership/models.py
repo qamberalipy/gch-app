@@ -6,17 +6,31 @@ import app.core.db.session as _database
 import bcrypt as _bcrypt
 import sqlalchemy.ext.declarative as _declarative
 
+
 class MembershipPlan(_database.Base):
     __tablename__ = "membership_plan"
+
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
     name = _sql.Column(_sql.String)
-    price = _sql.Column(_sql.String)  
     org_id = _sql.Column(_sql.Integer)
-    is_deleted= _sql.Column(_sql.Boolean, default=False)
-    created_at=_sql.Column(_sql.DateTime)
-    updated_at=_sql.Column(_sql.DateTime)
-    created_by=_sql.Column(_sql.Integer)
-    updated_by=_sql.Column(_sql.Integer)
+    group_id = _sql.Column(_sql.Integer)
+    status = _sql.Column(_sql.String(10))  # varchar(10) in the image description
+    description = _sql.Column(_sql.Text)  # text in the image description
+    access_time = _sql.Column(_sql.JSON)
+    net_price = _sql.Column(_sql.Float)
+    income_category_id = _sql.Column(_sql.Integer)
+    discount = _sql.Column(_sql.Float)
+    total_price = _sql.Column(_sql.Float)
+    payment_method = _sql.Column(_sql.String(20))  # varchar(20) in the image description
+    reg_fee = _sql.Column(_sql.Float)
+    billing_cycle = _sql.Column(_sql.String(30))  # varchar(30) in the image description
+    auto_renewal = _sql.Column(_sql.Boolean, default=False)
+    renewal_details = _sql.Column(_sql.JSON)
+    credit_id = _sql.Column(_sql.Integer)
+    updated_at = _sql.Column(_sql.DateTime,default=_dt.datetime.now)
+    created_by = _sql.Column(_sql.Integer)
+    updated_by = _sql.Column(_sql.Integer)
+    is_deleted = _sql.Column(_sql.Boolean, default=False)
     
     
 class UserMembership(_database.Base):

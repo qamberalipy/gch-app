@@ -1,18 +1,39 @@
 import pydantic
 import datetime
-from typing import Optional
+from typing import Dict, Optional
+
 
 class MembershipPlanBase(pydantic.BaseModel):
     name: str
-    price: str
     org_id: int
+    group_id: Optional[int]
+    status: Optional[str]
+    description: Optional[str]
+    access_time: Optional[Dict]
+    net_price: Optional[float]
+    income_category_id: Optional[int]
+    discount: Optional[float]
+    total_price: Optional[float]
+    payment_method: Optional[str]
+    reg_fee: Optional[float]
+    billing_cycle: Optional[str]
+    auto_renewal: Optional[bool]
+    renewal_details: Optional[Dict]
+    credit_id: Optional[int]
 
 class MembershipPlanCreate(MembershipPlanBase):
-    pass
+    created_by: int
+
+class MembershipPlanUpdate(MembershipPlanBase):
+    id:int
+    updated_by: Optional[int]
+
+class MembershipPlanDelete(MembershipPlanBase):
+    id:int
 
 class MembershipPlanRead(MembershipPlanBase):
     id: int
-    is_deleted: bool
+    updated_at: datetime.datetime
 
     class Config:
         from_attributes = True
