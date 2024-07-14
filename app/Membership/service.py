@@ -35,18 +35,36 @@ def get_db():
         db.close()
         
         
-def create_membership_plan(plan: _schemas.MembershipPlanCreate, db: _orm.Session):
-    db_plan = models.MembershipPlan(name=plan.name, price=plan.price, org_id=plan.org_id)
-    db.add(db_plan)
+def create_membership_plan( membership_plan: _schemas.MembershipPlanCreate,db: _orm.Session):
+    db_membership_plan = models.MembershipPlan(**membership_plan.dict())
+    db.add(db_membership_plan)
     db.commit()
-    db.refresh(db_plan)
-    return db_plan
+    db.refresh(db_membership_plan)
+    return db_membership_plan
 
-def get_membership_plans_by_org_id(org_id: int, db: _orm.Session):
-    return db.query(models.MembershipPlan).filter(
-        models.MembershipPlan.org_id == org_id,
-        models.MembershipPlan.is_deleted == False
-    ).all()
+def update_membership_plan( membership_plan_id: int, membership_plan: _schemas.MembershipPlanUpdate,db: _orm.Session):
+    db_membership_plan = db.query(models.MembershipPlan).filter(models.MembershipPlan.id == membership_plan_id).first()
+    if db_membership_plan:
+        for key, value in membership_plan.dict(exclude_unset=True).items():
+            setattr(db_membership_plan, key, value)
+        db.commit()
+        db.refresh(db_membership_plan)
+    return db_membership_plan
+
+def delete_membership_plan( membership_plan_id: int,db: _orm.Session):
+    db_membership_plan = db.query(models.MembershipPlan).filter(models.MembershipPlan.id == membership_plan_id).first()
+    if db_membership_plan:
+        db_membership_plan.is_deleted = True
+        db.commit()
+        db.refresh(db_membership_plan)
+    return db_membership_plan
+
+def get_membership_plan_by_id( membership_plan_id: int,db: _orm.Session):
+    return db.query(models.MembershipPlan).filter(models.MembershipPlan.id == membership_plan_id).first()
+
+def get_membership_plans_by_org_id( org_id: int,db: _orm.Session):
+    return db.query(models.MembershipPlan).filter(models.MembershipPlan.org_id == org_id).all()
+
 
 def create_credit(credit: _schemas.CreditCreate,db: _orm.Session):
     db_credit = _models.Credits(
