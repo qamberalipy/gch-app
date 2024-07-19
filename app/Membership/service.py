@@ -94,41 +94,41 @@ def get_membership_plans_by_org_id( org_id: int,db: _orm.Session):
     return db.query(models.MembershipPlan).filter(models.MembershipPlan.org_id == org_id).all()
 
 
-def create_facility(credit: _schemas.FacilityCreate,db: _orm.Session):
+def create_facility(facility: _schemas.FacilityCreate,db: _orm.Session):
     db_facility = _models.Facility(
-        name=credit.name,
-        org_id=credit.org_id,
-        min_limit=credit.min_limit,
-        created_by=credit.created_by
+        name=facility.name,
+        org_id=facility.org_id,
+        min_limit=facility.min_limit,
+        created_by=facility.created_by
     )
     db.add(db_facility)
     db.commit()
     db.refresh(db_facility)
     return db_facility
 
-def update_facility(credit_update: _schemas.FacilityUpdate, db: _orm.Session):
-    db_facility = db.query(_models.Facility).filter(_models.Facility.id == credit_update.id).first()
+def update_facility(facility_update: _schemas.FacilityUpdate, db: _orm.Session):
+    db_facility = db.query(_models.Facility).filter(_models.Facility.id == facility_update.id).first()
     if not db_facility:
         return None
 
-    if credit_update.name is not None:
-        db_facility.name = credit_update.name
-    if credit_update.org_id is not None:
-        db_facility.org_id = credit_update.org_id
-    if credit_update.min_limit is not None:
-        db_facility.min_limit = credit_update.min_limit
-    if credit_update.status is not None:
-        db_facility.status = credit_update.status
-    if credit_update.updated_by is not None:
-        db_facility.updated_by = credit_update.updated_by
+    if facility_update.name is not None:
+        db_facility.name = facility_update.name
+    if facility_update.org_id is not None:
+        db_facility.org_id = facility_update.org_id
+    if facility_update.min_limit is not None:
+        db_facility.min_limit = facility_update.min_limit
+    if facility_update.status is not None:
+        db_facility.status = facility_update.status
+    if facility_update.updated_by is not None:
+        db_facility.updated_by = facility_update.updated_by
 
     db.commit()
     db.refresh(db_facility)
     return db_facility
 
 
-def delete_facility( credit_id: int,db: _orm.Session):
-    db_facility = db.query(_models.Facility).filter(_models.Facility.id == credit_id).first()
+def delete_facility( facility_id: int,db: _orm.Session):
+    db_facility = db.query(_models.Facility).filter(_models.Facility.id == facility_id).first()
     if not db_facility:
         return None
     
@@ -139,8 +139,8 @@ def delete_facility( credit_id: int,db: _orm.Session):
 def get_facility_by_org_id( org_id: int,db: _orm.Session):
     return db.query(_models.Facility).filter(_models.Facility.org_id == org_id, _models.Facility.is_deleted == False).order_by(desc(_models.Facility.created_at)).all()
 
-def get_facility_by_id(credit_id: int,db: _orm.Session):
-    return db.query(_models.Facility).filter(_models.Facility.id == credit_id, _models.Facility.is_deleted == False).first()
+def get_facility_by_id(facility_id: int,db: _orm.Session):
+    return db.query(_models.Facility).filter(_models.Facility.id == facility_id, _models.Facility.is_deleted == False).first()
 
 def create_income_category(income_category: _schemas.IncomeCategoryCreate, db: _orm.Session):
     db_income_category = _models.Income_category(**income_category.dict())
