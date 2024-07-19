@@ -273,3 +273,18 @@ def get_filtered_staff(
         )
         for st in staff
     ]
+
+
+async def create_role(role: _schemas.RoleCreate, db: _orm.Session = _fastapi.Depends(get_db)):
+    db_role = _models.Role(
+        name=role.name,
+        org_id=role.org_id
+    )
+    db.add(db_role)
+    db.commit()
+    db.refresh(db_role)
+    db_permission = _models.Permission(
+        resource_id=role.resource_id,
+        role_id=db_role.id,
+        access_type=role.access_type
+    )
