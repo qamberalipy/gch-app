@@ -175,7 +175,9 @@ class StaffFilterRead(pydantic.BaseModel):
 class RoleBase(pydantic.BaseModel):
     name: str
     org_id: int
-    is_deleted: bool
+    resource_id: int
+    access_type: str
+    is_deleted: Optional[bool] = None
 
     class Config:
         from_attributes = True
@@ -186,7 +188,8 @@ class RoleCreate(RoleBase):
 
 class RoleRead(RoleBase):
     id: int
-
+    name: str
+    
     class Config:
         from_attributes = True
 

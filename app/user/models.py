@@ -73,6 +73,8 @@ class Resource(_database.Base):
     __tablename__ = "resource"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     name=_sql.Column(_sql.String(50))
+    code=_sql.Column(_sql.String(50))
+    parent=_sql.Column(_sql.Integer)
     created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
     updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
     created_by = _sql.Column(_sql.Integer)
