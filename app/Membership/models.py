@@ -14,8 +14,8 @@ class MembershipPlan(_database.Base):
     name = _sql.Column(_sql.String)
     org_id = _sql.Column(_sql.Integer)
     group_id = _sql.Column(_sql.Integer)
-    status = _sql.Column(_sql.String(10))  # varchar(10) in the image description
-    description = _sql.Column(_sql.Text)  # text in the image description
+    status = _sql.Column(_sql.String(10))  
+    description = _sql.Column(_sql.Text)  
     access_time = _sql.Column(_sql.JSON)
     net_price = _sql.Column(_sql.Float)
     income_category_id = _sql.Column(_sql.Integer)
@@ -54,8 +54,8 @@ class Membership_group(_database.Base):
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
     
-class Credits(_database.Base):
-    __tablename__ = "credits"
+class Facility(_database.Base):
+    __tablename__ = "facility"
     
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     name = _sql.Column(_sql.String)
@@ -67,7 +67,17 @@ class Credits(_database.Base):
     updated_at=_sql.Column(_sql.DateTime,default=_dt.datetime.now)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
-
+    
+class Facility_membership_plan(_database.Base):
+    __tablename__ = "facility_membership_plan"
+    
+    id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
+    facility_id=_sql.Column(_sql.Integer)
+    membership_plan_id=_sql.Column(_sql.Integer)
+    total_credits = _sql.Column(_sql.Integer)
+    validity = _sql.Column(_sql.JSON)
+    is_deleted= _sql.Column(_sql.Boolean, default=False)
+    
 class Income_category(_database.Base):
     __tablename__ = "income_category"
     

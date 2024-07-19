@@ -35,11 +35,39 @@ def get_db():
         db.close()
         
         
-def create_membership_plan( membership_plan: _schemas.MembershipPlanCreate,db: _orm.Session):
-    db_membership_plan = models.MembershipPlan(**membership_plan.dict())
+def create_membership_plan(membership_plan: _schemas.MembershipPlanCreate, db: _orm.Session):
+    db_membership_plan = models.MembershipPlan(
+        name=membership_plan.name,
+        org_id=membership_plan.org_id,
+        group_id=membership_plan.group_id,
+        status=membership_plan.status,
+        description=membership_plan.description,
+        access_time=membership_plan.access_time,
+        net_price=membership_plan.net_price,
+        income_category_id=membership_plan.income_category_id,
+        discount=membership_plan.discount,
+        total_price=membership_plan.total_price,
+        payment_method=membership_plan.payment_method,
+        reg_fee=membership_plan.reg_fee,
+        billing_cycle=membership_plan.billing_cycle,
+        auto_renewal=membership_plan.auto_renewal,
+        renewal_details=membership_plan.renewal_details,
+        created_by=membership_plan.created_by,
+    )
     db.add(db_membership_plan)
     db.commit()
     db.refresh(db_membership_plan)
+
+    for facility in membership_plan.facilities:
+        db_facility_membership_plan = models.Facility_membership_plan(
+            facility_id=facility.id,
+            membership_plan_id=db_membership_plan.id,
+            total_credits=facility.total_credits,
+            validity=facility.validity,
+        )
+        db.add(db_facility_membership_plan)
+
+    db.commit()
     return db_membership_plan
 
 def update_membership_plan( membership_plan_id: int, membership_plan: _schemas.MembershipPlanUpdate,db: _orm.Session):
@@ -67,7 +95,7 @@ def get_membership_plans_by_org_id( org_id: int,db: _orm.Session):
 
 
 def create_credit(credit: _schemas.CreditCreate,db: _orm.Session):
-    db_credit = _models.Credits(
+    db_credit = _models.Facility(
         name=credit.name,
         org_id=credit.org_id,
         min_limit=credit.min_limit,
@@ -79,7 +107,7 @@ def create_credit(credit: _schemas.CreditCreate,db: _orm.Session):
     return db_credit
 
 def update_credit(credit_update: _schemas.CreditUpdate, db: _orm.Session):
-    db_credit = db.query(_models.Credits).filter(_models.Credits.id == credit_update.id).first()
+    db_credit = db.query(_models.Facility).filter(_models.Facility.id == credit_update.id).first()
     if not db_credit:
         return None
 
@@ -100,7 +128,7 @@ def update_credit(credit_update: _schemas.CreditUpdate, db: _orm.Session):
 
 
 def delete_credit( credit_id: int,db: _orm.Session):
-    db_credit = db.query(_models.Credits).filter(_models.Credits.id == credit_id).first()
+    db_credit = db.query(_models.Facility).filter(_models.Facility.id == credit_id).first()
     if not db_credit:
         return None
     
@@ -109,10 +137,10 @@ def delete_credit( credit_id: int,db: _orm.Session):
     return db_credit
 
 def get_credits_by_org_id( org_id: int,db: _orm.Session):
-    return db.query(_models.Credits).filter(_models.Credits.org_id == org_id, _models.Credits.is_deleted == False).order_by(desc(_models.Credits.created_at)).all()
+    return db.query(_models.Facility).filter(_models.Facility.org_id == org_id, _models.Facility.is_deleted == False).order_by(desc(_models.Facility.created_at)).all()
 
 def get_credit_by_id(credit_id: int,db: _orm.Session):
-    return db.query(_models.Credits).filter(_models.Credits.id == credit_id, _models.Credits.is_deleted == False).first()
+    return db.query(_models.Facility).filter(_models.Facility.id == credit_id, _models.Facility.is_deleted == False).first()
 
 def create_income_category(income_category: _schemas.IncomeCategoryCreate, db: _orm.Session):
     db_income_category = _models.Income_category(**income_category.dict())

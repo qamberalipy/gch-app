@@ -1,6 +1,6 @@
 import pydantic
 import datetime
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 
 class MembershipPlanBase(pydantic.BaseModel):
@@ -19,9 +19,14 @@ class MembershipPlanBase(pydantic.BaseModel):
     billing_cycle: Optional[str]
     auto_renewal: Optional[bool]
     renewal_details: Optional[Dict]
-    credit_id: Optional[int]
+
+class FacilityMembershipPlan(pydantic.BaseModel):
+    id: int
+    total_credits: int
+    validity: Dict
 
 class MembershipPlanCreate(MembershipPlanBase):
+    facilities: List[FacilityMembershipPlan]
     created_by: int
 
 class MembershipPlanUpdate(MembershipPlanBase):

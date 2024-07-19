@@ -25,13 +25,13 @@ def get_db():
     finally:
         db.close()
         
-
 @router.post("/membership_plans", response_model=_schemas.MembershipPlanRead, tags=["Membership Plans"])
-def create_membership_plan(membership_plan: _schemas.MembershipPlanCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+def create_membership_plan(membership_plan: _schemas.MembershipPlanCreate,db: _orm.Session = Depends(get_db),authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid or missing access token")
+    
     _helpers.verify_jwt(authorization, "User")
-    return _services.create_membership_plan(membership_plan,db)
+    return _services.create_membership_plan(membership_plan, db)
 
 @router.put("/membership_plans", response_model=_schemas.MembershipPlanRead, tags=["Membership Plans"])
 def update_membership_plan(membership_plan: _schemas.MembershipPlanUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
@@ -76,7 +76,7 @@ def get_membership_plans_by_org_id(org_id: int, db: _orm.Session = Depends(get_d
 
 
     
-@router.post("/credits", response_model=_schemas.CreditRead, tags=["Credits APIs"])
+@router.post("/facilities", response_model=_schemas.CreditRead, tags=["Credits APIs"])
 def create_credit(credit: _schemas.CreditCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:    
         if not authorization or not authorization.startswith("Bearer "):
@@ -88,7 +88,7 @@ def create_credit(credit: _schemas.CreditCreate, db: _orm.Session = Depends(get_
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-@router.put("/credits", response_model=_schemas.CreditRead, tags=["Credits APIs"])
+@router.put("/facilities", response_model=_schemas.CreditRead, tags=["Credits APIs"])
 def update_credit(credit: _schemas.CreditUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:    
         if not authorization or not authorization.startswith("Bearer "):
@@ -104,7 +104,7 @@ def update_credit(credit: _schemas.CreditUpdate, db: _orm.Session = Depends(get_
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-@router.delete("/credits", response_model=_schemas.CreditRead, tags=["Credits APIs"])
+@router.delete("/facilities", response_model=_schemas.CreditRead, tags=["Credits APIs"])
 def delete_credit(credit: _schemas.CreditDelete, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:    
         if not authorization or not authorization.startswith("Bearer "):
@@ -121,7 +121,7 @@ def delete_credit(credit: _schemas.CreditDelete, db: _orm.Session = Depends(get_
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 
-@router.get("/credits/getAll", response_model=List[_schemas.CreditRead], tags=["Credits APIs"])
+@router.get("/facilities/getAll", response_model=List[_schemas.CreditRead], tags=["Credits APIs"])
 def get_credits_by_org_id(org_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:    
         if not authorization or not authorization.startswith("Bearer "):
@@ -134,7 +134,7 @@ def get_credits_by_org_id(org_id: int, db: _orm.Session = Depends(get_db), autho
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
-@router.get("/credits", response_model=_schemas.CreditRead, tags=["Credits APIs"])
+@router.get("/facilities", response_model=_schemas.CreditRead, tags=["Credits APIs"])
 def get_credit_by_id(credit_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:    
         if not authorization or not authorization.startswith("Bearer "):
