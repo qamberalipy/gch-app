@@ -17,7 +17,7 @@ class MembershipPlanBase(pydantic.BaseModel):
     payment_method: Optional[str]
     reg_fee: Optional[float]
     billing_cycle: Optional[str]
-    auto_renewal: Optional[bool]
+    auto_renewal: Optional[bool]=False
     renewal_details: Optional[Dict]
 
 class FacilityMembershipPlan(pydantic.BaseModel):
