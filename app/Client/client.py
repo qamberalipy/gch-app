@@ -45,6 +45,9 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
         status = client_data.pop('status')
         coach_id = client_data.pop('coach_id', None)
         membership_id = client_data.pop('membership_id')
+        prolongation_period=client_data.pop('prolongation_period')
+        auto_renew_days=client_data.pop('auto_renew_days')
+        inv_days_cycle=client_data.pop('inv_days_cycle')
 
         new_client = await _services.create_client(_schemas.RegisterClient(**client_data), db)
         
@@ -53,7 +56,7 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
         )
 
         await _services.create_client_membership(
-            _schemas.CreateClientMembership(client_id=new_client.id, membership_plan_id=membership_id), db
+            _schemas.CreateClientMembership(client_id=new_client.id, membership_plan_id=membership_id,prolongation_period=prolongation_period,auto_renew_days=auto_renew_days,inv_days_cycle=inv_days_cycle), db
         )
 
         if coach_id is not None:

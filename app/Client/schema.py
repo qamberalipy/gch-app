@@ -33,7 +33,9 @@ class ClientCreate(ClientBase):
     membership_id: int
     status: str  # Corrected type annotation
     send_invitation: bool
-    
+    prolongation_period:Optional[int] = None
+    auto_renew_days:Optional[int] = None
+    inv_days_cycle:Optional[int] = None
     class Config:
         from_attributes = True
         
@@ -133,6 +135,9 @@ class CreateClientOrganization(ClientOrganization):
 class ClientMembership(pydantic.BaseModel):
     client_id: int
     membership_plan_id: int
+    prolongation_period:Optional[int] = None
+    auto_renew_days:Optional[int] = None
+    inv_days_cycle:Optional[int] = None
 
 class CreateClientMembership(ClientMembership):
     pass
