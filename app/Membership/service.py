@@ -35,11 +35,39 @@ def get_db():
         db.close()
         
         
-def create_membership_plan( membership_plan: _schemas.MembershipPlanCreate,db: _orm.Session):
-    db_membership_plan = models.MembershipPlan(**membership_plan.dict())
+def create_membership_plan(membership_plan: _schemas.MembershipPlanCreate, db: _orm.Session):
+    db_membership_plan = models.MembershipPlan(
+        name=membership_plan.name,
+        org_id=membership_plan.org_id,
+        group_id=membership_plan.group_id,
+        status=membership_plan.status,
+        description=membership_plan.description,
+        access_time=membership_plan.access_time,
+        net_price=membership_plan.net_price,
+        income_category_id=membership_plan.income_category_id,
+        discount=membership_plan.discount,
+        total_price=membership_plan.total_price,
+        payment_method=membership_plan.payment_method,
+        reg_fee=membership_plan.reg_fee,
+        billing_cycle=membership_plan.billing_cycle,
+        auto_renewal=membership_plan.auto_renewal,
+        renewal_details=membership_plan.renewal_details,
+        created_by=membership_plan.created_by,
+    )
     db.add(db_membership_plan)
     db.commit()
     db.refresh(db_membership_plan)
+
+    for facility in membership_plan.facilities:
+        db_facility_membership_plan = models.Facility_membership_plan(
+            facility_id=facility.id,
+            membership_plan_id=db_membership_plan.id,
+            total_credits=facility.total_credits,
+            validity=facility.validity,
+        )
+        db.add(db_facility_membership_plan)
+
+    db.commit()
     return db_membership_plan
 
 def update_membership_plan( membership_plan_id: int, membership_plan: _schemas.MembershipPlanUpdate,db: _orm.Session):
@@ -66,53 +94,53 @@ def get_membership_plans_by_org_id( org_id: int,db: _orm.Session):
     return db.query(models.MembershipPlan).filter(models.MembershipPlan.org_id == org_id).all()
 
 
-def create_credit(credit: _schemas.CreditCreate,db: _orm.Session):
-    db_credit = _models.Credits(
-        name=credit.name,
-        org_id=credit.org_id,
-        min_limit=credit.min_limit,
-        created_by=credit.created_by
+def create_facility(facility: _schemas.FacilityCreate,db: _orm.Session):
+    db_facility = _models.Facility(
+        name=facility.name,
+        org_id=facility.org_id,
+        min_limit=facility.min_limit,
+        created_by=facility.created_by
     )
-    db.add(db_credit)
+    db.add(db_facility)
     db.commit()
-    db.refresh(db_credit)
-    return db_credit
+    db.refresh(db_facility)
+    return db_facility
 
-def update_credit(credit_update: _schemas.CreditUpdate, db: _orm.Session):
-    db_credit = db.query(_models.Credits).filter(_models.Credits.id == credit_update.id).first()
-    if not db_credit:
+def update_facility(facility_update: _schemas.FacilityUpdate, db: _orm.Session):
+    db_facility = db.query(_models.Facility).filter(_models.Facility.id == facility_update.id).first()
+    if not db_facility:
         return None
 
-    if credit_update.name is not None:
-        db_credit.name = credit_update.name
-    if credit_update.org_id is not None:
-        db_credit.org_id = credit_update.org_id
-    if credit_update.min_limit is not None:
-        db_credit.min_limit = credit_update.min_limit
-    if credit_update.status is not None:
-        db_credit.status = credit_update.status
-    if credit_update.updated_by is not None:
-        db_credit.updated_by = credit_update.updated_by
+    if facility_update.name is not None:
+        db_facility.name = facility_update.name
+    if facility_update.org_id is not None:
+        db_facility.org_id = facility_update.org_id
+    if facility_update.min_limit is not None:
+        db_facility.min_limit = facility_update.min_limit
+    if facility_update.status is not None:
+        db_facility.status = facility_update.status
+    if facility_update.updated_by is not None:
+        db_facility.updated_by = facility_update.updated_by
 
     db.commit()
-    db.refresh(db_credit)
-    return db_credit
+    db.refresh(db_facility)
+    return db_facility
 
 
-def delete_credit( credit_id: int,db: _orm.Session):
-    db_credit = db.query(_models.Credits).filter(_models.Credits.id == credit_id).first()
-    if not db_credit:
+def delete_facility( facility_id: int,db: _orm.Session):
+    db_facility = db.query(_models.Facility).filter(_models.Facility.id == facility_id).first()
+    if not db_facility:
         return None
     
-    db_credit.is_deleted = True
+    db_facility.is_deleted = True
     db.commit()
-    return db_credit
+    return db_facility
 
-def get_credits_by_org_id( org_id: int,db: _orm.Session):
-    return db.query(_models.Credits).filter(_models.Credits.org_id == org_id, _models.Credits.is_deleted == False).order_by(desc(_models.Credits.created_at)).all()
+def get_facility_by_org_id( org_id: int,db: _orm.Session):
+    return db.query(_models.Facility).filter(_models.Facility.org_id == org_id, _models.Facility.is_deleted == False).order_by(desc(_models.Facility.created_at)).all()
 
-def get_credit_by_id(credit_id: int,db: _orm.Session):
-    return db.query(_models.Credits).filter(_models.Credits.id == credit_id, _models.Credits.is_deleted == False).first()
+def get_facility_by_id(facility_id: int,db: _orm.Session):
+    return db.query(_models.Facility).filter(_models.Facility.id == facility_id, _models.Facility.is_deleted == False).first()
 
 def create_income_category(income_category: _schemas.IncomeCategoryCreate, db: _orm.Session):
     db_income_category = _models.Income_category(**income_category.dict())

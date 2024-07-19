@@ -1,6 +1,6 @@
 import pydantic
 import datetime
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 
 class MembershipPlanBase(pydantic.BaseModel):
@@ -19,9 +19,14 @@ class MembershipPlanBase(pydantic.BaseModel):
     billing_cycle: Optional[str]
     auto_renewal: Optional[bool]
     renewal_details: Optional[Dict]
-    credit_id: Optional[int]
+
+class FacilityMembershipPlan(pydantic.BaseModel):
+    id: int
+    total_credits: int
+    validity: Dict
 
 class MembershipPlanCreate(MembershipPlanBase):
+    facilities: List[FacilityMembershipPlan]
     created_by: int
 
 class MembershipPlanUpdate(MembershipPlanBase):
@@ -38,26 +43,26 @@ class MembershipPlanRead(MembershipPlanBase):
     class Config:
         from_attributes = True
         
-class CreditBase(pydantic.BaseModel):
+class FacilityBase(pydantic.BaseModel):
     name: Optional[str] = None
     org_id: Optional[int] = None
     min_limit: Optional[int] = None
     status: Optional[bool] = True
 
-class CreditDelete(pydantic.BaseModel):
+class FacilityDelete(pydantic.BaseModel):
     id: int  # Correctly annotated with the type int
 
     class Config:
         from_attributes = True
     
-class CreditCreate(CreditBase):
+class FacilityCreate(FacilityBase):
     created_by: Optional[int] = None
 
-class CreditUpdate(CreditBase):
+class FacilityUpdate(FacilityBase):
     id:int
     updated_by: Optional[int] = None
 
-class CreditRead(CreditBase):
+class FacilityRead(FacilityBase):
     id: int
     is_deleted: bool
     created_at: datetime.datetime
