@@ -10,7 +10,6 @@ from app.Membership import membership_router
 from app.Coach import coach_router
 from app.Event import event_router
 from app.Leads import leads_router
-# import logging
 
 load_dotenv(".env")
 

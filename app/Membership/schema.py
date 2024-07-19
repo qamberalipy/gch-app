@@ -128,4 +128,27 @@ class SaleTaxDelete(pydantic.BaseModel):
 
     class Config:
         from_attributes = True
-    
+
+
+class GroupCreate(pydantic.BaseModel):
+    org_id: int
+    name: str
+    created_by: Optional[int] = None
+    updated_by: Optional[int] = None
+
+class GroupRead(pydantic.BaseModel):
+    id: int
+    name: str
+    org_id: int
+    created_by: Optional[int] = None
+    updated_by: Optional[int] = None
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
+
+    class Config:
+        from_attributes = True
+        arbitrary_types_allowed = True
+
+class GroupUpdate(pydantic.BaseModel):
+    id: int
+    name: Optional[str] = None

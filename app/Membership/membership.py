@@ -5,7 +5,6 @@ import app.Membership.schema as _schemas
 import sqlalchemy.orm as _orm
 import app.Membership.models as _models
 import app.Membership.service as _services
-# from main import logger
 import app.core.db.session as _database
 import pika
 import logging
@@ -236,20 +235,24 @@ def create_sale_tax(sale_tax: _schemas.SaleTaxCreate, db: _orm.Session = Depends
         raise HTTPException(status_code=400, detail="Integrity error occurred")
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+    
+    
 
 @router.get("/sale_taxes/getAll", response_model=list[_schemas.SaleTaxRead], tags=["Sale_tax APIs"])
 def get_all_sale_taxes(org_id: int , db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:    
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
         
+        _helpers.verify_jwt(authorization, "User")
         return _services.get_all_sale_taxes_by_org_id(db=db,org_id=org_id)
     
     except IntegrityError as e:
         raise HTTPException(status_code=400, detail="Integrity error occurred")
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
+       
 
 @router.get("/sale_taxes", response_model=_schemas.SaleTaxRead, tags=["Sale_tax APIs"])
 def get_sale_tax(sale_tax_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
@@ -265,6 +268,8 @@ def get_sale_tax(sale_tax_id: int, db: _orm.Session = Depends(get_db), authoriza
         raise HTTPException(status_code=400, detail="Integrity error occurred")
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+    
+    
 
 @router.put("/sale_taxes", response_model=_schemas.SaleTaxRead, tags=["Sale_tax APIs"])
 def update_sale_tax(sale_tax: _schemas.SaleTaxUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
@@ -300,3 +305,64 @@ def delete_sale_tax(sale_tax: _schemas.SaleTaxDelete, db: _orm.Session = Depends
         raise HTTPException(status_code=400, detail="Integrity error occurred")
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
+
+@router.post("/group",response_model=_schemas.GroupRead, tags=["Group API"])
+def create_group(group:_schemas.GroupCreate,db: _orm.Session = Depends(get_db),authorization: str = Header(None)): 
+    try:    
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+        _helpers.verify_jwt(authorization, "User")
+        return _services.create_group(group=group,db=db)
+    except IntegrityError as e:
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+    
+
+
+@router.get("/group",response_model=_schemas.GroupRead, tags=["Group API"])
+def get_group(id:int,db: _orm.Session = Depends(get_db),authorization: str = Header(None)):
+
+    try:    
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+        _helpers.verify_jwt(authorization, "User")
+        return _services.get_group_by_id(id,db)
+    except IntegrityError as e:
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+     
+
+@router.get("/group/getAll",response_model=List[_schemas.GroupRead], tags=["Group API"])
+def get_group(org_id:int,db: _orm.Session = Depends(get_db),authorization: str = Header(None)):
+    
+    try:    
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+        _helpers.verify_jwt(authorization, "User")
+        return _services.get_all_group(org_id,db)
+    except IntegrityError as e:
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
+
+@router.put("/group",response_model=_schemas.GroupRead, tags=["Group API"])
+def update_group(group:_schemas.GroupUpdate,db: _orm.Session = Depends(get_db),authorization: str = Header(None)):
+    
+    try:    
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+        _helpers.verify_jwt(authorization, "User")
+        db_group=_services.update_group(group,db)
+        if db_group is None:
+            raise HTTPException(status_code=404, detail="Group not found")
+        return db_group    
+    except IntegrityError as e:
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+    
+
