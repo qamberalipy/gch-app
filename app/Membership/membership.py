@@ -14,7 +14,7 @@ import app.Shared.helpers as _helpers
 router = APIRouter()
 
 logger = logging.getLogger("uvicorn.error")
-logger.setLevel(logging.DEBUG)
+logger. setLevel(logging.DEBUG)
 # logger.addHandler(logging.StreamHandler())
 
 

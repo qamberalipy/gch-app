@@ -41,10 +41,17 @@ class Client(_database.Base):
     
 
 class ClientMembership(_database.Base):
-    __tablename__ = "client_membership"
+    _tablename = "client_membership"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
     client_id = _sql.Column(_sql.Integer)
     membership_plan_id = _sql.Column(_sql.Integer)
+    prolongation_period = _sql.Column(_sql.Integer)
+    auto_renew_bf_expiry = _sql.Column(_sql.Integer)
+    inv_days_cycle = _sql.Column(_sql.Integer)
+    created_at = _sql.Column(_sql.DateTime)
+    updated_at = _sql.Column(_sql.DateTime)
+    created_by = _sql.Column(_sql.Integer)
+    updated_by = _sql.Column(_sql.Integer)
     is_deleted= _sql.Column(_sql.Boolean, default=False)
     
 class ClientOrganization(_database.Base):
