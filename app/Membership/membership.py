@@ -72,9 +72,6 @@ def get_membership_plans_by_org_id(org_id: int, db: _orm.Session = Depends(get_d
 
 
 
-
-
-
     
 @router.post("/facilities", response_model=_schemas.FacilityRead, tags=["Facility APIs"])
 def create_facility(facility: _schemas.FacilityCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
