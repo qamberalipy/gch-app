@@ -38,7 +38,9 @@ class MembershipPlanDelete(MembershipPlanBase):
 
 class MembershipPlanRead(MembershipPlanBase):
     id: int
-    updated_at: datetime.datetime
+    created_by: Optional[int]=None
+    created_at: Optional[datetime.datetime]=None
+    updated_at: Optional[datetime.datetime]=None
 
     class Config:
         from_attributes = True
