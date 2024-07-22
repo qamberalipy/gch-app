@@ -313,23 +313,6 @@ async def get_roles(org_id: int, db: _orm.Session = Depends(get_db), authorizati
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 
-@router.get("/role/resources", response_model=List[_schemas.ResourceRead], tags=["Roles and Permissions"])
-async def get_resources(db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
-    try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
-
-        resources = await _services.get_all_resources(db)
-        return resources
-    except IntegrityError as e:
-        logger.error(f"IntegrityError: {e}")
-        raise HTTPException(status_code=400, detail="Integrity error occurred")
-    except DataError as e:
-        logger.error(f"DataError: {e}")
-        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
-
-
 @router.delete("/role", tags=["Roles and Permissions"])
 async def delete_role(role_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
