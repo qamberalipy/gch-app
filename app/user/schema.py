@@ -1,7 +1,7 @@
 import pydantic
 import datetime
 from datetime import date
-from typing import Optional
+from typing import Optional, List
 
 class UserBase(pydantic.BaseModel):
     first_name: str
@@ -175,32 +175,41 @@ class StaffFilterRead(pydantic.BaseModel):
 class RoleBase(pydantic.BaseModel):
     name: str
     org_id: int
-    resource_id: int
-    access_type: str
-    is_deleted: Optional[bool] = None
+    is_deleted: Optional[bool] = False
 
     class Config:
         from_attributes = True
 
 
 class RoleCreate(RoleBase):
+    resource_id: List[int]
+    access_type: List[str]
     created_at: Optional[datetime.datetime] = datetime.datetime.now()
     created_by: Optional[int] = None
 
-class RoleRead(RoleBase):
+class RoleDelete(pydantic.BaseModel):
     id: int
-    name: str
 
     class Config:
         from_attributes = True
 
-class RoleUpdate(RoleBase):
+class RoleRead(RoleBase):
     id: int
-    name: Optional[str] = None
-    org_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+class RoleUpdate(pydantic.BaseModel):
+    id: int
+    name: str
+    org_id: int
+    resource_id: List[int]
+    access_type: List[str]
+    created_at: Optional[datetime.datetime] = None
+    created_by: Optional[int] = None
     updated_by: Optional[int] = None
     updated_at: Optional[datetime.datetime] = None
-    is_deleted: Optional[bool] = None
+    is_deleted: Optional[bool] = False
 
     class Config:
         from_attributes = True
