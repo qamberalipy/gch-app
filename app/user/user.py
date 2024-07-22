@@ -250,94 +250,68 @@ async def get_staff(
 
 
 ## Roles and Permissions
-# @router.post("/role", response_model=_schemas.RoleRead, tags=["Roles and Permissions"])
-# async def create_role(role: _schemas.RoleCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
-#     try:
-#         if not authorization or not authorization.startswith("Bearer "):
-#             raise HTTPException(status_code=401, detail="Invalid or missing access token")
-#         _helpers.verify_jwt(authorization, "User")
+@router.post("/role", response_model=_schemas.RoleRead, tags=["Roles and Permissions"])
+async def create_role(role: _schemas.RoleCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+        _helpers.verify_jwt(authorization, "User")
 
-#         new_role = await _services.create_role(role, db)
-#         return new_role
-#     except IntegrityError as e:
-#         logger.error(f"IntegrityError: {e}")
-#         raise HTTPException(status_code=400, detail="Integrity error occurred")
-#     except DataError as e:
-#         logger.error(f"DataError: {e}")
-#         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
-
-
-# @router.get("/role/get", response_model=List[_schemas.RoleRead], tags=["Roles and Permissions"])
-# async def get_roles(org_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
-#     try:
-#         if not authorization or not authorization.startswith("Bearer "):
-#             raise HTTPException(status_code=401, detail="Invalid or missing access token")
-#         _helpers.verify_jwt(authorization, "User")
-
-#         roles = await _services.get_roles(org_id, db)
-#         return roles
-#     except IntegrityError as e:
-#         logger.error(f"IntegrityError: {e}")
-#         raise HTTPException(status_code=400, detail="Integrity error occurred")
-#     except DataError as e:
-#         logger.error(f"DataError: {e}")
-#         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+        new_role = await _services.create_role(role, db)
+        return new_role
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 
-# @router.put("/role/update", response_model=_schemas.RoleRead, tags=["Roles and Permissions"])
-# async def update_role(role_id: int, role: _schemas.RoleUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
-#     try:
-#         if not authorization or not authorization.startswith("Bearer "):
-#             raise HTTPException(status_code=401, detail="Invalid or missing access token")
-#         _helpers.verify_jwt(authorization, "User")
+@router.get("/role/get", response_model=List[_schemas.RoleRead], tags=["Roles and Permissions"])
+async def get_roles(org_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+        _helpers.verify_jwt(authorization, "User")
 
-#         updated_role = await _services.update_role(role_id, role, db)
-#         return updated_role
-#     except IntegrityError as e:
-#         logger.error(f"IntegrityError: {e}")
-#         raise HTTPException(status_code=400, detail="Integrity error occurred")
-#     except DataError as e:
-#         logger.error(f"DataError: {e}")
-#         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
-
-
-# @router.delete("/role/delete", tags=["Roles and Permissions"])
-# async def delete_role(role_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
-#     try:
-#         if not authorization or not authorization.startswith("Bearer "):
-#             raise HTTPException(status_code=401, detail="Invalid or missing access token")
-#         _helpers.verify_jwt(authorization, "User")
-
-#         return await _services.delete_role(role_id, db)
-#     except IntegrityError as e:
-#         logger.error(f"IntegrityError: {e}")
-#         raise HTTPException(status_code=400, detail="Integrity error occurred")
-#     except DataError as e:
-#         logger.error(f"DataError: {e}")
-#         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+        roles = await _services.get_roles(org_id, db)
+        return roles
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 
-# @router.get("/role/filter", response_model=List[_schemas.RoleFilterRead], tags=["Roles and Permissions"])
-# async def get_roles(
-#     org_id: int,
-#     request: Request,
-#     db: _orm.Session = Depends(get_db),
-#     authorization: str = Header(None)):
-#     try:
-#         if not authorization or not authorization.startswith("Bearer "):
-#             raise HTTPException(status_code=401, detail="Invalid or missing access token")
-#         _helpers.verify_jwt(authorization, "User")
+@router.put("/role/update", response_model=_schemas.RoleRead, tags=["Roles and Permissions"])
+async def update_role(role_id: int, role: _schemas.RoleUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+        _helpers.verify_jwt(authorization, "User")
 
-#         params = {
-#             "org_id": org_id,
-#             "search_key": request.query_params.get("search_key"),
-#         }
-#         roles = _services.get_filtered_roles(db=db, params=_schemas.RoleFilterParams(**params))
-#         return roles
-#     except IntegrityError as e:
-#         logger.error(f"IntegrityError: {e}")
-#         raise HTTPException(status_code=400, detail="Integrity error occurred")
-#     except DataError as e:
-#         logger.error(f"DataError: {e}")
-#         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
-        
+        updated_role = await _services.update_role(role_id, role, db)
+        return updated_role
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
+
+@router.delete("/role/delete", tags=["Roles and Permissions"])
+async def delete_role(role_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+        _helpers.verify_jwt(authorization, "User")
+
+        return await _services.delete_role(role_id, db)
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")

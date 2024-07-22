@@ -62,6 +62,17 @@ class Organization(_database.Base):
     org_name = _sql.Column(_sql.String, nullable=False)
     is_deleted= _sql.Column(_sql.Boolean, default=False)
 
+class UserRole(_database.Base):
+    __tablename__ = "user_role_mapping"
+    id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
+    user_id=_sql.Column(_sql.Integer)
+    role_id=_sql.Column(_sql.Integer)
+    created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
+    updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
+    created_by = _sql.Column(_sql.Integer)
+    updated_by = _sql.Column(_sql.Integer)
+    is_deleted=_sql.Column(_sql.Boolean)
+
 class Role(_database.Base):
     __tablename__ = "role"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
@@ -74,7 +85,7 @@ class Resource(_database.Base):
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     name=_sql.Column(_sql.String(50))
     code=_sql.Column(_sql.String(50))
-    parent=_sql.Column(_sql.Integer)
+    parent = _sql.Column(_sql.String(50))
     created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
     updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
     created_by = _sql.Column(_sql.Integer)

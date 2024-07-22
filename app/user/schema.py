@@ -184,12 +184,13 @@ class RoleBase(pydantic.BaseModel):
 
 
 class RoleCreate(RoleBase):
-    pass
+    created_at: Optional[datetime.datetime] = datetime.datetime.now()
+    created_by: Optional[int] = None
 
 class RoleRead(RoleBase):
     id: int
     name: str
-    
+
     class Config:
         from_attributes = True
 

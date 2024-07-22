@@ -286,5 +286,11 @@ async def create_role(role: _schemas.RoleCreate, db: _orm.Session = _fastapi.Dep
     db_permission = _models.Permission(
         resource_id=role.resource_id,
         role_id=db_role.id,
-        access_type=role.access_type
+        access_type=role.access_type,
+        created_by=role.created_by,
+        created_at=role.created_at
     )
+    db.add(db_permission)
+    db.commit()
+    db.refresh(db_permission)
+    return db_role
