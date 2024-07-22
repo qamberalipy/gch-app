@@ -88,10 +88,11 @@ def delete_membership_plan( membership_plan_id: int,db: _orm.Session):
     return db_membership_plan
 
 def get_membership_plan_by_id( membership_plan_id: int,db: _orm.Session):
-    return db.query(models.MembershipPlan).filter(models.MembershipPlan.id == membership_plan_id).first()
+    return db.query(models.MembershipPlan).filter(models.MembershipPlan.id == membership_plan_id,_models.MembershipPlan.is_deleted==False).order_by(desc(_models.MembershipPlan.created_at)).first()
 
 def get_membership_plans_by_org_id( org_id: int,db: _orm.Session):
-    return db.query(models.MembershipPlan).filter(models.MembershipPlan.org_id == org_id).all()
+   
+    return db.query(models.MembershipPlan).filter(models.MembershipPlan.org_id == org_id,_models.MembershipPlan.is_deleted==False).order_by(desc(_models.MembershipPlan.created_at)).all()
 
 
 def create_facility(facility: _schemas.FacilityCreate,db: _orm.Session):
