@@ -1,5 +1,6 @@
 from typing import List
 from fastapi import Header,FastAPI, APIRouter, Depends, HTTPException, status
+from sqlalchemy import Tuple
 from sqlalchemy.exc import IntegrityError, DataError
 import app.Coach.schema as _schemas
 import sqlalchemy.orm as _orm
@@ -26,41 +27,61 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/register/", response_model=_schemas.CoachRead, tags=["Coach Router"])
-async def register_coach(coach: _schemas.CoachCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
-    try:        
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
 
-        _helpers.verify_jwt(authorization, "User")
-        return _services.create_coach(db=db, coach=coach)
-    
-    except IntegrityError as e:
-        logger.error(f"IntegrityError: {e}")
-        raise HTTPException(status_code=400, detail="Integrity error occurred")
-    except DataError as e:
-        logger.error(f"DataError: {e}")
-        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+@router.post("/coaches", response_model=_schemas.CoachRead ,tags=["Coach API"])
+def create_coach(coach: _schemas.CoachCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid or missing access token")
+    _helpers.verify_jwt(authorization, "User")
+    return _services.create_coach(coach,db)
 
-@router.get("/getCoach", response_model=List[_schemas.CoachRead], tags=["Coach Router"])
-async def read_coaches(org_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.put("/coaches", response_model=_schemas.CoachRead , tags=["Coach API"])
+def update_coach(coach: _schemas.CoachUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid or missing access token")
+    _helpers.verify_jwt(authorization, "User")
+    db_coach = _services.update_coach(coach,db)
+    if db_coach is None:
+        raise HTTPException(status_code=404, detail="Coach not found")
+    return db_coach
+
+@router.delete("/coaches", response_model=_schemas.CoachRead, tags=["Coach API"])
+def delete_coach(coach: _schemas.CoachDelete, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid or missing access token")
+    _helpers.verify_jwt(authorization, "User")
+    db_coach = _services.delete_coach(coach.id,db)
+    if db_coach is None:
+        raise HTTPException(status_code=404, detail="Coach not found")
+    return db_coach
+
+@router.get("/coaches", response_model=_schemas.CoachRead, tags=["Coaches"])
+def get_coach_by_id(coach_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid or missing access token")
+    _helpers.verify_jwt(authorization, "User")
+    db_coach = _services.get_coach_by_id(coach_id,db)
+    if db_coach is None:
+        raise HTTPException(status_code=404, detail="Coach not found")
+    return db_coach
+
+@router.get("/coaches", response_model=List[_schemas.CoachRead], tags=["Coaches"])
+def get_coaches_by_org_id(org_id: int,db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
-        
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
         _helpers.verify_jwt(authorization, "User")
-        coaches = _services.get_coaches_by_org_id(db=db, org_id=org_id)
-        if not coaches:
-            return []
+        
+        coaches = _services.get_coaches_by_org_id(org_id, db)
         return coaches
-    
-    except IntegrityError as e:
-        logger.error(f"IntegrityError: {e}")
-        raise HTTPException(status_code=400, detail="Integrity error occurred")
-    except DataError as e:
-        logger.error(f"DataError: {e}")
-        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
+    except HTTPException as e:
+        logger.error(f"HTTPException: {e.detail}")
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+
 
 
 
