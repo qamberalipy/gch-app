@@ -62,11 +62,23 @@ class Organization(_database.Base):
     org_name = _sql.Column(_sql.String, nullable=False)
     is_deleted= _sql.Column(_sql.Boolean, default=False)
 
+class UserRole(_database.Base):
+    __tablename__ = "user_role_mapping"
+    id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
+    user_id=_sql.Column(_sql.Integer)
+    role_id=_sql.Column(_sql.Integer)
+    created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
+    updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
+    created_by = _sql.Column(_sql.Integer)
+    updated_by = _sql.Column(_sql.Integer)
+    is_deleted=_sql.Column(_sql.Boolean)
+
 class Role(_database.Base):
     __tablename__ = "role"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
-    name=_sql.Column(_sql.String(50))
-    org_id=_sql.Column(_sql.Integer)
+    name = _sql.Column(_sql.String(50))
+    org_id = _sql.Column(_sql.Integer)
+    status = _sql.Column(_sql.Boolean)
     is_deleted=_sql.Column(_sql.Boolean)
 
 class Resource(_database.Base):
@@ -74,7 +86,10 @@ class Resource(_database.Base):
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     name=_sql.Column(_sql.String(50))
     code=_sql.Column(_sql.String(50))
-    parent=_sql.Column(_sql.Integer)
+    parent = _sql.Column(_sql.String(50))
+    is_parent = _sql.Column(_sql.Boolean)
+    link = _sql.Column(_sql.String(50))
+    icon = _sql.Column(_sql.String(50))
     created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
     updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
     created_by = _sql.Column(_sql.Integer)
@@ -93,6 +108,20 @@ class Permission(_database.Base):
     updated_by = _sql.Column(_sql.Integer)
     is_deleted=_sql.Column(_sql.Boolean)
 
+class Bank_detail(_database.Base):
+    __tablename__ = 'bank_detail'
+    id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
+    org_id= _sql.Column(_sql.Integer)
+    user_type= _sql.Column(_sql.String)
+    bank_name = _sql.Column(_sql.String(50))
+    iban_no = _sql.Column(_sql.String(50))
+    acc_holder_name = _sql.Column(_sql.String(50))
+    swift_code = _sql.Column(_sql.String(50))
+    created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
+    updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
+    created_by = _sql.Column(_sql.Integer)
+    updated_by = _sql.Column(_sql.Integer)
+    is_deleted=_sql.Column(_sql.Boolean)    
     
 class Transaction(_database.Base):
     __tablename__ = 'transaction'

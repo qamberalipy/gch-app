@@ -278,13 +278,108 @@ def get_filtered_staff(
 async def create_role(role: _schemas.RoleCreate, db: _orm.Session = _fastapi.Depends(get_db)):
     db_role = _models.Role(
         name=role.name,
-        org_id=role.org_id
+        org_id=role.org_id,
+        is_deleted=0
     )
     db.add(db_role)
     db.commit()
     db.refresh(db_role)
-    db_permission = _models.Permission(
-        resource_id=role.resource_id,
-        role_id=db_role.id,
-        access_type=role.access_type
-    )
+
+    for i in range(len(role.resource_id)):
+        db_permission = _models.Permission(
+            role_id=db_role.id,
+            resource_id=role.resource_id[i],
+            access_type=role.access_type[i],
+            created_by=role.created_by,
+            updated_by=role.created_by,
+            is_deleted=0
+        )
+        db.add(db_permission)
+    db.commit()
+    db.refresh(db_permission)
+    return db_role
+
+
+async def get_all_roles(org_id: int, db: _orm.Session):
+    return db.query(*_models.Role.__table__.columns, _models.Role.id.label("role_id"))\
+        .filter(_models.Role.is_deleted == False, _models.Role.org_id == org_id).all()
+
+async def get_role(role_id: int, db: _orm.Session):
+    role = db.query(_models.Role).filter(_models.Role.id == role_id, _models.Role.is_deleted == False).first()
+    if role is None:
+        raise _fastapi.HTTPException(status_code=404, detail="Role not found")
+    
+    permissions = db.query(_models.Resource.name, _models.Permission.access_type, _models.Role.org_id, 
+        _models.Role.status, _models.Permission.id.label("permission_id"), _models.Role.id.label("role_id"))\
+        .join(_models.Permission, _models.Resource.id == _models.Permission.resource_id)\
+        .join(_models.Role, _models.Permission.role_id == _models.Role.id)\
+        .filter(_models.Permission.role_id == role_id, _models.Permission.is_deleted == False).all()
+
+    return permissions
+
+async def edit_role(role: _schemas.RoleUpdate, db: _orm.Session):
+    db_role = db.query(_models.Role).filter(_models.Role.id == role.id).first()
+    if db_role is None:
+        raise _fastapi.HTTPException(status_code=404, detail="Role not found")
+    
+    update_data = role.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_role, key, value)
+    
+    db_role.updated_at = datetime.now()
+    db.commit()
+    db.refresh(db_role)
+
+    if role.resource_id is None or role.access_type is None:
+        return db_role
+
+    if len(role.resource_id) != len(role.access_type):
+        raise _fastapi.HTTPException(status_code=400, detail="Resource ID and Access Type should be equal")
+    
+
+    permissions = db.query(_models.Permission).filter(_models.Permission.role_id == role.id and _models.Permission.resource_id not in role.resource_id).all()
+    print("Check Permissions: ", permissions)
+    for permission in permissions:
+        permission.is_deleted = 1
+    db.commit()
+
+    for i in range(len(role.resource_id)):
+        db_permission = db.query(_models.Permission).filter(_models.Permission.role_id == role.id, _models.Permission.resource_id == role.resource_id[i]).first()
+        if db_permission is None:
+            db_permission = _models.Permission(
+                role_id=role.id,
+                resource_id=role.resource_id[i],
+                access_type=role.access_type[i],
+                created_by=role.created_by,
+                updated_by=role.created_by,
+                is_deleted=0
+            )
+            db.add(db_permission)
+        else:
+            print("Here: ")
+            db_permission.is_deleted = 0
+            db_permission.access_type = role.access_type[i]
+            db_permission.updated_at = datetime.now()
+        db.commit()
+    db.refresh(db_permission)
+    return db_role
+
+async def delete_role(role_id: int, db: _orm.Session):
+    print("Role ID: ", role_id)
+    role = db.query(_models.Role).filter(_models.Role.id == role_id, _models.Role.is_deleted == False).first()
+    print("Role: ", role)
+    if role is None:
+        raise _fastapi.HTTPException(status_code=404, detail="Role not found")
+    
+    role.is_deleted = 1
+    role.status = 0
+    db.commit()
+
+    permissions = db.query(_models.Permission).filter(_models.Permission.role_id == role_id).all()
+    for permission in permissions:
+        permission.is_deleted = 1
+    db.commit()
+    return {"detail": "Role deleted successfully"}
+
+async def get_all_resources(db: _orm.Session):
+    return db.query(_models.Resource).filter(_models.Resource.is_deleted == False).all()

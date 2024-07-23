@@ -42,7 +42,7 @@ def update_membership_plan(membership_plan: _schemas.MembershipPlanUpdate, db: _
         raise HTTPException(status_code=404, detail="Membership plan not found")
     return db_membership_plan
 
-@router.delete("/membership_plans", response_model=_schemas.MembershipPlanRead, tags=["Membership Plans"])
+@router.delete("/membership_plans", tags=["Membership Plans"])
 def delete_membership_plan(membership_plan: _schemas.MembershipPlanDelete,db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid or missing access token")
@@ -50,7 +50,10 @@ def delete_membership_plan(membership_plan: _schemas.MembershipPlanDelete,db: _o
     db_membership_plan = _services.delete_membership_plan(membership_plan.id,db)
     if db_membership_plan is None:
         raise HTTPException(status_code=404, detail="Membership plan not found")
-    return db_membership_plan
+    return {
+        "status_code": 200,
+        "detail": "Membership plan deleted successfully"
+    }
 
 @router.get("/membership_plans", response_model=_schemas.MembershipPlanRead, tags=["Membership Plans"])
 def get_membership_plan_by_id(membership_plan_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
@@ -68,9 +71,6 @@ def get_membership_plans_by_org_id(org_id: int, db: _orm.Session = Depends(get_d
         raise HTTPException(status_code=401, detail="Invalid or missing access token")
     _helpers.verify_jwt(authorization, "User")
     return _services.get_membership_plans_by_org_id(org_id,db)
-
-
-
 
 
 

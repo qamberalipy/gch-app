@@ -1,7 +1,7 @@
 import pydantic
 import datetime
 from datetime import date
-from typing import Optional
+from typing import Optional, List
 
 class UserBase(pydantic.BaseModel):
     first_name: str
@@ -103,7 +103,6 @@ class StaffBase(pydantic.BaseModel):
         from_attributes = True
 
 class CreateStaff(StaffBase):
-        
     created_at: Optional[datetime.datetime]=None
     created_by: Optional[int] = None
     
@@ -174,32 +173,65 @@ class StaffFilterRead(pydantic.BaseModel):
 
 class RoleBase(pydantic.BaseModel):
     name: str
-    org_id: int
-    resource_id: int
-    access_type: str
-    is_deleted: Optional[bool] = None
+    org_id: Optional[int] = None
+    status: Optional[bool] = None
+    is_deleted: Optional[bool] = False
 
     class Config:
         from_attributes = True
 
 
 class RoleCreate(RoleBase):
-    pass
+    resource_id: List[int]
+    access_type: List[str]
+    created_at: Optional[datetime.datetime] = datetime.datetime.now()
+    created_by: Optional[int] = None
 
-class RoleRead(RoleBase):
+class RoleDelete(pydantic.BaseModel):
     id: int
-    name: str
-    
+
     class Config:
         from_attributes = True
 
-class RoleUpdate(RoleBase):
+class RoleRead(RoleBase):
+    permission_id: Optional[int] = None
+    role_id: Optional[int] = None
+    access_type: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+# class RoleSingleRead(pydantic.BaseModel):
+#     name: str
+#     access_type: str
+
+#     class Config:
+#         from_attributes = True
+
+class RoleUpdate(pydantic.BaseModel):
     id: int
     name: Optional[str] = None
-    org_id: Optional[int] = None
+    org_id: int
+    status: Optional[bool] = None
+    resource_id: Optional[List[int]] = None
+    access_type: Optional[List[str]] = None
+    created_at: Optional[datetime.datetime] = None
+    created_by: Optional[int] = None
     updated_by: Optional[int] = None
     updated_at: Optional[datetime.datetime] = None
-    is_deleted: Optional[bool] = None
+    is_deleted: Optional[bool] = False
+
+    class Config:
+        from_attributes = True
+
+class ResourceRead(pydantic.BaseModel):
+    id: int
+    name: str
+    code: Optional[str] = None
+    parent: Optional[str] = None
+    is_parent: Optional[bool] = None
+    link: Optional[str] = None
+    icon: Optional[str] = None
 
     class Config:
         from_attributes = True

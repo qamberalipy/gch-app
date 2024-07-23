@@ -27,6 +27,7 @@ class MembershipPlan(_database.Base):
     auto_renewal = _sql.Column(_sql.Boolean, default=False)
     renewal_details = _sql.Column(_sql.JSON)
     credit_id = _sql.Column(_sql.Integer)
+    created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
     updated_at = _sql.Column(_sql.DateTime,default=_dt.datetime.now)
     created_by = _sql.Column(_sql.Integer)
     updated_by = _sql.Column(_sql.Integer)
