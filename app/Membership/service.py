@@ -70,14 +70,20 @@ def create_membership_plan(membership_plan: _schemas.MembershipPlanCreate, db: _
     db.commit()
     return db_membership_plan
 
-def update_membership_plan( membership_plan_id: int, membership_plan: _schemas.MembershipPlanUpdate,db: _orm.Session):
+def update_membership_plan(membership_plan_id: int, membership_plan: _schemas.MembershipPlanUpdate, db: _orm.Session):
     db_membership_plan = db.query(models.MembershipPlan).filter(models.MembershipPlan.id == membership_plan_id).first()
-    if db_membership_plan:
-        for key, value in membership_plan.dict(exclude_unset=True).items():
-            setattr(db_membership_plan, key, value)
-        db.commit()
-        db.refresh(db_membership_plan)
+    if not db_membership_plan:
+        return None  # Return None if the membership plan does not exist
+
+    # Update only the fields that are provided
+    update_data = membership_plan.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_membership_plan, key, value)
+
+    db.commit()
+    db.refresh(db_membership_plan)
     return db_membership_plan
+
 
 def delete_membership_plan( membership_plan_id: int,db: _orm.Session):
     db_membership_plan = db.query(models.MembershipPlan).filter(models.MembershipPlan.id == membership_plan_id).first()
