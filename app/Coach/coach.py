@@ -27,6 +27,24 @@ def get_db():
     finally:
         db.close()
 
+@router.post("/mobile/register", response_model=_schemas.CoachRead ,tags=["App Router"])
+def create_mobilecoach(coach: _schemas.CoachAppBase, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid or missing access token")
+    _helpers.verify_jwt(authorization, "User")
+    return _services.create_appcoach(coach,db)
+
+
+@router.post("/login", response_model=_schemas.CoachLoginResponse,  tags=["App Router"])
+async def login_coach(coach_data: _schemas.CoachLogin, db: _orm.Session = Depends(get_db)):
+    try:
+        print(coach_data)
+        result = await _services.login_coach(coach_data.email_address, coach_data.wallet_address, db)
+        print(result)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+    
 
 @router.post("/coaches", response_model=_schemas.CoachRead ,tags=["Coach API"])
 def create_coach(coach: _schemas.CoachCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
@@ -55,7 +73,7 @@ def delete_coach(coach: _schemas.CoachDelete, db: _orm.Session = Depends(get_db)
         raise HTTPException(status_code=404, detail="Coach not found")
     return db_coach
 
-@router.get("/coaches", response_model=_schemas.CoachRead, tags=["Coaches"])
+@router.get("/coaches", response_model=_schemas.CoachRead, tags=["Coach API"])
 def get_coach_by_id(coach_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid or missing access token")
@@ -65,7 +83,7 @@ def get_coach_by_id(coach_id: int, db: _orm.Session = Depends(get_db), authoriza
         raise HTTPException(status_code=404, detail="Coach not found")
     return db_coach
 
-@router.get("/coaches", response_model=List[_schemas.CoachRead], tags=["Coaches"])
+@router.get("/coaches/getAll", response_model=List[_schemas.CoachRead], tags=["Coach API"])
 def get_coaches_by_org_id(org_id: int,db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         if not authorization or not authorization.startswith("Bearer "):

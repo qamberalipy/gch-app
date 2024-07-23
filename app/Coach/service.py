@@ -9,6 +9,7 @@ import app.core.db.session as _database
 import app.Coach.schema as _schemas
 import app.Coach.models as _models
 import app.user.models as _usermodels
+import app.Shared.helpers as _helpers
 import random
 import json
 import pika
@@ -34,6 +35,61 @@ def get_db():
     finally:
         db.close()
         
+def create_appcoach(coach: _schemas.CoachAppBase,db: _orm.Session):
+   
+    
+    db_coach = _models.Coach(
+        first_name=coach.first_name,
+        last_name=coach.last_name,
+        dob=coach.dob,
+        gender=coach.gender,
+        email=coach.email,
+        phone=coach.phone,
+        mobile_number=coach.mobile_number,
+        notes=coach.notes,
+        country_id=coach.country_id,
+        city=coach.city,
+        zipcode=coach.zipcode,
+        address_1=coach.address_1,
+        address_2=coach.address_2,
+        coach_since=coach.coach_since,
+        
+    )
+    db.add(db_coach)
+    db.commit()
+    db.refresh(db_coach)
+
+    db_coach_org = _models.CoachOrganization(
+        coach_id=db_coach.id,
+        org_id=coach.org_id
+    )
+    db.add(db_coach_org)
+    db.commit()
+    db.refresh(db_coach_org)
+
+    print("db_coach",db_coach)
+    return db_coach
+
+async def login_coach(email_address: str, wallet_address: str, db: _orm.Session = _fastapi.Depends(get_db)) -> dict:
+    coach = await get_coach_by_email(email_address, db)
+    
+    if not coach:
+        return {"is_registered": False}
+    print("MYCLIENT: ",coach)
+    coach.wallet_address = wallet_address
+    db.commit()
+    db.refresh(coach)
+    
+    token = _helpers.create_token(coach, "User")
+    
+    return {"is_registered": True,
+            "coach":coach,
+            "access_token":token
+            }        
+
+async def get_coach_by_email(email_address: str, db: _orm.Session = _fastapi.Depends(get_db)) -> _models.Coach:
+    return db.query(_models.Coach).filter(models.Coach.email == email_address).first()
+
 def create_coach(coach: _schemas.CoachCreate,db: _orm.Session):
     db_bank_detail = _usermodels.Bank_detail(
         org_id=coach.org_id,
@@ -83,8 +139,9 @@ def create_coach(coach: _schemas.CoachCreate,db: _orm.Session):
     db.commit()
     db.refresh(db_coach_org)
 
-
+    print("db_coach",db_coach)
     return db_coach
+
 
 def update_coach(coach_id: int, coach: _schemas.CoachUpdate, db: _orm.Session):
     # Fetch the existing coach record
