@@ -10,7 +10,7 @@ class Coach(_database.Base):
 
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     wallet_address = _sql.Column(_sql.String)
-    own_coach_id = _sql.Column(_sql.String, nullable=False)
+    own_coach_id = _sql.Column(_sql.String, nullable=True)
     profile_img = _sql.Column(_sql.String(150))  # varchar(150) in the image is likely a typo
     first_name = _sql.Column(_sql.String, nullable=False)
     last_name = _sql.Column(_sql.String, nullable=False)
