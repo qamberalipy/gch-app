@@ -4,21 +4,21 @@ from typing import Dict, List, Optional
 
 
 class MembershipPlanBase(pydantic.BaseModel):
-    name: str
-    org_id: int
-    group_id: Optional[int]
-    status: Optional[str]
-    description: Optional[str]
-    access_time: Optional[Dict]
-    net_price: Optional[float]
-    income_category_id: Optional[int]
-    discount: Optional[float]
-    total_price: Optional[float]
-    payment_method: Optional[str]
-    reg_fee: Optional[float]
-    billing_cycle: Optional[str]
-    auto_renewal: Optional[bool]
-    renewal_details: Optional[Dict]
+    name: Optional[str] = None
+    org_id: Optional[int] = None
+    group_id: Optional[int] = None
+    status: Optional[str] = None
+    description: Optional[str] = None
+    access_time: Optional[Dict] = None
+    net_price: Optional[float] = None
+    income_category_id: Optional[int] = None
+    discount: Optional[float] = None
+    total_price: Optional[float] = None
+    payment_method: Optional[str] = None
+    reg_fee: Optional[float] = None
+    billing_cycle: Optional[str] = None
+    auto_renewal: Optional[bool] = None
+    renewal_details: Optional[Dict] = None
 
 class FacilityMembershipPlan(pydantic.BaseModel):
     id: int
@@ -31,7 +31,7 @@ class MembershipPlanCreate(MembershipPlanBase):
 
 class MembershipPlanUpdate(MembershipPlanBase):
     id:int
-    updated_by: Optional[int]
+    updated_by: Optional[int]=None 
 
 class MembershipPlanDelete(pydantic.BaseModel):
     id:int
