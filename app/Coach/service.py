@@ -83,7 +83,7 @@ def create_coach(coach: _schemas.CoachCreate,db: _orm.Session):
     db.commit()
     db.refresh(db_coach_org)
 
-
+    print("db_coach",db_coach)
     return db_coach
 
 def update_coach(coach_id: int, coach: _schemas.CoachUpdate, db: _orm.Session):
