@@ -85,20 +85,14 @@ def get_coach_by_id(coach_id: int, db: _orm.Session = Depends(get_db), authoriza
 
 @router.get("/coaches/getAll", response_model=List[_schemas.CoachRead], tags=["Coach API"])
 def get_coaches_by_org_id(org_id: int,db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
-    try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
-        
-        coaches = _services.get_coaches_by_org_id(org_id, db)
-        return coaches
+    
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid or missing access token")
+    _helpers.verify_jwt(authorization, "User")
+    
+    coaches = _services.get_all_coaches_by_org_id(org_id, db)
+    return coaches
 
-    except HTTPException as e:
-        logger.error(f"HTTPException: {e.detail}")
-        raise e
-    except Exception as e:
-        logger.error(f"Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
 
 

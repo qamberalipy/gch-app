@@ -27,6 +27,8 @@ class Coach(_database.Base):
     zipcode = _sql.Column(_sql.String(10))
     address_1 = _sql.Column(_sql.String(100))  # address 1 renamed to address_1 for clarity
     address_2 = _sql.Column(_sql.String(100))
+    check_in = _sql.Column(_sql.DateTime)
+    last_online = _sql.Column(_sql.DateTime)
     coach_since = _sql.Column(_sql.Date, nullable=True)
     bank_detail_id=_sql.Column(_sql.Integer)
     created_at = _sql.Column(_sql.DateTime)
