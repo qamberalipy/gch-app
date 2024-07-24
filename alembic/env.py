@@ -33,6 +33,7 @@ from app.Membership.models import MembershipPlan
 from app.Leads.models import Leads
 from app.Event.models import Events
 from app.Exercise.models import Exercise
+from app.Food.models import Food
 
 target_metadata = Base.metadata
 
