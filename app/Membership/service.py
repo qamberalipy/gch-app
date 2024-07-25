@@ -1,6 +1,7 @@
 
 import datetime 
 import jwt
+from sqlalchemy import text
 import sqlalchemy.orm as _orm
 from sqlalchemy.sql import and_  ,desc
 import email_validator as _email_check
@@ -137,9 +138,84 @@ def get_membership_plan_by_id(membership_plan_id: int, db: _orm.Session):
 
     return response
 
-def get_membership_plans_by_org_id( org_id: int,db: _orm.Session):
-   
-    return db.query(models.MembershipPlan).filter(models.MembershipPlan.org_id == org_id,_models.MembershipPlan.is_deleted==False).order_by(desc(_models.MembershipPlan.created_at)).all()
+def get_membership_plans_by_org_id(
+    db: _orm.Session,
+    parameters: _schemas.MembershipFilterParams
+):
+    filters = ["mp.org_id = :org_id"]
+    params = {"org_id": parameters.org_id}
+
+    if parameters.group_id is not None:
+        filters.append("mp.group_id = :group_id")
+        params["group_id"] = parameters.group_id
+
+    if parameters.income_category_id is not None:
+        filters.append("mp.income_category_id = :income_category_id")
+        params["income_category_id"] = parameters.income_category_id
+
+    if parameters.discount_percentage is not None:
+        filters.append("mp.discount = :discount_percentage")
+        params["discount_percentage"] = parameters.discount_percentage
+
+    if parameters.total_amount is not None:
+        filters.append("mp.total_price = :total_amount")
+        params["total_amount"] = parameters.total_amount
+
+    if parameters.status is not None:
+        filters.append("mp.status = :status")
+        params["status"] = parameters.status
+
+    if parameters.search_key is not None:
+        filters.append("mp.name ILIKE :name")
+        params["name"] = f"%{parameters.search_key}%"
+
+    sort_order = "ASC" if parameters.sort_order.lower() == "asc" else "DESC"
+
+    query = text(f"""
+        SELECT 
+            mp.id,
+            mp.name,
+            mp.org_id,
+            mp.group_id,
+            mp.status,
+            mp.description,
+            mp.access_time,
+            mp.net_price,
+            mp.income_category_id,
+            mp.discount,
+            mp.total_price,
+            mp.payment_method,
+            mp.reg_fee,
+            mp.billing_cycle,
+            mp.auto_renewal,
+            mp.renewal_details,
+            mp.created_by,
+            mp.created_at,
+            json_agg(
+                json_build_object(
+                    'id', f.id,
+                    'total_credits', fmp.total_credits,
+                    'validity', fmp.validity
+                )
+            ) AS facilities
+        FROM membership_plan mp
+        LEFT JOIN facility_membership_plan fmp ON fmp.membership_plan_id = mp.id
+        LEFT JOIN facility f ON f.id = fmp.facility_id
+        WHERE {" AND ".join(filters)}
+        GROUP BY 
+            mp.id, mp.name, mp.org_id, mp.group_id, mp.status, 
+            mp.description, CAST(mp.access_time AS text), mp.net_price, 
+            mp.income_category_id, mp.discount, mp.total_price, mp.payment_method,
+            mp.reg_fee, mp.billing_cycle, mp.auto_renewal, CAST(mp.renewal_details AS text), mp.created_by, mp.created_at
+        ORDER BY mp.created_at {sort_order}
+        LIMIT :limit OFFSET :offset;
+    """)
+
+    params["limit"] = parameters.limit
+    params["offset"] = parameters.offset
+
+    result = db.execute(query, params)
+    return result.fetchall()
 
 
 def create_facility(facility: _schemas.FacilityCreate,db: _orm.Session):

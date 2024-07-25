@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import FastAPI, Header,APIRouter, Depends, HTTPException, status
+from fastapi import FastAPI, Header,APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.exc import IntegrityError, DataError
 import app.Membership.schema as _schemas
 import sqlalchemy.orm as _orm
@@ -65,13 +65,37 @@ def get_membership_plan_by_id(membership_plan_id: int, db: _orm.Session = Depend
         raise HTTPException(status_code=404, detail="Membership plan not found")
     return db_membership_plan
 
-@router.get("/membership_plans/getAll", response_model=List[_schemas.MembershipPlanRead], tags=["Membership Plans"])
-def get_membership_plans_by_org_id(org_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.get("/membership_plans/getAll", response_model=List[_schemas.MembershipPlanResponse], tags=["Membership Plans"])
+def get_membership_plans_by_org_id(
+    org_id: int,
+    request: Request,
+    db: _orm.Session = Depends(get_db),
+    authorization: str = Header(None)
+):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid or missing access token")
-    _helpers.verify_jwt(authorization, "User")
-    return _services.get_membership_plans_by_org_id(org_id,db)
+    _helpers.verify_jwt(authorization, "User")  
+    
+    params = {
+        "org_id": org_id,
+        "search_key": request.query_params.get("search_key"),
+        "group_id": request.query_params.get("group_id"),
+        "income_category_id": request.query_params.get("income_category_id"),
+        "discount_percentage": request.query_params.get("discount_percentage"),
+        "tax_rate": request.query_params.get("tax_rate"),
+        "total_amount": request.query_params.get("total_amount"),
+        "status": request.query_params.get("status"),
+        "sort_order": request.query_params.get("sort_order", "asc"),
+        "limit": request.query_params.get("limit", 10),
+        "offset": request.query_params.get("offset", 0)
+    }
 
+    membership_plans = _services.get_membership_plans_by_org_id(
+        db, parameters=_schemas.MembershipFilterParams(**params)
+    )
+    return membership_plans
+
+    
 
 
     
