@@ -154,3 +154,22 @@ class GroupRead(pydantic.BaseModel):
 class GroupUpdate(pydantic.BaseModel):
     id: int
     name: Optional[str] = None
+
+class MembershipPlanResponse(pydantic.BaseModel):
+    name: str
+    org_id: int
+    group_id: int
+    status: str
+    description: str
+    access_time: Dict
+    net_price: float
+    income_category_id: int
+    discount: float
+    total_price: float
+    payment_method: str
+    reg_fee: float
+    billing_cycle: str
+    auto_renewal: bool
+    renewal_details: Dict
+    facilities: List[FacilityMembershipPlan]
+    created_by: int

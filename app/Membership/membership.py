@@ -55,7 +55,7 @@ def delete_membership_plan(membership_plan: _schemas.MembershipPlanDelete,db: _o
         "detail": "Membership plan deleted successfully"
     }
 
-@router.get("/membership_plans", response_model=_schemas.MembershipPlanRead, tags=["Membership Plans"])
+@router.get("/membership_plans", response_model=_schemas.MembershipPlanResponse, tags=["Membership Plans"])
 def get_membership_plan_by_id(membership_plan_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid or missing access token")
