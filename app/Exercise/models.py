@@ -106,7 +106,7 @@ class ExercisePrimaryMuscle(_database.Base):
 
     id = _sql.Column(_sql.Integer)
     exercise_id=_sql.Column(_sql.Integer)
-    primary_muscle_id=_sql.Column(_sql.Integer)
+    muscle_id=_sql.Column(_sql.Integer)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
     created_at = _sql.Column(_sql.DateTime, default=datetime.utcnow)
@@ -118,7 +118,7 @@ class ExerciseSecondaryMuscle(_database.Base):
 
     id = _sql.Column(_sql.Integer)
     exercise_id=_sql.Column(_sql.Integer)
-    secondary_muscle_id=_sql.Column(_sql.Integer)
+    muscle_id=_sql.Column(_sql.Integer)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
     created_at = _sql.Column(_sql.DateTime, default=datetime.utcnow)
