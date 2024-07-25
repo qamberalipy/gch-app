@@ -1,4 +1,3 @@
-
 import sqlalchemy as _sql
 import sqlalchemy.orm as _orm
 import app.core.db.session as _database
@@ -25,32 +24,38 @@ class Exercise(_database.Base):
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     exercise_name = _sql.Column(_sql.String, nullable=False)
     visible_for = _sql.Column(_sql.Enum(VisibleFor), nullable=False)
-    exercise_category_id = _sql.Column(_sql.Integer, nullable=False)  # Foreign key reference to app.exercisecategory
-    equipment_id = _sql.Column(_sql.Integer, nullable=True)  # Foreign key reference to app.equipments
-    primary_muscle_id = _sql.Column(_sql.Integer, nullable=True)  # Foreign key reference to app.primarymuscle
-    secondary_muscle_id = _sql.Column(_sql.Integer, nullable=True)  # Foreign key reference to app.secondarymuscle
-    primary_joint_id = _sql.Column(_sql.Integer, nullable=True)  # Foreign key reference to app.primaryjoint
-    exercise_type = _sql.Column(_sql.String, nullable=False)  # Consider using Enum in DB for better constraint
-    sets = _sql.Column(_sql.Integer, nullable=True)  # Conditional based on exercise type
-    seconds_per_set = _sql.Column(_sql.ARRAY(_sql.Integer), nullable=True)  # Conditional based on exercise type
-    repetitions_per_set = _sql.Column(_sql.ARRAY(_sql.Integer), nullable=True)  # Conditional based on exercise type
-    rest_after_set = _sql.Column(_sql.ARRAY(_sql.Integer), nullable=True)  # Conditional based on exercise type
-    met_id = _sql.Column(_sql.Integer, nullable=True)  # Foreign key reference to app.MET, optional
+    category_id = _sql.Column(_sql.Integer, nullable=False) 
+    exercise_type = _sql.Column(_sql.String, nullable=False)  
+    sets = _sql.Column(_sql.Integer, nullable=True) 
+    seconds_per_set = _sql.Column(_sql.ARRAY(_sql.Integer), nullable=True) 
+    repetitions_per_set = _sql.Column(_sql.ARRAY(_sql.Integer), nullable=True) 
+    rest_after_set = _sql.Column(_sql.ARRAY(_sql.Integer), nullable=True)  
+    met_id = _sql.Column(_sql.Integer, nullable=True)  
     gif_url = _sql.Column(_sql.String, nullable=True)
     video_url = _sql.Column(_sql.String, nullable=True)
-    thumbnail = _sql.Column(_sql.String, nullable=True)  # File path or URL for the image
+    thumbnail = _sql.Column(_sql.String, nullable=True) 
+    created_by=_sql.Column(_sql.Integer)
+    updated_by=_sql.Column(_sql.Integer)
     created_at = _sql.Column(_sql.DateTime, default=datetime.utcnow)
     updated_at = _sql.Column(_sql.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
 
+
+class ExerciseEquipment(_database.Base):
+    __tablename__ = 'exercise_equipment'
+
+    id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
+    exercise_id=_sql.Column(_sql.Integer)
+    equipment_id=_sql.Column(_sql.Integer)
 
 class ExerciseCategory(_database.Base):
-    __tablename__ = 'exercisecategory'
+    __tablename__ = 'exercise_category'
 
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     category_name = _sql.Column(_sql.String, nullable=False)
     created_at = _sql.Column(_sql.DateTime, default=datetime.utcnow)
     updated_at = _sql.Column(_sql.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
+    
 
 class Equipment(_database.Base):
     __tablename__ = 'equipments'
@@ -62,7 +67,7 @@ class Equipment(_database.Base):
 
 
 class PrimaryMuscle(_database.Base):
-    __tablename__ = 'primarymuscle'
+    __tablename__ = 'primary_muscle'
 
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     muscle_name = _sql.Column(_sql.String, nullable=False)
@@ -71,7 +76,7 @@ class PrimaryMuscle(_database.Base):
 
 
 class SecondaryMuscle(_database.Base):
-    __tablename__ = 'secondarymuscle'
+    __tablename__ = 'secondary_muscle'
 
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     muscle_name = _sql.Column(_sql.String, nullable=False)
@@ -80,13 +85,31 @@ class SecondaryMuscle(_database.Base):
 
 
 class PrimaryJoint(_database.Base):
-    __tablename__ = 'primaryjoint'
+    __tablename__ = 'primary_joint'
 
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     joint_name = _sql.Column(_sql.String, nullable=False)
     created_at = _sql.Column(_sql.DateTime, default=datetime.utcnow)
     updated_at = _sql.Column(_sql.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+class ExercisePrimaryMuscle(_database.Base):
+    __tablename__ = 'exercise_primary_muscle'
+    id = _sql.Column(_sql.Integer)
+    exercise_id=_sql.Column(_sql.Integer)
+    primary_muscle_id=_sql.Column(_sql.Integer)
+
+class ExreciseSecondaryMuscle(_database.Base):
+    __tablename__ = 'exercise_secondary_muscle'
+    id = _sql.Column(_sql.Integer)
+    exercise_id=_sql.Column(_sql.Integer)
+    secondary_muscle_id=_sql.Column(_sql.Integer)
+
+
+class ExercisePrimaryJoint(_database.Base):
+    __tablename__ = 'exercise_primary_joint'
+    id = _sql.Column(_sql.Integer)
+    exercise_id=_sql.Column(_sql.Integer)
+    primary_joint_id=_sql.Column(_sql.Integer)
 
 class MET(_database.Base):
     __tablename__ = 'met'
