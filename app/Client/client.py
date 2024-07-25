@@ -247,6 +247,25 @@ async def get_client(
     except DataError as e:
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
+@router.get("/list", response_model=List[_schemas.ClientList], tags=["Client Router"])
+async def get_client_list(
+    org_id: int,
+    db: _orm.Session = Depends(get_db),
+    authorization: str = Header(None)):
+    try:    
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        clients = _services.get_list_clients(org_id=org_id,db=db)
+        return clients
+    
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
 
 @router.get("/business", response_model=List[_schemas.ClientBusinessRead], tags=["Client Router"])
@@ -263,6 +282,7 @@ async def get_business_clients(org_id: int,db: _orm.Session = Depends(get_db), a
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
     
+
 @router.get("/getTotalClient", response_model=_schemas.ClientCount, tags=["Client Router"])
 async def get_total_clients(org_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:

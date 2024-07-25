@@ -168,6 +168,15 @@ async def delete_client(client_id: int, db: _orm.Session = _fastapi.Depends(get_
     db.refresh(db_client)
     return db_client
 
+def get_list_clients(org_id: int, db: _orm.Session = _fastapi.Depends(get_db)) -> List[models.Client]:
+    return (
+        db.query(_models.Client.id, _models.Client.first_name, _models.Client.last_name)
+        .join(_models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id)
+        .filter(_models.ClientOrganization.org_id == org_id)
+        .filter(_models.Client.is_deleted == False)
+        .all()
+    )
+
 
 async def get_total_clients(org_id: int, db: _orm.Session = _fastapi.Depends(get_db)) -> int:
     total_clients = db.query(func.count(models.Client.id)).join(

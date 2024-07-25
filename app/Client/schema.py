@@ -175,6 +175,10 @@ class ClientBusinessRead(pydantic.BaseModel):
 class ClientCount(pydantic.BaseModel):
     total_clients: int
     
+class ClientList(pydantic.BaseModel):
+    id: int
+    first_name:Optional[str]=None
+    last_name:Optional[str]=None
 # class ClientLoginResponse(pydantic.BaseModel):
 #     is_registered: bool
 
