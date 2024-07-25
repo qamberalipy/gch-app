@@ -253,7 +253,7 @@ def get_filtered_clients(
             _models.Client.first_name,
             db.query(_models.Client.first_name).filter(_models.Client.id == _models.Client.business_id)
         ).label("business_name"),
-        _coach_models.Coach.coach_name
+        _coach_models.Coach.first_name.label("coach_name")
     ).join(
         _models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id
     ).outerjoin(
