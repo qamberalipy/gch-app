@@ -1,7 +1,7 @@
 from datetime import date
 from typing import List
 import jwt
-from sqlalchemy import asc, desc, func, or_
+from sqlalchemy import String, asc, cast, desc, func, literal_column, or_
 import sqlalchemy.orm as _orm
 from sqlalchemy.sql import and_  
 import email_validator as _email_check
@@ -20,6 +20,7 @@ import time
 import os
 import bcrypt as _bcrypt
 from . import models, schema
+from sqlalchemy.orm import aliased
 
 # Load environment variables
 JWT_SECRET = os.getenv("JWT_SECRET")
@@ -257,49 +258,45 @@ def delete_coach(coach_id: int,db: _orm.Session):
 
     return db_coach
 
-def get_coach_by_id(coach_id: int,db: _orm.Session):
+def get_coach_by_id(coach_id: int, db: _orm.Session):
+    print("this is the coach id", coach_id)
+    
+    # Aliases for joined tables
+    CoachOrg = aliased(_models.CoachOrganization)
+    BankDetail = aliased(_usermodels.Bank_detail)
+    ClientCoach = aliased(_client_models.ClientCoach)
+    
     query = db.query(
-        _models.Coach.id,
-        _models.Coach.own_coach_id,
-        _models.Coach.profile_img,
-        _models.Coach.first_name,
-        _models.Coach.last_name,
-        _models.Coach.dob,
-        _models.Coach.gender,
-        _models.Coach.email,
-        _models.Coach.password,
-        _models.Coach.phone,
-        _models.Coach.mobile_number,
-        _models.Coach.notes,
-        _models.Coach.source_id,
-        _models.Coach.country_id,
-        _models.Coach.city,
-        _models.Coach.zipcode,
-        _models.Coach.address_1,
-        _models.Coach.address_2,
-        _models.Coach.check_in,
-        _models.Coach.last_online,
-        _models.Coach.coach_since,
-        _models.CoachOrganization.coach_status,
-        _models.CoachOrganization.org_id,
-        _usermodels.Bank_detail.bank_name,
-        _usermodels.Bank_detail.iban_no,
-        _usermodels.Bank_detail.acc_holder_name,
-        _usermodels.Bank_detail.swift_code,
-        _models.Coach.created_at,
-        func.string(_client_models.ClientCoach.client_id).label('member_ids')
-        
+        *_models.Coach.__table__.columns,
+        CoachOrg.coach_status,
+        CoachOrg.org_id,
+        BankDetail.bank_name,
+        BankDetail.iban_no,
+        BankDetail.acc_holder_name,
+        BankDetail.swift_code,
+        func.array_agg(ClientCoach.client_id).label('member_ids').label('member_ids')
     ).join(
-        _models.CoachOrganization, _models.Coach.id == _models.CoachOrganization.coach_id and _models.Coach.id==coach_id
+        CoachOrg, _models.Coach.id == CoachOrg.coach_id
     ).join(
-        _usermodels.Bank_detail, _models.Coach.bank_detail_id == _usermodels.Bank_detail.id
+        BankDetail, _models.Coach.bank_detail_id == BankDetail.id
     ).join(
-        _client_models.ClientCoach, _client_models.ClientCoach.coach_id == coach_id
+        ClientCoach, ClientCoach.coach_id == _models.Coach.id
     ).filter(
+        _models.Coach.id == coach_id,
         _models.Coach.is_deleted == False
-    ).group_by(_models.Coach.id)
-    db_coach = query.all()
-    return db_coach
+    ).group_by(
+        _models.Coach.id,
+        CoachOrg.coach_status,
+        CoachOrg.org_id,
+        BankDetail.bank_name,
+        BankDetail.iban_no,
+        BankDetail.acc_holder_name,
+        BankDetail.swift_code
+    )
+    
+    db_coach = query.first()
+    return _schemas.CoachReadSchema(**db_coach._asdict())
+    
 
 def get_all_coaches_by_org_id(db: _orm.Session,params: _schemas.CoachFilterParams):
     # Start with the base query
@@ -323,10 +320,9 @@ def get_all_coaches_by_org_id(db: _orm.Session,params: _schemas.CoachFilterParam
                 _models.Coach.last_name.ilike(f"%{params.search_key}%")
             )
         )
-    print("Mai gareeb hu")
     if params.status:
         
-        print("Mai gareeb hu22")
+        
         query = query.filter(_models.CoachOrganization.coach_status.ilike(f"%{params.status}%"))
     
     if params.sort_by:

@@ -99,7 +99,6 @@ class CoachReadSchema(pydantic.BaseModel):
     dob: Optional[datetime.date] = None
     gender: Optional[str] = None
     email: Optional[str] = None
-    password: Optional[str] = None
     phone: Optional[str] = None
     mobile_number: Optional[str] = None
     notes: Optional[str] = None
@@ -119,6 +118,9 @@ class CoachReadSchema(pydantic.BaseModel):
     acc_holder_name: Optional[str] = None
     swift_code: Optional[str] = None
     created_at: Optional[datetime.datetime] = None
-    member_ids: List[int] = None
+    member_ids: Optional[List[int]] = None
+    
+    class Config:
+        from_attributes = True
 
    

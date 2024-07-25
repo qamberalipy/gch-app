@@ -93,8 +93,49 @@ def delete_membership_plan( membership_plan_id: int,db: _orm.Session):
         db.refresh(db_membership_plan)
     return db_membership_plan
 
-def get_membership_plan_by_id( membership_plan_id: int,db: _orm.Session):
-    return db.query(models.MembershipPlan).filter(models.MembershipPlan.id == membership_plan_id,_models.MembershipPlan.is_deleted==False).order_by(desc(_models.MembershipPlan.created_at)).first()
+def get_membership_plan_by_id(membership_plan_id: int, db: _orm.Session):
+    membership_plan = db.query(models.MembershipPlan).filter(
+        models.MembershipPlan.id == membership_plan_id, 
+        models.MembershipPlan.is_deleted == False
+    ).first()
+    
+    if membership_plan is None:
+        raise _fastapi.HTTPException(status_code=404, detail="Membership plan not found")
+    
+    facilities = db.query(models.Facility_membership_plan).filter(
+        models.Facility_membership_plan.membership_plan_id == membership_plan_id, 
+        models.Facility_membership_plan.is_deleted == False
+    ).all()
+
+    facility_responses = [
+        _schemas.FacilityMembershipPlan(
+            id=facility.id,
+            total_credits=facility.total_credits,
+            validity=facility.validity
+        ) for facility in facilities
+    ]
+
+    response = _schemas.MembershipPlanResponse(
+        name=membership_plan.name,
+        org_id=membership_plan.org_id,
+        group_id=membership_plan.group_id,
+        status=membership_plan.status,
+        description=membership_plan.description,
+        access_time=membership_plan.access_time,
+        net_price=membership_plan.net_price,
+        income_category_id=membership_plan.income_category_id,
+        discount=membership_plan.discount,
+        total_price=membership_plan.total_price,
+        payment_method=membership_plan.payment_method,
+        reg_fee=membership_plan.reg_fee,
+        billing_cycle=membership_plan.billing_cycle,
+        auto_renewal=membership_plan.auto_renewal,
+        renewal_details=membership_plan.renewal_details,
+        facilities=facility_responses,
+        created_by=membership_plan.created_by
+    )
+
+    return response
 
 def get_membership_plans_by_org_id( org_id: int,db: _orm.Session):
    
