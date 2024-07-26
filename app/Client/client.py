@@ -289,7 +289,7 @@ async def get_business_clients(org_id: int,db: _orm.Session = Depends(get_db), a
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
     
 
-@router.get("/getTotalClient", response_model=_schemas.ClientCount, tags=["Client Router"])
+@router.get("/getTotalMembers", response_model=_schemas.ClientCount, tags=["Member Router"])
 async def get_total_clients(org_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         if not authorization or not authorization.startswith("Bearer "):
