@@ -183,8 +183,15 @@ def get_all_sources( db: _orm.Session):
     return db.query(_models.Source).all()
 
 async def get_one_staff(staff_id: int, db: _orm.Session):
-    staff_detail = db.query(_models.User).filter( _models.User.is_deleted == False and _models.User.id==staff_id).first()
-    return staff_detail
+    staff_detail = db.query(_models.User).filter(
+        _models.User.is_deleted == False,
+        _models.User.id == staff_id
+    ).first()
+    if staff_detail:
+        return staff_detail
+    else :
+        return None
+    
 
 async def update_staff(staff_id: int, staff_update: _schemas.UpdateStaff, db: _orm.Session):
     staff = db.query(_models.User).filter(_models.User.id == staff_id).first()

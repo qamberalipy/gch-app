@@ -170,6 +170,8 @@ async def get_all_staff(staff_id: int, db: _orm.Session = Depends(get_db), autho
         print("Fetching staff with ID:", staff_id)
         staff_list = await _services.get_one_staff(staff_id, db)
         print("Staff list:", staff_list)
+        if staff_list is None:
+            raise HTTPException(status_code=404, detail="Staff not found")
         return staff_list
 
     except IntegrityError as e:
