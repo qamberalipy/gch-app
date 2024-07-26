@@ -73,17 +73,19 @@ def delete_coach(coach: _schemas.CoachDelete, db: _orm.Session = Depends(get_db)
         raise HTTPException(status_code=404, detail="Coach not found")
     return db_coach
 
-@router.get("/coaches",response_model=_schemas.CoachReadSchema, tags=["Coach API"])
+@router.get("/coaches", response_model=_schemas.CoachReadSchema, tags=["Coach API"])
 def get_coach_by_id(coach_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid or missing access token")
     _helpers.verify_jwt(authorization, "User")
-    db_coach = _services.get_coach_by_id(coach_id,db)
+
+    db_coach = _services.get_coach_by_id(coach_id, db)
     if db_coach is None:
         raise HTTPException(status_code=404, detail="Coach not found")
     return db_coach
 
-@router.get("/coaches/getAll", response_model=List[_schemas.CoachRead], tags=["Coach API"])
+
+@router.get("/coaches/getAll", response_model=List[_schemas.CoachReadSchema], tags=["Coach API"])
 def get_coaches_by_org_id(org_id: int,request: Request,db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     
     if not authorization or not authorization.startswith("Bearer "):
