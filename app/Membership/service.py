@@ -1,6 +1,7 @@
 
 import datetime 
 import jwt
+from sqlalchemy import text
 import sqlalchemy.orm as _orm
 from sqlalchemy.sql import and_  ,desc
 import email_validator as _email_check
@@ -93,12 +94,128 @@ def delete_membership_plan( membership_plan_id: int,db: _orm.Session):
         db.refresh(db_membership_plan)
     return db_membership_plan
 
-def get_membership_plan_by_id( membership_plan_id: int,db: _orm.Session):
-    return db.query(models.MembershipPlan).filter(models.MembershipPlan.id == membership_plan_id,_models.MembershipPlan.is_deleted==False).order_by(desc(_models.MembershipPlan.created_at)).first()
+def get_membership_plan_by_id(membership_plan_id: int, db: _orm.Session):
+    membership_plan = db.query(models.MembershipPlan).filter(
+        models.MembershipPlan.id == membership_plan_id, 
+        models.MembershipPlan.is_deleted == False
+    ).first()
+    
+    if membership_plan is None:
+        raise _fastapi.HTTPException(status_code=404, detail="Membership plan not found")
+    
+    facilities = db.query(models.Facility_membership_plan).filter(
+        models.Facility_membership_plan.membership_plan_id == membership_plan_id, 
+        models.Facility_membership_plan.is_deleted == False
+    ).all()
 
-def get_membership_plans_by_org_id( org_id: int,db: _orm.Session):
-   
-    return db.query(models.MembershipPlan).filter(models.MembershipPlan.org_id == org_id,_models.MembershipPlan.is_deleted==False).order_by(desc(_models.MembershipPlan.created_at)).all()
+    facility_responses = [
+        _schemas.FacilityMembershipPlan(
+            id=facility.id,
+            total_credits=facility.total_credits,
+            validity=facility.validity
+        ) for facility in facilities
+    ]
+
+    response = _schemas.MembershipPlanResponse(
+        name=membership_plan.name,
+        org_id=membership_plan.org_id,
+        group_id=membership_plan.group_id,
+        status=membership_plan.status,
+        description=membership_plan.description,
+        access_time=membership_plan.access_time,
+        net_price=membership_plan.net_price,
+        income_category_id=membership_plan.income_category_id,
+        discount=membership_plan.discount,
+        total_price=membership_plan.total_price,
+        payment_method=membership_plan.payment_method,
+        reg_fee=membership_plan.reg_fee,
+        billing_cycle=membership_plan.billing_cycle,
+        auto_renewal=membership_plan.auto_renewal,
+        renewal_details=membership_plan.renewal_details,
+        facilities=facility_responses,
+        created_by=membership_plan.created_by
+    )
+
+    return response
+
+def get_membership_plans_by_org_id(
+    db: _orm.Session,
+    parameters: _schemas.MembershipFilterParams
+):
+    filters = ["mp.org_id = :org_id"]
+    params = {"org_id": parameters.org_id}
+
+    if parameters.group_id is not None:
+        filters.append("mp.group_id = :group_id")
+        params["group_id"] = parameters.group_id
+
+    if parameters.income_category_id is not None:
+        filters.append("mp.income_category_id = :income_category_id")
+        params["income_category_id"] = parameters.income_category_id
+
+    if parameters.discount_percentage is not None:
+        filters.append("mp.discount = :discount_percentage")
+        params["discount_percentage"] = parameters.discount_percentage
+
+    if parameters.total_amount is not None:
+        filters.append("mp.total_price = :total_amount")
+        params["total_amount"] = parameters.total_amount
+
+    if parameters.status is not None:
+        filters.append("mp.status = :status")
+        params["status"] = parameters.status
+
+    if parameters.search_key is not None:
+        filters.append("mp.name ILIKE :name")
+        params["name"] = f"%{parameters.search_key}%"
+
+    sort_order = "ASC" if parameters.sort_order.lower() == "asc" else "DESC"
+
+    query = text(f"""
+        SELECT 
+            mp.id,
+            mp.name,
+            mp.org_id,
+            mp.group_id,
+            mp.status,
+            mp.description,
+            mp.access_time,
+            mp.net_price,
+            mp.income_category_id,
+            mp.discount,
+            mp.total_price,
+            mp.payment_method,
+            mp.reg_fee,
+            mp.billing_cycle,
+            mp.auto_renewal,
+            mp.renewal_details,
+            mp.created_by,
+            mp.created_at,
+            json_agg(
+                json_build_object(
+                    'id', f.id,
+                    'total_credits', fmp.total_credits,
+                    'validity', fmp.validity
+                )
+            ) AS facilities
+        FROM membership_plan mp
+        LEFT JOIN facility_membership_plan fmp ON fmp.membership_plan_id = mp.id
+        LEFT JOIN facility f ON f.id = fmp.facility_id
+        WHERE {" AND ".join(filters)}
+        GROUP BY 
+            mp.id, mp.name, mp.org_id, mp.group_id, mp.status, 
+            mp.description, CAST(mp.access_time AS text), mp.net_price, 
+            mp.income_category_id, mp.discount, mp.total_price, mp.payment_method,
+            mp.reg_fee, mp.billing_cycle, mp.auto_renewal, CAST(mp.renewal_details AS text), mp.created_by, mp.created_at
+        ORDER BY mp.created_at {sort_order}
+        LIMIT :limit OFFSET :offset;
+    """)
+
+    params["limit"] = parameters.limit
+    params["offset"] = parameters.offset
+
+    result = db.execute(query, params)
+    return result.fetchall()
 
 
 def create_facility(facility: _schemas.FacilityCreate,db: _orm.Session):

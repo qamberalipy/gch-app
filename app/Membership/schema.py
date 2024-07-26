@@ -154,3 +154,37 @@ class GroupRead(pydantic.BaseModel):
 class GroupUpdate(pydantic.BaseModel):
     id: int
     name: Optional[str] = None
+
+class MembershipFilterParams(pydantic.BaseModel):
+    org_id: int
+    group_id: Optional[int] = None
+    income_category_id: Optional[int] = None
+    discount_percentage: Optional[float] = None
+    tax_rate: Optional[float] = None
+    total_amount: Optional[float] = None
+    status: Optional[str] = None
+    search_key: Optional[str] = None
+    sort_order: Optional[str] = "asc"
+    limit: Optional[int] = 10
+    offset: Optional[int] = 0
+
+class MembershipPlanResponse(pydantic.BaseModel):
+    id:Optional[int] = None
+    name:  Optional[str] = None
+    org_id: Optional[int] = None
+    group_id: Optional[int] = None
+    status:  Optional[str] = None
+    description:  Optional[str] = None
+    access_time: Optional[Dict] =[] 
+    net_price: Optional[float] = None
+    income_category_id: Optional[int] = None
+    discount: Optional[float] = None
+    total_price: Optional[float] = None
+    payment_method:  Optional[str] = None
+    reg_fee: Optional[float] = None
+    billing_cycle:  Optional[str] = None
+    auto_renewal: Optional[bool] = None
+    renewal_details: Optional[Dict] =[] 
+    facilities: List[FacilityMembershipPlan]
+    created_by: Optional[int] = None
+    
