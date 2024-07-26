@@ -103,9 +103,9 @@ class StaffBase(pydantic.BaseModel):
         from_attributes = True
 
 class CreateStaff(StaffBase):
-    created_at: Optional[datetime.datetime]=None
+    created_at: Optional[datetime.datetime] = datetime.datetime.now()
     created_by: Optional[int] = None
-    
+
 class ReadStaff(StaffBase):
     pass
 

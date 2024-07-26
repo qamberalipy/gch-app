@@ -46,6 +46,7 @@ def verify_jwt(token: str, obj_type: str = "User"):
     try:
         token = token.split("Bearer ")[1]
         payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        print("Token time: ", (time.time() - payload["token_time"]) > int(JWT_EXPIRY), time.time() - payload["token_time"], int(JWT_EXPIRY))
         if (time.time() - payload["token_time"]) > int(JWT_EXPIRY):
             raise credentials_exception
         if payload['user_type'] != obj_type.lower():

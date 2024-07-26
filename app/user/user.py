@@ -256,7 +256,7 @@ async def create_role(role: _schemas.RoleCreate, db: _orm.Session = Depends(get_
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid or missing access token")
         _helpers.verify_jwt(authorization, "User")
-        print("Role: ", role)
+        await _services.check_role(role, db)
         new_role = await _services.create_role(role, db)
         print("New Role: ", new_role)
         return {

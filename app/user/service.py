@@ -274,6 +274,16 @@ def get_filtered_staff(
         for st in staff
     ]
 
+async def check_role(role: _schemas.RoleCreate, db: _orm.Session = _fastapi.Depends(get_db)):
+    ch_role = db.query(_models.Role).filter(_models.Role.name == role.name, _models.Role.org_id == role.org_id).first()
+    
+    if ch_role is not None:
+        raise _fastapi.HTTPException(status_code=400, detail="Role already exists")
+
+    if len(role.resource_id) != len(role.access_type):
+        raise _fastapi.HTTPException(status_code=400, detail="Resource ID and Access Type should be equal")
+
+    return True
 
 async def create_role(role: _schemas.RoleCreate, db: _orm.Session = _fastapi.Depends(get_db)):
     db_role = _models.Role(
