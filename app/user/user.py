@@ -116,7 +116,7 @@ async def get_staff(org_id:int, db: _orm.Session= Depends(get_db), authorization
         raise HTTPException(status_code=401, detail="Invalid or missing access token")
 
     _helpers.verify_jwt(authorization, "User")
-    filtered_users=  db.query(_models.User.org_id,_models.User.id,_models.User.first_name).filter(_models.User.org_id == org_id).all()
+    filtered_users =  db.query(_models.User.org_id,_models.User.id,_models.User.first_name).filter(_models.User.org_id == org_id, _models.User.is_deleted == False).all()
     return filtered_users
 
 
