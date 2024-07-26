@@ -125,7 +125,11 @@ class StaffDetail(pydantic.BaseModel):
     class Config:
         from_attributes = True
         
+class DeleteStaff(pydantic.BaseModel):
+    id:int
+            
 class UpdateStaff(pydantic.BaseModel):
+    id:int
     profile_img: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None

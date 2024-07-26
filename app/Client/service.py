@@ -364,7 +364,9 @@ async def get_client_byid(db: _orm.Session, client_id: int) -> _schemas.ClientBy
         .outerjoin(_models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id)
         .outerjoin(_models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id)
         .outerjoin(_models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id)
-        .filter(_models.Client.id == client_id)
+        .filter(_models.Client.id == client_id,
+                _models.Client.is_deleted == False
+            )
     )
     
     result = query.first()

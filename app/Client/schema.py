@@ -208,7 +208,11 @@ class ClientFilterParams(pydantic.BaseModel):
     limit:Optional[int] = None
     offset:Optional[int] = None
     
+class ClientDelete(pydantic.BaseModel):
+    id : int
+    
 class ClientUpdate(pydantic.BaseModel):
+    id : int
     profile_img: Optional[str] = None
     own_member_id: Optional[str] = None
     first_name: Optional[str] = None
