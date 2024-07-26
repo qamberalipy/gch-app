@@ -2,6 +2,8 @@ import pydantic
 import datetime
 from typing import Dict, List, Optional
 
+from sqlalchemy import JSON
+
 class CoachBase(pydantic.BaseModel):
     wallet_address: Optional[str] = None 
     org_id: Optional[int] = None
@@ -118,10 +120,10 @@ class CoachReadSchema(pydantic.BaseModel):
     acc_holder_name: Optional[str] = None
     swift_code: Optional[str] = None
     created_at: Optional[datetime.datetime] = None
-    member_ids: Optional[List[int]] = []
-    member_names:Optional[List[str]]=[]
+    members: Optional[List[Dict]] = []
     
     class Config:
         from_attributes = True
+        arbitrary_types_allowed=True
 
    

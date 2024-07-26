@@ -310,8 +310,8 @@ def get_coach_by_id(coach_id: int, db: _orm.Session):
         BankDetail.iban_no,
         BankDetail.acc_holder_name,
         BankDetail.swift_code,
-        func.array_agg(func.coalesce(ClientCoach.client_id,0)).label('member_ids'),
-        func.array_agg(func.coalesce(_client_models.Client.first_name,"")).label('member_names')
+        func.array_agg(func.json_build_object('id', func.coalesce(ClientCoach.client_id, 0),
+        'name', func.coalesce(_client_models.Client.first_name, ""))).label('members')
     ).outerjoin(
         CoachOrg, _models.Coach.id == CoachOrg.coach_id
     ).outerjoin(
@@ -456,7 +456,8 @@ async def get_total_coaches(org_id: int, db: _orm.Session = _fastapi.Depends(get
         _models.CoachOrganization,
         _models.CoachOrganization.coach_id == models.Coach.id
     ).filter(
-        _models.CoachOrganization.org_id == org_id
+        _models.CoachOrganization.org_id == org_id,
+
         
     ).scalar()
     
