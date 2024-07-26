@@ -164,7 +164,6 @@ def create_client_coach_mappings(coach_id: int, member_ids: List[int], db: _orm.
 
 def create_coach(coach: _schemas.CoachCreate, db: _orm.Session):
     coach_db = get_coach_by_email(coach.email, db)
-    print
     if coach_db:
             raise _fastapi.HTTPException(status_code=400, detail="Email already registered")
         

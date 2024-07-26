@@ -6,11 +6,11 @@ import sqlalchemy.ext.declarative as _declarative
 from enum import Enum as PyEnum
 from datetime import datetime
 
-class ExerciseType(PyEnum):
+class ExerciseType(str,PyEnum):
     time_based = 'Time Based'
     repetition_based = 'Repetition Based'
 
-class VisibleFor(PyEnum):
+class VisibleFor(str,PyEnum):
     only_myself = 'Only Myself'
     staff_of_my_club = 'Staff of My Club'
     members_of_my_club = 'Members of My Club'
@@ -40,9 +40,9 @@ class Exercise(_database.Base):
     image_url_male = _sql.Column(_sql.String, nullable=True)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.utcnow)
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    is_deleted=_sql.Column(_sql.Integer)
+    created_at = _sql.Column(_sql.DateTime, default=datetime.now)
+    updated_at = _sql.Column(_sql.DateTime, default=datetime.now, onupdate=datetime.now)
+    is_deleted= _sql.Column(_sql.Boolean, default=False)
     
 class Equipment(_database.Base):
     __tablename__ = 'equipments'
@@ -51,9 +51,9 @@ class Equipment(_database.Base):
     equipment_name = _sql.Column(_sql.String, nullable=False)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.utcnow)
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)   
-    is_deleted=_sql.Column(_sql.Integer)
+    created_at = _sql.Column(_sql.DateTime, default=datetime.now)
+    updated_at = _sql.Column(_sql.DateTime, default=datetime.now, onupdate=datetime.now)   
+    is_deleted = _sql.Column(_sql.Boolean, default=False)
 
 class ExerciseEquipment(_database.Base):
     __tablename__ = 'exercise_equipment'
@@ -63,10 +63,9 @@ class ExerciseEquipment(_database.Base):
     equipment_id=_sql.Column(_sql.Integer)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.utcnow)
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    is_deleted=_sql.Column(_sql.Integer)
-
+    created_at = _sql.Column(_sql.DateTime, default=datetime.now)
+    updated_at = _sql.Column(_sql.DateTime, default=datetime.now, onupdate=datetime.now)
+    is_deleted= _sql.Column(_sql.Boolean, default=False)
 class ExerciseCategory(_database.Base):
     __tablename__ = 'exercise_category'
 
@@ -74,10 +73,9 @@ class ExerciseCategory(_database.Base):
     category_name = _sql.Column(_sql.String, nullable=False)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.utcnow)
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    is_deleted=_sql.Column(_sql.Integer)
-    
+    created_at = _sql.Column(_sql.DateTime, default=datetime.now)
+    updated_at = _sql.Column(_sql.DateTime, default=datetime.now, onupdate=datetime.now)
+    is_deleted = _sql.Column(_sql.Boolean, default=False)
 class Muscle(_database.Base):
     __tablename__ = 'muscle'
 
@@ -85,9 +83,9 @@ class Muscle(_database.Base):
     muscle_name = _sql.Column(_sql.String, nullable=False)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.utcnow)
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    is_deleted=_sql.Column(_sql.Integer)
+    created_at = _sql.Column(_sql.DateTime, default=datetime.now)
+    updated_at = _sql.Column(_sql.DateTime, default=datetime.now, onupdate=datetime.now)
+    is_deleted = _sql.Column(_sql.Boolean, default=False)
     
 
 class PrimaryJoint(_database.Base):
@@ -97,9 +95,9 @@ class PrimaryJoint(_database.Base):
     joint_name = _sql.Column(_sql.String, nullable=False)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.utcnow)
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    is_deleted=_sql.Column(_sql.Integer)
+    created_at = _sql.Column(_sql.DateTime, default=datetime.now)
+    updated_at = _sql.Column(_sql.DateTime, default=datetime.now, onupdate=datetime.now)
+    is_deleted = _sql.Column(_sql.Boolean, default=False)
 
 class ExercisePrimaryMuscle(_database.Base):
     __tablename__ = 'exercise_primary_muscle'
@@ -109,9 +107,9 @@ class ExercisePrimaryMuscle(_database.Base):
     muscle_id=_sql.Column(_sql.Integer)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.utcnow)
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    is_deleted=_sql.Column(_sql.Integer)
+    created_at = _sql.Column(_sql.DateTime, default=datetime.now)
+    updated_at = _sql.Column(_sql.DateTime, default=datetime.now, onupdate=datetime.now)
+    is_deleted = _sql.Column(_sql.Boolean, default=False)
 
 class ExerciseSecondaryMuscle(_database.Base):
     __tablename__ = 'exercise_secondary_muscle'
@@ -121,9 +119,9 @@ class ExerciseSecondaryMuscle(_database.Base):
     muscle_id=_sql.Column(_sql.Integer)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.utcnow)
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    is_deleted=_sql.Column(_sql.Integer)
+    created_at = _sql.Column(_sql.DateTime, default=datetime.now)
+    updated_at = _sql.Column(_sql.DateTime, default=datetime.now, onupdate=datetime.now)
+    is_deleted = _sql.Column(_sql.Boolean, default=False)
 
 class ExercisePrimaryJoint(_database.Base):
     __tablename__ = 'exercise_primary_joint'
@@ -133,9 +131,9 @@ class ExercisePrimaryJoint(_database.Base):
     primary_joint_id=_sql.Column(_sql.Integer)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.utcnow)
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    is_deleted=_sql.Column(_sql.Integer)
+    created_at = _sql.Column(_sql.DateTime, default=datetime.now)
+    updated_at = _sql.Column(_sql.DateTime, default=datetime.now, onupdate=datetime.now)
+    is_deleted = _sql.Column(_sql.Boolean, default=False)
 
 class MET(_database.Base):
     __tablename__ = 'met'
@@ -145,9 +143,8 @@ class MET(_database.Base):
     met_description = _sql.Column(_sql.String, nullable=False)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.utcnow)
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    is_deleted=_sql.Column(_sql.Integer)
-
+    created_at = _sql.Column(_sql.DateTime, default=datetime.now)
+    updated_at = _sql.Column(_sql.DateTime, default=datetime.now, onupdate=datetime.now)
+    is_deleted = _sql.Column(_sql.Boolean, default=False)
 
 

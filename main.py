@@ -10,6 +10,7 @@ from app.Membership import membership_router
 from app.Coach import coach_router
 from app.Event import event_router
 from app.Leads import leads_router
+from app.Exercise import exercise_router
 
 load_dotenv(".env")
 
@@ -35,6 +36,7 @@ app.include_router(membership_router)
 app.include_router(event_router)
 app.include_router(leads_router)
 app.include_router(root_router)
+app.include_router(exercise_router)
 
 AUTH_BASE_URL = os.environ.get("AUTH_BASE_URL")
 # logging.basicConfig(level=logging.INFO)
