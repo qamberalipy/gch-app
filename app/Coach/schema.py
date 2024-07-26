@@ -119,6 +119,7 @@ class CoachReadSchema(pydantic.BaseModel):
     swift_code: Optional[str] = None
     created_at: Optional[datetime.datetime] = None
     member_ids: Optional[List[int]] = []
+    member_names:Optional[List[str]]=[]
     
     class Config:
         from_attributes = True
