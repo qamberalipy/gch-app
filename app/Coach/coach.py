@@ -53,7 +53,7 @@ def create_coach(coach: _schemas.CoachCreate, db: _orm.Session = Depends(get_db)
     _helpers.verify_jwt(authorization, "User")
     return _services.create_coach(coach,db)
 
-@router.put("/coaches", response_model=_schemas.CoachRead , tags=["Coach API"])
+@router.put("/coaches", response_model=_schemas.CoachUpdate , tags=["Coach API"])
 def update_coach(coach: _schemas.CoachUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid or missing access token")

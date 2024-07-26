@@ -228,6 +228,35 @@ def update_client_coach_mappings(coach_id: int, member_ids: List[int], db: _orm.
         db.add(db_client_coach)
     db.commit()
 
+def update_coach_organization(coach_id: int, org_id: int, coach_status: str, updated_by: int, db: _orm.Session):
+    db_coach_org = db.query(_models.CoachOrganization).filter(
+        _models.CoachOrganization.coach_id == coach_id,
+        _models.CoachOrganization.is_deleted == False
+    ).first()
+
+    if not db_coach_org:
+        db_coach_org = _models.CoachOrganization(
+            coach_id=coach_id,
+            org_id=org_id,
+            coach_status=coach_status,
+            is_deleted=False,
+            created_by=updated_by,
+            updated_by=updated_by
+        )
+        db.add(db_coach_org)
+    else:
+        db_coach_org.org_id = org_id if org_id else db_coach_org.org_id
+        db_coach_org.coach_status = coach_status if coach_status else db_coach_org.coach_status
+        db_coach_org.updated_by = updated_by
+
+        db.add(db_coach_org)
+
+    db.commit()
+    db.refresh(db_coach_org)
+    
+    return db_coach_org
+
+
 def update_coach(coach: _schemas.CoachUpdate, db: _orm.Session):
     db_coach = db.query(_models.Coach).filter(
         _models.Coach.id == coach.id,
@@ -238,14 +267,22 @@ def update_coach(coach: _schemas.CoachUpdate, db: _orm.Session):
         return None
 
     db_bank_detail = update_bank_detail(coach, db, db_coach)
-    
     db_coach.bank_detail_id = db_bank_detail.id if db_bank_detail else db_coach.bank_detail_id
     db_coach = update_coach_record(coach, db, db_coach)
     
     if coach.member_ids:
         update_client_coach_mappings(db_coach.id, coach.member_ids, db)
+    
+    db_coach_org = update_coach_organization(
+        coach_id=coach.id,
+        org_id=coach.org_id,
+        coach_status=coach.coach_status,
+        updated_by=coach.updated_by,
+        db=db
+    )
+    
+    return coach
 
-    return db_coach
 
 
 def delete_coach(coach_id: int,db: _orm.Session):
