@@ -256,11 +256,11 @@ def get_filtered_clients(
         _coach_models.Coach.first_name.label("coach_name")
     ).join(
         _models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id
-    ).join(
+    ).outerjoin(
         _models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id
-    ).join(
+    ).outerjoin(
         _models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id
-    ).join(
+    ).outerjoin(
         _coach_models.Coach, _models.ClientCoach.coach_id == _coach_models.Coach.id
     ).filter(
         _models.ClientOrganization.org_id == params.org_id,
@@ -309,7 +309,7 @@ def get_filtered_clients(
     # Add order by created_at and limit/offset for pagination
     query = query.order_by(_models.Client.created_at).offset(params.offset).limit(params.limit)
     clients = query.all()
-
+    print(clients)
     return [
         _schemas.ClientFilterRead(
             id=client.id,
