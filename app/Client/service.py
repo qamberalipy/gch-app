@@ -256,16 +256,19 @@ def get_filtered_clients(
         _coach_models.Coach.first_name.label("coach_name")
     ).join(
         _models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id
-    ).outerjoin(
+    ).join(
         _models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id
-    ).outerjoin(
+    ).join(
         _models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id
-    ).outerjoin(
+    ).join(
         _coach_models.Coach, _models.ClientCoach.coach_id == _coach_models.Coach.id
     ).filter(
         _models.ClientOrganization.org_id == params.org_id,
-        _models.ClientOrganization.is_deleted == False
+        _models.ClientOrganization.is_deleted == False,
+        _models.Client.is_deleted==False
     )
+
+
 
     # Apply filters conditionally
     if params.client_name:
@@ -364,7 +367,9 @@ async def get_client_byid(db: _orm.Session, client_id: int) -> _schemas.ClientBy
         .outerjoin(_models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id)
         .outerjoin(_models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id)
         .outerjoin(_models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id)
-        .filter(_models.Client.id == client_id)
+        .filter(_models.Client.id == client_id,
+                _models.Client.is_deleted == False
+            )
     )
     
     result = query.first()

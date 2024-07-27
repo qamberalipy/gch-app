@@ -31,6 +31,7 @@ class MembershipPlanCreate(MembershipPlanBase):
 
 class MembershipPlanUpdate(MembershipPlanBase):
     id:int
+    facilities: List[FacilityMembershipPlan]
     updated_by: Optional[int]=None 
 
 class MembershipPlanDelete(pydantic.BaseModel):

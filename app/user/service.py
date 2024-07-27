@@ -183,8 +183,15 @@ def get_all_sources( db: _orm.Session):
     return db.query(_models.Source).all()
 
 async def get_one_staff(staff_id: int, db: _orm.Session):
-    staff_detail = db.query(_models.User).filter( _models.User.is_deleted == False and _models.User.id==staff_id).first()
-    return staff_detail
+    staff_detail = db.query(_models.User).filter(
+        _models.User.is_deleted == False,
+        _models.User.id == staff_id
+    ).first()
+    if staff_detail:
+        return staff_detail
+    else :
+        return None
+    
 
 async def update_staff(staff_id: int, staff_update: _schemas.UpdateStaff, db: _orm.Session):
     staff = db.query(_models.User).filter(_models.User.id == staff_id).first()
@@ -274,6 +281,16 @@ def get_filtered_staff(
         for st in staff
     ]
 
+async def check_role(role: _schemas.RoleCreate, db: _orm.Session = _fastapi.Depends(get_db)):
+    ch_role = db.query(_models.Role).filter(_models.Role.name == role.name, _models.Role.org_id == role.org_id).first()
+    
+    if ch_role is not None:
+        raise _fastapi.HTTPException(status_code=400, detail="Role already exists")
+
+    if len(role.resource_id) != len(role.access_type):
+        raise _fastapi.HTTPException(status_code=400, detail="Resource ID and Access Type should be equal")
+
+    return True
 
 async def create_role(role: _schemas.RoleCreate, db: _orm.Session = _fastapi.Depends(get_db)):
     db_role = _models.Role(

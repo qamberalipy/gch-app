@@ -103,9 +103,9 @@ class StaffBase(pydantic.BaseModel):
         from_attributes = True
 
 class CreateStaff(StaffBase):
-    created_at: Optional[datetime.datetime]=None
+    created_at: Optional[datetime.datetime] = datetime.datetime.now()
     created_by: Optional[int] = None
-    
+
 class ReadStaff(StaffBase):
     pass
 
@@ -125,7 +125,11 @@ class StaffDetail(pydantic.BaseModel):
     class Config:
         from_attributes = True
         
+class DeleteStaff(pydantic.BaseModel):
+    id:int
+            
 class UpdateStaff(pydantic.BaseModel):
+    id:int
     profile_img: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None

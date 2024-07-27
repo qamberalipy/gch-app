@@ -31,7 +31,7 @@ def get_db():
         
     
 
-@router.post("/register")
+@router.post("/leads",response_model= _schemas.LeadCreate)
 async def register_lead(lead_data: _schemas.LeadCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         
@@ -57,7 +57,7 @@ async def register_lead(lead_data: _schemas.LeadCreate, db: _orm.Session = Depen
 
     
 
-@router.get("/getleads", response_model=List[_schemas.ResponseLeadRead])
+@router.get("/leads", response_model=List[_schemas.ResponseLeadRead])
 async def get_leads(
     org_id: int, 
     request: Request,
@@ -94,7 +94,7 @@ async def get_leads(
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-@router.put('/updateStaff', response_model=_schemas.UpdateStaff)
+@router.put('/leads/staff', response_model=_schemas.UpdateStaff)
 async def update_status(data: _schemas.UpdateStaff, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:    
         if not authorization or not authorization.startswith("Bearer "):
@@ -111,7 +111,7 @@ async def update_status(data: _schemas.UpdateStaff, db: _orm.Session = Depends(g
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-@router.put('/updateStatus', response_model=_schemas.UpdateStatus)
+@router.put('/leads/status', response_model=_schemas.UpdateStatus)
 async def update_status(data: _schemas.UpdateStatus, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         if not authorization or not authorization.startswith("Bearer "):
@@ -128,7 +128,7 @@ async def update_status(data: _schemas.UpdateStatus, db: _orm.Session = Depends(
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-@router.put('/update', response_model=_schemas.LeadUpdate)
+@router.put('/leads', response_model=_schemas.LeadUpdate)
 async def update_data(lead_id:int,data: _schemas.LeadUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         if not authorization or not authorization.startswith("Bearer "):
@@ -145,8 +145,8 @@ async def update_data(lead_id:int,data: _schemas.LeadUpdate, db: _orm.Session = 
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-@router.get("/getleadsById")
-async def register_lead(lead_id:int,db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.get("/leads")
+async def get_lead_by_id(lead_id:int,db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid or missing access token")

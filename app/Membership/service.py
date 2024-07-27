@@ -1,5 +1,6 @@
 
-import datetime 
+import datetime
+from typing import List 
 import jwt
 from sqlalchemy import text
 import sqlalchemy.orm as _orm
@@ -71,19 +72,50 @@ def create_membership_plan(membership_plan: _schemas.MembershipPlanCreate, db: _
     db.commit()
     return db_membership_plan
 
+def update_facility_membership_plans(membership_plan_id: int, facilities: List[_schemas.FacilityMembershipPlan], db: _orm.Session):
+    for facility_data in facilities:
+        db_facility_membership_plan = db.query(models.Facility_membership_plan).filter(
+            models.Facility_membership_plan.membership_plan_id == membership_plan_id,
+            models.Facility_membership_plan.facility_id == facility_data.id
+        ).first()
+
+        if not db_facility_membership_plan:
+            # Create a new facility membership plan if it doesn't exist
+            new_facility_membership_plan = models.Facility_membership_plan(
+                membership_plan_id=membership_plan_id,
+                facility_id=facility_data.id,
+                total_credits=facility_data.total_credits,
+                validity=facility_data.validity
+            )
+            db.add(new_facility_membership_plan)
+        else:
+            # Update the existing facility membership plan
+            if facility_data.total_credits is not None:
+                db_facility_membership_plan.total_credits = facility_data.total_credits
+            if facility_data.validity is not None:
+                db_facility_membership_plan.validity = facility_data.validity
+
+    db.commit()
+
 def update_membership_plan(membership_plan_id: int, membership_plan: _schemas.MembershipPlanUpdate, db: _orm.Session):
     db_membership_plan = db.query(models.MembershipPlan).filter(models.MembershipPlan.id == membership_plan_id).first()
     if not db_membership_plan:
         return None  # Return None if the membership plan does not exist
 
     # Update only the fields that are provided
-    update_data = membership_plan.dict(exclude_unset=True)
+    update_data = membership_plan.dict(exclude_unset=True, exclude={"facilities"})
     for key, value in update_data.items():
         setattr(db_membership_plan, key, value)
 
     db.commit()
     db.refresh(db_membership_plan)
+
+    # Update facilities if provided
+    if membership_plan.facilities:
+        update_facility_membership_plans(membership_plan_id, membership_plan.facilities, db)
+
     return db_membership_plan
+
 
 
 def delete_membership_plan( membership_plan_id: int,db: _orm.Session):
@@ -142,7 +174,7 @@ def get_membership_plans_by_org_id(
     db: _orm.Session,
     parameters: _schemas.MembershipFilterParams
 ):
-    filters = ["mp.org_id = :org_id"]
+    filters = ["mp.org_id = :org_id", "mp.is_deleted = False"]
     params = {"org_id": parameters.org_id}
 
     if parameters.group_id is not None:
