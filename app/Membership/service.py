@@ -225,8 +225,8 @@ def get_membership_plans_by_org_id(
             mp.created_at,
             json_agg(
                 json_build_object(
-                    'id', f.id,
-                    'total_credits', fmp.total_credits,
+                    'id', COALESCE(f.id, 0),
+                    'total_credits', COALESCE(fmp.total_credits, 0),
                     'validity', fmp.validity
                 )
             ) AS facilities
