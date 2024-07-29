@@ -310,8 +310,16 @@ def get_coach_by_id(coach_id: int, db: _orm.Session):
         BankDetail.iban_no,
         BankDetail.acc_holder_name,
         BankDetail.swift_code,
-        func.array_agg(func.json_build_object('id', func.coalesce(ClientCoach.client_id, 0),
-        'name', func.coalesce(_client_models.Client.first_name, ""))).label('members')
+        func.array_agg(
+            func.json_build_object(
+                'id', func.coalesce(ClientCoach.client_id, 0),
+                'name', func.concat(
+                    func.coalesce(_client_models.Client.first_name, ""), 
+                    ' ', 
+                    func.coalesce(_client_models.Client.last_name, "")
+                )
+            )
+        ).label('members')
     ).outerjoin(
         CoachOrg, _models.Coach.id == CoachOrg.coach_id
     ).outerjoin(
