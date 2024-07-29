@@ -34,6 +34,7 @@ from app.Leads.models import Leads
 from app.Event.models import Events
 from app.Exercise.models import Exercise
 from app.Food.models import Food
+from app.Workout.models import Workout
 
 target_metadata = Base.metadata
 
