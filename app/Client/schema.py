@@ -54,7 +54,7 @@ class ClientCreateApp(pydantic.BaseModel):
     org_id: Optional[int] = 0
     coach_id: Optional[int] = None
     status: Optional[str] = "pending"
-    membership_id: Optional[int] = 0
+    membership_plan_id: Optional[int] = 0
 
 
 class RegisterClientApp(pydantic.BaseModel):
