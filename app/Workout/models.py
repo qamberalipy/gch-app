@@ -57,7 +57,7 @@ class WorkoutDay(_database.Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     is_deleted= Column(Boolean, default=False)
 
-class WorkoutDayExercies(_database.Base):
+class WorkoutDayExercise(_database.Base):
     __tablename__ = 'workout_day_exercise'
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
