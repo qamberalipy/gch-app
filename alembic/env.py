@@ -33,8 +33,9 @@ from app.Membership.models import MembershipPlan
 from app.Leads.models import Leads
 from app.Event.models import Events
 from app.Exercise.models import Exercise
-from app.Food.models import Food
+# from app.Food.models import Food
 from app.Workout.models import Workout
+from app.MealPlan.models import MealPlan
 
 target_metadata = Base.metadata
 

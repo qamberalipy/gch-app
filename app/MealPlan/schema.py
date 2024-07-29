@@ -1,7 +1,7 @@
 import pydantic
 import datetime
 from datetime import date
-from MealPlan.models import VisibleForEnum, MealTimeEnum
+from app.MealPlan.models import VisibleForEnum, MealTimeEnum
 from typing import Optional
 
 class MealPlanBase(pydantic.BaseModel):
