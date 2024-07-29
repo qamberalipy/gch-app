@@ -26,12 +26,12 @@ class FacilityMembershipPlan(pydantic.BaseModel):
     validity: Dict
 
 class MembershipPlanCreate(MembershipPlanBase):
-    facilities: List[FacilityMembershipPlan]
+    facilities: Optional[List[FacilityMembershipPlan]]=[]
     created_by: int
 
 class MembershipPlanUpdate(MembershipPlanBase):
     id:int
-    facilities: List[FacilityMembershipPlan]
+    facilities: Optional[List[FacilityMembershipPlan]]=[]
     updated_by: Optional[int]=None 
 
 class MembershipPlanDelete(pydantic.BaseModel):
@@ -186,6 +186,6 @@ class MembershipPlanResponse(pydantic.BaseModel):
     billing_cycle:  Optional[str] = None
     auto_renewal: Optional[bool] = None
     renewal_details: Optional[Dict] =[] 
-    facilities: List[FacilityMembershipPlan]
+    facilities: Optional[List[FacilityMembershipPlan]]=[]
     created_by: Optional[int] = None
     
