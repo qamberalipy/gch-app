@@ -30,7 +30,7 @@ class ClientBase(pydantic.BaseModel):
 class ClientCreate(ClientBase):
     org_id: int
     coach_id: Optional[int] = None
-    membership_id: int
+    membership_plan_id: int
     status: str  # Corrected type annotation
     send_invitation: bool
     prolongation_period:Optional[int] = None

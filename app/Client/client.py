@@ -86,11 +86,11 @@ async def register_mobileclient(client: _schemas.ClientCreateApp, db: _orm.Sessi
         if db_client:
             raise HTTPException(status_code=400, detail="Email already registered")
 
-        client_data = client.dict()
+        client_data = client.dict() 
         organization_id = client_data.pop('org_id', 0)
         status = client_data.pop('status', 'pending')
         coach_id = client_data.pop('coach_id', None)
-        membership_id = client_data.pop('membership_id', 0)
+        membership_id = client_data.pop('membership_plan_id', 0)
 
         # Generate random own_member_id
         client_data['own_member_id'] = _services.generate_own_member_id()
