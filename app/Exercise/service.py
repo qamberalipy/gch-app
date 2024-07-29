@@ -1,4 +1,3 @@
-
 from sqlalchemy import desc, func, or_
 import sqlalchemy.orm as _orm
 import fastapi as _fastapi
