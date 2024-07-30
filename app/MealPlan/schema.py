@@ -26,6 +26,7 @@ class UpdateMealPlan(MealPlanBase):
     updated_at : Optional[datetime.datetime] = None
 
 class DeleteMealPlan(MealPlanBase):
+    id : int
     is_deleted: bool    
    
    

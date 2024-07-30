@@ -6,6 +6,14 @@ import sqlalchemy.ext.declarative as _declarative
 from enum import Enum as PyEnum
 from datetime import datetime
 
+
+class Difficulty(str,PyEnum):
+    Novice='Novice'
+    Beginner='Beginner'
+    Intermediate='Intermediate'
+    Advance='Advance'
+    Expert='Expert'
+
 class ExerciseType(str,PyEnum):
     time_based = 'Time Based'
     repetition_based = 'Repetition Based'
@@ -20,10 +28,12 @@ class Exercise(_database.Base):
     __tablename__ = 'exercise'
 
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
+    org_id=_sql.Column(_sql.Integer)
     exercise_name = _sql.Column(_sql.String, nullable=False)
     visible_for = _sql.Column(_sql.Enum(VisibleFor), nullable=False)
     category_id = _sql.Column(_sql.Integer, nullable=False) 
     exercise_type = _sql.Column(_sql.String, nullable=False)  
+    difficulty= _sql.Column(_sql.Enum(Difficulty), nullable=False)
     sets = _sql.Column(_sql.Integer, nullable=True) 
     seconds_per_set = _sql.Column(_sql.ARRAY(_sql.Integer), nullable=True) 
     repetitions_per_set = _sql.Column(_sql.ARRAY(_sql.Integer), nullable=True) 

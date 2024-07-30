@@ -87,7 +87,7 @@ async def authenticate_client(email_address: str, db: _orm.Session = _fastapi.De
     return client
 
 async def login_client(email_address: str, wallet_address: str, db: _orm.Session = _fastapi.Depends(get_db)) -> dict:
-    client = await get_client_by_email(email_address, db)
+    client = db.query(models.Client).filter(models.Client.email == email_address and models.Client.is_deleted==False).first()
     
     if not client:
         return {"is_registered": False}

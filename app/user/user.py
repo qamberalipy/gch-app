@@ -89,7 +89,7 @@ async def test_token(
     return payload
 
 @router.post("/refresh_token", tags=["Auth"])
-async def refresh_token(refresh_token: str = Header(None)):
+async def refresh_token(refresh_token: str = Header(None, alias="refresh_token")):
     return _helpers.refresh_jwt(refresh_token)
     
 
