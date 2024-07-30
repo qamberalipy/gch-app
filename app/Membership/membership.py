@@ -96,9 +96,6 @@ def get_membership_plans_by_org_id(
     return membership_plans
 
     
-
-
-    
 @router.post("/facilities", response_model=_schemas.FacilityRead, tags=["Facility APIs"])
 def create_facility(facility: _schemas.FacilityCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:    
@@ -145,7 +142,7 @@ def delete_facility(facility: _schemas.FacilityDelete, db: _orm.Session = Depend
 
 
 @router.get("/facilities/getAll", response_model=List[_schemas.FacilityRead], tags=["Facility APIs"])
-def get_facilitys_by_org_id(org_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+def get_facilitys_by_org_id(org_id: int,request: Request, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:    
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid or missing access token")

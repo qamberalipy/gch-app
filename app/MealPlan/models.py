@@ -27,11 +27,13 @@ class MealPlan(_database.Base):
     profile_img = _sql.Column(_sql.String)
     visible_for = _sql.Column(_sql.Enum(VisibleForEnum), nullable=False)
     description = _sql.Column(_sql.String)
+    org_id=_sql.Column(_sql.Integer)
     created_by = _sql.Column(_sql.Integer)
     updated_by =_sql.Column(_sql.Integer)
     created_at =_sql.Column(_sql.DateTime, default=_dt.datetime.now)
     updated_at =_sql.Column(_sql.DateTime, default=_dt.datetime.now)
     is_deleted =_sql.Column(_sql.Boolean, default=False)
+    
     
 class Meal(_database.Base):
     __tablename__ = "meal"
