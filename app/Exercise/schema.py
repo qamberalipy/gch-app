@@ -7,10 +7,10 @@ from app.Exercise.models import ExerciseType,VisibleFor,Difficulty
 class ExerciseBase(pydantic.BaseModel):
     exercise_name:str
     visible_for:VisibleFor
-    category_id :int
     org_id:int
+    category_id :int
     exercise_type :ExerciseType
-    difficulty : Difficulty
+    difficulty:Difficulty
     sets :int
     seconds_per_set:List[int]
     repetitions_per_set:List[int] 
@@ -39,7 +39,10 @@ class ExerciseCreate(ExerciseBase):
 
 class ExerciseRead(ExerciseBase):
     id:int
-    equipments:List[Dict]
+    equipments:Optional[List[Dict]]
+    primary_muscles:Optional[List[Dict]]
+    secondary_muscles:Optional[List[Dict]]
+    primary_joints:Optional[List[Dict]]   
 
 class Muscle(pydantic.BaseModel):
     id:int           
