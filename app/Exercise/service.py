@@ -289,10 +289,3 @@ async def get_equipments(db: _orm.Session = _fastapi.Depends(get_db)):
 
 async def get_primary_joints(db: _orm.Session = _fastapi.Depends(get_db)):
     return db.query(*_models.PrimaryJoint.__table__.columns)
-
-
-
-
-
-
-
