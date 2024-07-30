@@ -23,6 +23,12 @@ class ClientBase(pydantic.BaseModel):
     zipcode: Optional[str] = None
     address_1: Optional[str] = None
     address_2: Optional[str] = None
+    height:Optional[float]=0.0 
+    weight: Optional[float]=0.0 
+    bmi: Optional[float]=0.0     
+    circumference_waist_navel: Optional[float]=0.0
+    fat_percentage: Optional[float]=0.0
+    muscle_percentage: Optional[float]=0.0
     client_since: Optional[datetime.date] = None
     created_at: Optional[datetime.datetime] = None
     created_by: Optional[int] = None
@@ -30,7 +36,7 @@ class ClientBase(pydantic.BaseModel):
 class ClientCreate(ClientBase):
     org_id: int
     coach_id: Optional[int] = None
-    membership_id: int
+    membership_plan_id: int
     status: str  # Corrected type annotation
     send_invitation: bool
     prolongation_period:Optional[int] = None
@@ -54,7 +60,7 @@ class ClientCreateApp(pydantic.BaseModel):
     org_id: Optional[int] = 0
     coach_id: Optional[int] = None
     status: Optional[str] = "pending"
-    membership_id: Optional[int] = 0
+    membership_plan_id: Optional[int] = 0
 
 
 class RegisterClientApp(pydantic.BaseModel):
@@ -107,6 +113,12 @@ class ClientByID(pydantic.BaseModel):
     zipcode: Optional[str] = None
     address_1: Optional[str] = None
     address_2: Optional[str] = None
+    height:Optional[float]=0.0 
+    weight:Optional[float]=0.0 
+    bmi:Optional[float]=0.0     
+    circumference_waist_navel:Optional[float]=0.0
+    fat_percentage:Optional[float]=0.0
+    muscle_percentage:Optional[float]=0.0
     activated_on: Optional[datetime.date] = None
     check_in: Optional[datetime.datetime] = None
     last_online: Optional[datetime.datetime] = None
@@ -235,6 +247,12 @@ class ClientUpdate(pydantic.BaseModel):
     client_since: Optional[datetime.date] = None
     updated_at: Optional[datetime.datetime] = None
     updated_by: Optional[int] = None
+    height:Optional[float]=0.0 
+    weight:Optional[float]=0.0 
+    bmi:Optional[float]=0.0     
+    circumference_waist_navel:Optional[float]=0.0
+    fat_percentage:Optional[float]=0.0
+    muscle_percentage:Optional[float]=0.0
     coach_id: Optional[int] = None
     membership_id: Optional[int] = None
     org_id: Optional[int] = None

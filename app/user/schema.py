@@ -79,8 +79,12 @@ class SourceRead(pydantic.BaseModel):
 
     class Config:
         from_attributes = True
-        
+
+class StaffCount(pydantic.BaseModel):
+    total_staffs: int
+
 class StaffBase(pydantic.BaseModel):
+    own_staff_id: Optional[str] = None
     profile_img: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None

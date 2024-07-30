@@ -400,3 +400,12 @@ async def delete_role(role_id: int, db: _orm.Session):
 
 async def get_all_resources(db: _orm.Session):
     return db.query(_models.Resource).filter(_models.Resource.is_deleted == False).all()
+
+async def get_Total_count_staff(org_id: int, db: _orm.Session = _fastapi.Depends(get_db)) -> int:
+    total_staffs = db.query(func.count(models.User.id)).filter(
+        _models.User.org_id == org_id,
+        _models.User.is_deleted == False
+        
+    ).scalar()
+    print(total_staffs)
+    return total_staffs

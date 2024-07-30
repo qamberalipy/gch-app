@@ -44,7 +44,7 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
         organization_id = client_data.pop('org_id')
         status = client_data.pop('status')
         coach_id = client_data.pop('coach_id', None)
-        membership_id = client_data.pop('membership_id')
+        membership_id = client_data.pop('membership_plan_id')
         prolongation_period=client_data.pop('prolongation_period')
         auto_renew_days=client_data.pop('auto_renew_days')
         inv_days_cycle=client_data.pop('inv_days_cycle')
@@ -86,11 +86,11 @@ async def register_mobileclient(client: _schemas.ClientCreateApp, db: _orm.Sessi
         if db_client:
             raise HTTPException(status_code=400, detail="Email already registered")
 
-        client_data = client.dict()
+        client_data = client.dict() 
         organization_id = client_data.pop('org_id', 0)
         status = client_data.pop('status', 'pending')
         coach_id = client_data.pop('coach_id', None)
-        membership_id = client_data.pop('membership_id', 0)
+        membership_id = client_data.pop('membership_plan_id', 0)
 
         # Generate random own_member_id
         client_data['own_member_id'] = _services.generate_own_member_id()

@@ -30,6 +30,12 @@ class Client(_database.Base):
     address_1 = _sql.Column(_sql.String(100))  # address 1 renamed to address_1 for clarity
     address_2 = _sql.Column(_sql.String(100))
     activated_on = _sql.Column(_sql.Date)
+    height= _sql.Column(_sql.Float) 
+    weight= _sql.Column(_sql.Float) 
+    bmi= _sql.Column(_sql.Float)     
+    circumference_waist_navel= _sql.Column(_sql.Float)
+    fat_percentage= _sql.Column(_sql.Float)
+    muscle_percentage= _sql.Column(_sql.Float)
     check_in = _sql.Column(_sql.DateTime)
     last_online = _sql.Column(_sql.DateTime)
     client_since = _sql.Column(_sql.Date, nullable=False)
