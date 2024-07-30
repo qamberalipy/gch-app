@@ -201,13 +201,25 @@ class RoleDelete(pydantic.BaseModel):
     class Config:
         from_attributes = True
 
-class RoleRead(RoleBase):
-    permission_id: Optional[int] = None
+class RoleRead(pydantic.BaseModel):
+    resource_name: str
     role_id: Optional[int] = None
+    org_id: Optional[int] = None
+    status: Optional[bool] = None
+    permission_id: Optional[int] = None
     access_type: Optional[str] = None
+    is_parent: Optional[bool] = None
+    parent: Optional[str] = None
+    code: Optional[str] = None
+    link: Optional[str] = None
+    icon: Optional[str] = None
+    is_deleted: Optional[bool] = False
+    subRows: Optional[List['RoleRead']] = None
 
     class Config:
         from_attributes = True
+
+RoleRead.update_forward_refs()
 
 # class RoleSingleRead(pydantic.BaseModel):
 #     name: str
@@ -231,6 +243,7 @@ class RoleUpdate(pydantic.BaseModel):
 
     class Config:
         from_attributes = True
+        extra = "forbid"
 
 class ResourceRead(pydantic.BaseModel):
     id: int
