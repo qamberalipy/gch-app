@@ -87,21 +87,25 @@ async def authenticate_client(email_address: str, db: _orm.Session = _fastapi.De
     return client
 
 async def login_client(email_address: str, wallet_address: str, db: _orm.Session = _fastapi.Depends(get_db)) -> dict:
-    client = db.query(models.Client).filter(models.Client.email == email_address and models.Client.is_deleted==False).first()
+    client = db.query(_models.Client).filter(
+    _models.Client.email == email_address, _models.Client.is_deleted == False
+    ).first()
     
     if not client:
         return {"is_registered": False}
-    print("MYCLIENT: ",client)
+    
+    print("MY CLIENT: ", client)
     client.wallet_address = wallet_address
     db.commit()
     db.refresh(client)
     
     token = _helpers.create_token(client, "User")
     
-    return {"is_registered": True,
-            "client":client,
-            "access_token":token
-            }
+    return {
+        "is_registered": True,
+        "client": client,
+        "access_token": token
+    }
 
 async def get_client_by_email(email_address: str, db: _orm.Session = _fastapi.Depends(get_db)) -> models.Client:
     return db.query(models.Client).filter(models.Client.email == email_address).first()
