@@ -21,7 +21,7 @@ def get_db():
         db.close()
 
 
-@router.get("/exercise", response_model=List[_schemas.Muscle])
+@router.get("/exercise/muscles", response_model=List[_schemas.Muscle])
 async def get_muscle(db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         
@@ -41,7 +41,51 @@ async def get_muscle(db: _orm.Session = Depends(get_db), authorization: str = He
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")        
     
 
-@router.post("/exercise",response_model=_schemas.ExerciseCreate)
+
+@router.get("/exercise/equipments", response_model=List[_schemas.Equipments])
+async def get_muscle(db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:
+        
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        _helpers.verify_jwt(authorization, "User")
+    
+        filtered_leads = await _services.get_equipments(db)
+        return filtered_leads
+    
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+    
+
+@router.get("/exercise/primary_joints", response_model=List[_schemas.PrimaryJoint])
+async def get_muscle(db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    try:
+        
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid or missing access token")
+
+        _helpers.verify_jwt(authorization, "User")
+    
+        filtered_leads = await _services.get_primary_joints(db)
+        return filtered_leads
+    
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data` error occurred, check your input")
+
+
+
+
+
+@router.post("/exercise",response_model=_schemas.ExerciseBase)
 async def create_exercise(exercise: _schemas.ExerciseCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         
@@ -56,3 +100,10 @@ async def create_exercise(exercise: _schemas.ExerciseCreate, db: _orm.Session = 
     except DataError:
         db.rollback()
         raise HTTPException(status_code=400, detail="Data error occurred, check your input") 
+    
+
+@router.get("/exercise", response_model=List[_schemas.ExerciseRead])
+async def get_exercise(db: _orm.Session = Depends(get_db)):
+    
+        exercises = await _services.get_exercise(db)
+        return exercises   

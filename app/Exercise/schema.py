@@ -1,21 +1,16 @@
 
 import pydantic
 from datetime import date
-from typing import List, Optional
-from app.Exercise.models import ExerciseType,VisibleFor
+from typing import Dict, List, Optional
+from app.Exercise.models import ExerciseType,VisibleFor,Difficulty
 
 class ExerciseBase(pydantic.BaseModel):
     exercise_name:str
-    
-
-class ExerciseCreate(ExerciseBase):
     visible_for:VisibleFor
     category_id :int
-    equipment_ids:List[int]
-    primary_muscle_ids:List[int]
-    secondary_muscle_ids:List[int]
-    primary_joint_ids:List[int]
+    org_id:int
     exercise_type :ExerciseType
+    difficulty : Difficulty
     sets :int
     seconds_per_set:List[int]
     repetitions_per_set:List[int] 
@@ -30,16 +25,37 @@ class ExerciseCreate(ExerciseBase):
     thumbnail_female :str
     image_url_female :str
     image_url_male :str 
+
+    class Config:
+            from_attributes = True
+
+class ExerciseCreate(ExerciseBase):
+    equipment_ids:Optional[List[int]]
+    primary_muscle_ids:Optional[List[int]]
+    secondary_muscle_ids:Optional[List[int]]
+    primary_joint_ids:Optional[List[int]]   
     created_by:int
     updated_by:int
 
-    class Config:
-        use_enum_values = True
-        from_attributes = True
-        
+class ExerciseRead(ExerciseBase):
+    id:int
+    equipments:List[Dict]
+
 class Muscle(pydantic.BaseModel):
     id:int           
     muscle_name:str
+    class Config:
+            from_attributes = True
+
+class Equipments(pydantic.BaseModel):
+    id:int           
+    equipment_name:str
+    class Config:
+            from_attributes = True
+
+class PrimaryJoint(pydantic.BaseModel):
+    id:int           
+    joint_name:str
     class Config:
             from_attributes = True
 

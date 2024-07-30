@@ -1,5 +1,5 @@
-from sqlalchemy import Column, Float, Integer, String, Enum, DateTime, ARRAY
-import app.core.db.session as _database
+from sqlalchemy import Boolean, Column, Float, Integer, String, Enum, DateTime, ARRAY
+from ..core.db import session as _database
 from datetime import datetime
 from enum import Enum as PyEnum
 
@@ -41,7 +41,7 @@ class Workout(_database.Base):
     updated_by = Column(Integer)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-    is_deleted = Column(Integer)
+    is_deleted = Column(Boolean, default=False)
     
 class WorkoutDay(_database.Base):
     __tablename__ = 'workout_day'
@@ -55,9 +55,9 @@ class WorkoutDay(_database.Base):
     updated_by = Column(Integer)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-    is_deleted=Column(Integer)
+    is_deleted= Column(Boolean, default=False)
 
-class WorkoutDayExercies(_database.Base):
+class WorkoutDayExercise(_database.Base):
     __tablename__ = 'workout_day_exercise'
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -75,4 +75,5 @@ class WorkoutDayExercies(_database.Base):
     updated_by = Column(Integer)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-    is_deleted = Column(Integer)
+    is_deleted = Column(Boolean, default=False)
+
