@@ -17,7 +17,7 @@ from sqlalchemy.sql import and_  ,desc
 from fastapi import FastAPI, Header,APIRouter, Depends, HTTPException, Request, status
 from . import models, schema
 from typing import List 
-from sqlalchemy import text
+from sqlalchemy import asc, text
 
 # Load environment variables
 JWT_SECRET = os.getenv("JWT_SECRET")
@@ -308,8 +308,16 @@ def delete_facility( facility_id: int,db: _orm.Session):
     db.commit()
     return db_facility
 
-def get_facility_by_org_id( org_id: int,db: _orm.Session):
-    return db.query(_models.Facility).filter(_models.Facility.org_id == org_id, _models.Facility.is_deleted == False).order_by(desc(_models.Facility.created_at)).all()
+def get_facility_by_org_id(db: _orm.Session, params: _schemas.StandardParams):
+    sort_order = desc(_models.Facility.created_at) if params.sort_order == "desc" else asc(_models.Facility.created_at)
+    
+    facilities_query = db.query(_models.Facility)\
+        .filter(_models.Facility.org_id == params.org_id, _models.Facility.is_deleted == False)\
+        .order_by(sort_order)\
+        .offset(params.offset)\
+        .limit(params.limit)
+    
+    return facilities_query.all()
 
 def get_facility_by_id(facility_id: int,db: _orm.Session):
     return db.query(_models.Facility).filter(_models.Facility.id == facility_id, _models.Facility.is_deleted == False).first()
@@ -321,8 +329,16 @@ def create_income_category(income_category: _schemas.IncomeCategoryCreate, db: _
     db.refresh(db_income_category)
     return db_income_category
 
-def get_all_income_categories_by_org_id(org_id: int, db: _orm.Session):
-    return db.query(_models.Income_category).filter(_models.Income_category.org_id == org_id, _models.Income_category.is_deleted == False).order_by(desc(_models.Income_category.created_at)).all()
+def get_all_income_categories_by_org_id(db: _orm.Session, params: _schemas.StandardParams):
+    sort_order = desc(_models.Income_category.created_at) if params.sort_order == "desc" else asc(_models.Income_category.created_at)
+    
+    income_categories_query = db.query(_models.Income_category)\
+        .filter(_models.Income_category.org_id == params.org_id, _models.Income_category.is_deleted == False)\
+        .order_by(sort_order)\
+        .offset(params.offset)\
+        .limit(params.limit)
+    
+    return income_categories_query.all()
 
 def get_income_category_by_id(income_category_id: int, db: _orm.Session):
     return db.query(_models.Income_category).filter(_models.Income_category.id == income_category_id, _models.Income_category.is_deleted == False).first()
@@ -366,8 +382,16 @@ def create_sale_tax(sale_tax: _schemas.SaleTaxCreate,db: _orm.Session):
     db.refresh(db_sale_tax)
     return db_sale_tax
 
-def get_all_sale_taxes_by_org_id(org_id: int,db: _orm.Session):
-    return db.query(_models.Sale_tax).filter(_models.Sale_tax.org_id == org_id, _models.Sale_tax.is_deleted == False).order_by(desc(_models.Sale_tax.created_at)).all()
+def get_all_sale_taxes_by_org_id(db: _orm.Session, params: _schemas.StandardParams):
+    sort_order = desc(_models.Sale_tax.created_at) if params.sort_order == "desc" else asc(_models.Sale_tax.created_at)
+    
+    sale_taxes_query = db.query(_models.Sale_tax)\
+        .filter(_models.Sale_tax.org_id == params.org_id, _models.Sale_tax.is_deleted == False)\
+        .order_by(sort_order)\
+        .offset(params.offset)\
+        .limit(params.limit)
+    
+    return sale_taxes_query.all()
 
 
 def get_sale_tax_by_id(sale_tax_id: int,db: _orm.Session):
@@ -419,7 +443,7 @@ def get_group_by_id(id:int,db: _orm.Session):
 
 
 def get_all_group(org_id:int,db: _orm.Session):
-    return db.query(_models.Membership_group).filter(_models.Membership_group.org_id == org_id, _models.Membership_group.is_deleted == False)
+    return db.query(_models.Membership_group).filter(_models.Membership_group.org_id == org_id, _models.Membership_group.is_deleted == False).order_by(desc(_models.Membership_group.created_at)).all()
 
 
 def update_group(group:_schemas.GroupUpdate,db:_orm.Session):

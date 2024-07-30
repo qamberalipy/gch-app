@@ -147,8 +147,17 @@ def get_facilitys_by_org_id(org_id: int,request: Request, db: _orm.Session = Dep
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid or missing access token")
         _helpers.verify_jwt(authorization, "User")
-        
-        return _services.get_facility_by_org_id(org_id, db)
+        params = {
+        "org_id": org_id,
+        "sort_order": request.query_params.get("sort_order", "desc"),
+        "limit": request.query_params.get("limit", 10),
+        "offset": request.query_params.get("offset", 0)
+        }
+        print(params)
+        get_facility = _services.get_facility_by_org_id(
+            db,_schemas.StandardParams(**params)
+        )
+        return get_facility
     except IntegrityError as e:
         raise HTTPException(status_code=400, detail="Integrity error occurred")
     except DataError as e:
@@ -182,19 +191,30 @@ def create_income_category(income_category: _schemas.IncomeCategoryCreate, db: _
         raise HTTPException(status_code=400, detail="Integrity error occurred")
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
-
-@router.get("/income_category/getAll", response_model=list[_schemas.IncomeCategoryRead], tags=["Income Category APIs"])
-def get_all_income_categories(org_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+    
+@router.get("/income_category/getAll", response_model=List[_schemas.IncomeCategoryRead], tags=["Income Category APIs"])
+def get_all_income_categories(org_id: int, request: Request, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:    
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid or missing access token")
+        
         _helpers.verify_jwt(authorization, "User")
-        return _services.get_all_income_categories_by_org_id(org_id=org_id, db=db)
+        
+        params = {
+            "org_id": org_id,
+            "sort_order": request.query_params.get("sort_order", "desc"),
+            "limit": int(request.query_params.get("limit", 10)),
+            "offset": int(request.query_params.get("offset", 0))
+        }
+        
+        income_categories = _services.get_all_income_categories_by_org_id(db, _schemas.StandardParams(**params))
+        return income_categories
     
-    except IntegrityError as e:
+    except IntegrityError:
         raise HTTPException(status_code=400, detail="Integrity error occurred")
-    except DataError as e:
+    except DataError:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
 
 @router.get("/income_category", response_model=_schemas.IncomeCategoryRead, tags=["Income Category APIs"])
 def get_income_category(income_category_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
@@ -259,19 +279,29 @@ def create_sale_tax(sale_tax: _schemas.SaleTaxCreate, db: _orm.Session = Depends
     
     
 
-@router.get("/sale_taxes/getAll", response_model=list[_schemas.SaleTaxRead], tags=["Sale_tax APIs"])
-def get_all_sale_taxes(org_id: int , db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.get("/sale_taxes/getAll", response_model=List[_schemas.SaleTaxRead], tags=["Sale_tax APIs"])
+def get_all_sale_taxes(org_id: int, request: Request, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:    
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid or missing access token")
         
         _helpers.verify_jwt(authorization, "User")
-        return _services.get_all_sale_taxes_by_org_id(db=db,org_id=org_id)
+        
+        params = {
+            "org_id": org_id,
+            "sort_order": request.query_params.get("sort_order", "desc"),
+            "limit": int(request.query_params.get("limit", 10)),
+            "offset": int(request.query_params.get("offset", 0))
+        }
+        
+        sale_taxes = _services.get_all_sale_taxes_by_org_id(db, _schemas.StandardParams(**params))
+        return sale_taxes
     
-    except IntegrityError as e:
+    except IntegrityError:
         raise HTTPException(status_code=400, detail="Integrity error occurred")
-    except DataError as e:
+    except DataError:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
 
        
 

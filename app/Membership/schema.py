@@ -169,6 +169,12 @@ class MembershipFilterParams(pydantic.BaseModel):
     limit: Optional[int] = 10
     offset: Optional[int] = 0
 
+class StandardParams(pydantic.BaseModel):
+    org_id: int
+    sort_order: Optional[str] = "desc"
+    limit: Optional[int] = 10
+    offset: Optional[int] = 0
+
 class MembershipPlanResponse(pydantic.BaseModel):
     id:Optional[int] = None
     name:  Optional[str] = None
