@@ -183,8 +183,15 @@ def get_all_sources( db: _orm.Session):
     return db.query(_models.Source).all()
 
 async def get_one_staff(staff_id: int, db: _orm.Session):
-    staff_detail = db.query(_models.User).filter( _models.User.is_deleted == False and _models.User.id==staff_id).first()
-    return staff_detail
+    staff_detail = db.query(_models.User).filter(
+        _models.User.is_deleted == False,
+        _models.User.id == staff_id
+    ).first()
+    if staff_detail:
+        return staff_detail
+    else :
+        return None
+    
 
 async def update_staff(staff_id: int, staff_update: _schemas.UpdateStaff, db: _orm.Session):
     staff = db.query(_models.User).filter(_models.User.id == staff_id).first()
@@ -393,3 +400,12 @@ async def delete_role(role_id: int, db: _orm.Session):
 
 async def get_all_resources(db: _orm.Session):
     return db.query(_models.Resource).filter(_models.Resource.is_deleted == False).all()
+
+async def get_Total_count_staff(org_id: int, db: _orm.Session = _fastapi.Depends(get_db)) -> int:
+    total_staffs = db.query(func.count(models.User.id)).filter(
+        _models.User.org_id == org_id,
+        _models.User.is_deleted == False
+        
+    ).scalar()
+    print(total_staffs)
+    return total_staffs

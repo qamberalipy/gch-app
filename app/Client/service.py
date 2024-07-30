@@ -264,8 +264,11 @@ def get_filtered_clients(
         _coach_models.Coach, _models.ClientCoach.coach_id == _coach_models.Coach.id
     ).filter(
         _models.ClientOrganization.org_id == params.org_id,
-        _models.ClientOrganization.is_deleted == False
+        _models.ClientOrganization.is_deleted == False,
+        _models.Client.is_deleted==False
     )
+
+
 
     # Apply filters conditionally
     if params.client_name:
@@ -306,7 +309,7 @@ def get_filtered_clients(
     # Add order by created_at and limit/offset for pagination
     query = query.order_by(_models.Client.created_at).offset(params.offset).limit(params.limit)
     clients = query.all()
-
+    print(clients)
     return [
         _schemas.ClientFilterRead(
             id=client.id,
@@ -364,7 +367,9 @@ async def get_client_byid(db: _orm.Session, client_id: int) -> _schemas.ClientBy
         .outerjoin(_models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id)
         .outerjoin(_models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id)
         .outerjoin(_models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id)
-        .filter(_models.Client.id == client_id)
+        .filter(_models.Client.id == client_id,
+                _models.Client.is_deleted == False
+            )
     )
     
     result = query.first()

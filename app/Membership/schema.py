@@ -31,6 +31,7 @@ class MembershipPlanCreate(MembershipPlanBase):
 
 class MembershipPlanUpdate(MembershipPlanBase):
     id:int
+    facilities: List[FacilityMembershipPlan]
     updated_by: Optional[int]=None 
 
 class MembershipPlanDelete(pydantic.BaseModel):
@@ -117,10 +118,10 @@ class SaleTaxUpdate(SaleTaxBase):
 class SaleTaxRead(SaleTaxBase):
     id: Optional[int] = None
     is_deleted: bool
-    created_at: datetime.datetime
-    updated_at: datetime.datetime
-    created_by: Optional[int] = None
-    updated_by: Optional[int] = None
+    created_at: Optional[datetime.datetime]=None
+    updated_at: Optional[datetime.datetime]=None
+    created_by: Optional[int] = 0
+    updated_by: Optional[int] = 0
 
     class Config:
         from_attributes = True

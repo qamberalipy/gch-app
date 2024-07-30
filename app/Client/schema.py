@@ -30,7 +30,7 @@ class ClientBase(pydantic.BaseModel):
 class ClientCreate(ClientBase):
     org_id: int
     coach_id: Optional[int] = None
-    membership_id: int
+    membership_plan_id: int
     status: str  # Corrected type annotation
     send_invitation: bool
     prolongation_period:Optional[int] = None
@@ -54,7 +54,7 @@ class ClientCreateApp(pydantic.BaseModel):
     org_id: Optional[int] = 0
     coach_id: Optional[int] = None
     status: Optional[str] = "pending"
-    membership_id: Optional[int] = 0
+    membership_plan_id: Optional[int] = 0
 
 
 class RegisterClientApp(pydantic.BaseModel):
@@ -208,7 +208,11 @@ class ClientFilterParams(pydantic.BaseModel):
     limit:Optional[int] = None
     offset:Optional[int] = None
     
+class ClientDelete(pydantic.BaseModel):
+    id : int
+    
 class ClientUpdate(pydantic.BaseModel):
+    id : int
     profile_img: Optional[str] = None
     own_member_id: Optional[str] = None
     first_name: Optional[str] = None
