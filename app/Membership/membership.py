@@ -85,11 +85,11 @@ def get_membership_plans_by_org_id(
         "tax_rate": request.query_params.get("tax_rate"),
         "total_amount": request.query_params.get("total_amount"),
         "status": request.query_params.get("status"),
-        "sort_order": request.query_params.get("sort_order", "asc"),
+        "sort_order": request.query_params.get("sort_order", "desc"),
         "limit": request.query_params.get("limit", 10),
         "offset": request.query_params.get("offset", 0)
     }
-
+    print(params)
     membership_plans = _services.get_membership_plans_by_org_id(
         db, parameters=_schemas.MembershipFilterParams(**params)
     )

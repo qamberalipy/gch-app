@@ -1,10 +1,6 @@
-
 import datetime
-from typing import List 
 import jwt
-from sqlalchemy import text
 import sqlalchemy.orm as _orm
-from sqlalchemy.sql import and_  ,desc
 import email_validator as _email_check
 import fastapi as _fastapi
 import fastapi.security as _security
@@ -17,7 +13,11 @@ import pika
 import time
 import os
 import bcrypt as _bcrypt
+from sqlalchemy.sql import and_  ,desc
+from fastapi import FastAPI, Header,APIRouter, Depends, HTTPException, Request, status
 from . import models, schema
+from typing import List 
+from sqlalchemy import text
 
 # Load environment variables
 JWT_SECRET = os.getenv("JWT_SECRET")
@@ -38,6 +38,15 @@ def get_db():
         
         
 def create_membership_plan(membership_plan: _schemas.MembershipPlanCreate, db: _orm.Session):
+    
+    existing_plan = db.query(models.MembershipPlan).filter(
+        models.MembershipPlan.name == membership_plan.name,
+        models.MembershipPlan.org_id == membership_plan.org_id
+    ).first()
+    
+    if existing_plan:
+        raise HTTPException(status_code=400,detail=f"Membership plan already exists.")
+        
     db_membership_plan = models.MembershipPlan(
         name=membership_plan.name,
         org_id=membership_plan.org_id,
@@ -251,6 +260,13 @@ def get_membership_plans_by_org_id(
 
 
 def create_facility(facility: _schemas.FacilityCreate,db: _orm.Session):
+    
+    existing_facility = db.query(_models.Facility
+    ).filter(_models.Facility.name == facility.name, _models.Facility.org_id == facility.org_id).first()
+    
+    if existing_facility:
+        raise HTTPException(status_code=400, detail="Facility with this name already exists.")
+    
     db_facility = _models.Facility(
         name=facility.name,
         org_id=facility.org_id,

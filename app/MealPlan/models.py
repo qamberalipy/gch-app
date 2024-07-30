@@ -23,7 +23,7 @@ class VisibleForEnum(PyEnum):
 class MealPlan(_database.Base):
     __tablename__ = "meal_plan"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
-    name = _sql.Column(_sql.String)
+    name = _sql.Column(_sql.String,nullable=False)
     profile_img = _sql.Column(_sql.String)
     visible_for = _sql.Column(_sql.Enum(VisibleForEnum), nullable=False)
     description = _sql.Column(_sql.String)
