@@ -41,7 +41,6 @@ async def get_muscle(db: _orm.Session = Depends(get_db), authorization: str = He
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")        
     
 
-
 @router.get("/exercise/equipments", response_model=List[_schemas.Equipments])
 async def get_muscle(db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
@@ -82,9 +81,6 @@ async def get_muscle(db: _orm.Session = Depends(get_db), authorization: str = He
         raise HTTPException(status_code=400, detail="Data` error occurred, check your input")
 
 
-
-
-
 @router.post("/exercise",response_model=_schemas.ExerciseBase)
 async def create_exercise(exercise: _schemas.ExerciseCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
@@ -102,8 +98,15 @@ async def create_exercise(exercise: _schemas.ExerciseCreate, db: _orm.Session = 
         raise HTTPException(status_code=400, detail="Data error occurred, check your input") 
     
 
-@router.get("/exercise", response_model=List[_schemas.ExerciseRead])
-async def get_exercise(db: _orm.Session = Depends(get_db)):
+@router.get("/exercise/getAll", response_model=List[_schemas.ExerciseRead])
+async def get_exercise(org_id:int,db: _orm.Session = Depends(get_db)):
     
-        exercises = await _services.get_exercise(db)
+        exercises = await _services.get_exercise(org_id,db)
+        return exercises   
+
+
+@router.get("/exercise", response_model=_schemas.ExerciseRead)
+async def get_exercise(id:int,db: _orm.Session = Depends(get_db)):
+    
+        exercises = await _services.get_exercise_by_id(id,db)
         return exercises   
