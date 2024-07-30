@@ -386,18 +386,29 @@ def get_group(id:int,db: _orm.Session = Depends(get_db),authorization: str = Hea
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
      
 
-@router.get("/group/getAll",response_model=List[_schemas.GroupRead], tags=["Group API"])
-def get_group(org_id:int,db: _orm.Session = Depends(get_db),authorization: str = Header(None)):
-    
+@router.get("/group/getAll", response_model=List[_schemas.GroupRead], tags=["Group API"])
+def get_group(org_id: int, request: Request, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:    
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid or missing access token")
+        
         _helpers.verify_jwt(authorization, "User")
-        return _services.get_all_group(org_id,db)
-    except IntegrityError as e:
+        
+        params = {
+            "org_id": org_id,
+            "sort_order": request.query_params.get("sort_order", "desc"),
+            "limit": int(request.query_params.get("limit", 10)),
+            "offset": int(request.query_params.get("offset", 0))
+        }
+        
+        groups = _services.get_all_groups_by_org_id(db, _schemas.StandardParams(**params))
+        return groups
+    
+    except IntegrityError:
         raise HTTPException(status_code=400, detail="Integrity error occurred")
-    except DataError as e:
+    except DataError:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
 
 
 @router.put("/group",response_model=_schemas.GroupRead, tags=["Group API"])

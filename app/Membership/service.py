@@ -442,8 +442,16 @@ def get_group_by_id(id:int,db: _orm.Session):
     return db.query(_models.Membership_group).filter(_models.Membership_group.id == id, _models.Membership_group.is_deleted == False).first()
 
 
-def get_all_group(org_id:int,db: _orm.Session):
-    return db.query(_models.Membership_group).filter(_models.Membership_group.org_id == org_id, _models.Membership_group.is_deleted == False).order_by(desc(_models.Membership_group.created_at)).all()
+def get_all_groups_by_org_id(db: _orm.Session, params: _schemas.StandardParams):
+    sort_order = desc(_models.Membership_group.created_at) if params.sort_order == "desc" else asc(_models.Membership_group.created_at)
+    
+    groups_query = db.query(_models.Membership_group)\
+        .filter(_models.Membership_group.org_id == params.org_id, _models.Membership_group.is_deleted == False)\
+        .order_by(sort_order)\
+        .offset(params.offset)\
+        .limit(params.limit)
+    
+    return groups_query.all()
 
 
 def update_group(group:_schemas.GroupUpdate,db:_orm.Session):
