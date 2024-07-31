@@ -1,7 +1,7 @@
 import pydantic
 import datetime
 from datetime import date
-from typing import Optional, List
+from typing import Optional, List, Any
 
 class UserBase(pydantic.BaseModel):
     first_name: str
@@ -92,7 +92,7 @@ class StaffBase(pydantic.BaseModel):
     dob: Optional[datetime.datetime]=None
     email: str
     phone: Optional[str] = None
-    mobile: Optional[str] = None
+    mobile_number: Optional[str] = None
     notes: Optional[str] = None
     source_id: Optional[int] = None
     org_id: Optional[int] = None
@@ -102,7 +102,9 @@ class StaffBase(pydantic.BaseModel):
     zipcode: Optional[str] = None
     address_1: Optional[str] = None
     address_2: Optional[str] = None
-
+    status: Optional[str] = None
+    send_invitation: Optional[bool]=False
+    
     class Config:
         from_attributes = True
 
@@ -111,8 +113,18 @@ class CreateStaff(StaffBase):
     created_by: Optional[int] = None
 
 class ReadStaff(StaffBase):
-    pass
-
+    id:int
+    activated_on: Optional[datetime.date] = None
+    last_online: Optional[datetime.datetime] = None
+    last_checkin: Optional[datetime.datetime] = None
+    
+class GetStaffResponse(StaffBase):
+    id:int
+    role_name:Optional[str] = None
+    activated_on: Optional[datetime.date] = None
+    last_online: Optional[datetime.datetime] = None
+    last_checkin: Optional[datetime.datetime] = None
+    
 class StaffDetail(pydantic.BaseModel):
     id: int
     own_staff_id: Optional[str] = None
@@ -141,7 +153,7 @@ class UpdateStaff(pydantic.BaseModel):
     dob: Optional[datetime.datetime] = None
     email: Optional[str] = None
     phone: Optional[str] = None
-    mobile: Optional[str] = None
+    mobile_number: Optional[str] = None
     notes: Optional[str] = None
     source_id: Optional[int] = None
     org_id: Optional[int] = None
@@ -151,6 +163,7 @@ class UpdateStaff(pydantic.BaseModel):
     zipcode: Optional[str] = None
     address_1: Optional[str] = None
     address_2: Optional[str] = None
+    status: Optional[str] = None
     activated_on: Optional[datetime.date] = None
     last_online: Optional[datetime.datetime] = None
     updated_by: Optional[int] = None
@@ -201,13 +214,28 @@ class RoleDelete(pydantic.BaseModel):
     class Config:
         from_attributes = True
 
-class RoleRead(RoleBase):
-    permission_id: Optional[int] = None
+class RoleRead(pydantic.BaseModel):
+    resource_name: str
     role_id: Optional[int] = None
+    role_name: Optional[str] = None
+    org_id: Optional[int] = None
+    status: Optional[bool] = None
+    permission_id: Optional[int] = None
     access_type: Optional[str] = None
+    is_parent: Optional[bool] = None
+    parent: Optional[str] = None
+    code: Optional[str] = None
+    link: Optional[str] = None
+    icon: Optional[str] = None
+    is_deleted: Optional[bool] = False
+    # resources: Optional[List['RoleRead']] = None
+    # children: Optional[Any] = None
+    subRows: Optional[List['RoleRead']] = None
 
     class Config:
         from_attributes = True
+
+RoleRead.update_forward_refs()
 
 # class RoleSingleRead(pydantic.BaseModel):
 #     name: str
@@ -231,6 +259,7 @@ class RoleUpdate(pydantic.BaseModel):
 
     class Config:
         from_attributes = True
+        extra = "forbid"
 
 class ResourceRead(pydantic.BaseModel):
     id: int

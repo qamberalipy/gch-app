@@ -34,7 +34,7 @@ class Food(_database.Base):
 
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     org_id = _sql.Column(_sql.Integer)
-    name = _sql.Column(_sql.String)
+    name = _sql.Column(_sql.String, nullable=False)
     brand = _sql.Column(_sql.String)
     category = _sql.Column(_sql.Enum(CategoryEnum))
     description = _sql.Column(_sql.String)

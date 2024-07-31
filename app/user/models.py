@@ -21,9 +21,11 @@ class User(_database.Base):
     email = _sql.Column(_sql.String(100), unique=True, index=True)
     phone = _sql.Column(_sql.String(11))
     activated_on = _sql.Column(_sql.Date)
-    check_in = _sql.Column(_sql.DateTime)
+    last_checkin = _sql.Column(_sql.DateTime)
     last_online = _sql.Column(_sql.DateTime)
-    mobile = _sql.Column(_sql.String(11))
+    status = _sql.Column(_sql.String(20))
+    phone = _sql.Column(_sql.String(15))  # Assuming phone number should not include landline
+    mobile_number = _sql.Column(_sql.String(15))
     notes = _sql.Column(_sql.String)
     source_id = _sql.Column(_sql.Integer)
     org_id =_sql.Column(_sql.Integer)
@@ -81,6 +83,7 @@ class Role(_database.Base):
     status = _sql.Column(_sql.Boolean)
     is_deleted=_sql.Column(_sql.Boolean)
 
+
 class Resource(_database.Base):
     __tablename__ = "resource"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
@@ -96,6 +99,28 @@ class Resource(_database.Base):
     updated_by = _sql.Column(_sql.Integer)
     is_deleted=_sql.Column(_sql.Boolean)
 
+    # resources = _orm.relationship(
+    #     "Permission",
+    #     lazy="noload",
+    #     primaryjoin="Resource.id==foreign(Permission.resource_id)",
+    #     back_populates="resource"
+    # )
+    # self join of parent with code
+    # rel_parent = _orm.relationship(
+    #     "Resource",
+    #     lazy="select",
+    #     primaryjoin="Resource.parent==foreign(Resource.code)",
+        
+    #     back_populates="children"
+    # )
+    # children = _orm.relationship(
+    #     "Resource",
+    #     lazy="noload",
+    #     primaryjoin="foreign(Resource.parent)==Resource.code",
+    #     remote_side='Resource.code',
+    #     back_populates="rel_parent"
+    # )
+
 class Permission(_database.Base):
     __tablename__ = 'permission'
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
@@ -107,6 +132,13 @@ class Permission(_database.Base):
     created_by = _sql.Column(_sql.Integer)
     updated_by = _sql.Column(_sql.Integer)
     is_deleted=_sql.Column(_sql.Boolean)
+
+    # resource = _orm.relationship(
+    #     "Resource",
+    #     lazy="noload",
+    #     primaryjoin="Permission.resource_id==foreign(Resource.id)",
+    #     back_populates="resources"
+    # )
 
 class Bank_detail(_database.Base):
     __tablename__ = 'bank_detail'
