@@ -192,7 +192,6 @@ async def get_all_staff(org_id: int, db: _orm.Session = Depends(get_db), authori
 
         _helpers.verify_jwt(authorization, "User")
 
-        print("Fetching staff with ID:", org_id)
         total_staffs = await _services.get_Total_count_staff(org_id, db)
         print("Staff list:", total_staffs)
         if total_staffs is None:
