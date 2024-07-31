@@ -158,8 +158,8 @@ async def register_staff(staff: _schemas.CreateStaff, db: _orm.Session = Depends
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 
-@router.get("/staff/staffs", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
-async def get_all_staff(staff_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.get("/staff/staffs", response_model=_schemas.GetStaffResponse, tags=["Staff APIs"])
+async def get_staff_by_id(staff_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         
         if not authorization or not authorization.startswith("Bearer "):
@@ -247,7 +247,7 @@ async def delete_staff(staff_delete: _schemas.DeleteStaff, db: _orm.Session = De
     
     
     
-@router.get("/staff/staffs/getAll", response_model=List[_schemas.StaffFilterRead], tags=["Staff APIs"])
+@router.get("/staff/staffs/getAll", response_model=List[_schemas.GetStaffResponse], tags=["Staff APIs"])
 async def get_staff(
     org_id: int,
     request: Request,
@@ -338,7 +338,6 @@ async def get_roles(org_id: Optional[int] = None, role_id: Optional[int] = None,
         elif role_id:
             print("In role")
             roles = await _services.get_role(role_id, db)
-
         return roles
     except IntegrityError as e:
         logger.error(f"IntegrityError: {e}")

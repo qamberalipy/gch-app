@@ -156,7 +156,8 @@ async def create_staff(staff: _schemas.CreateStaff, db: _orm.Session = _fastapi.
 
     except _email_check.EmailNotValidError:
         raise _fastapi.HTTPException(status_code=400, detail="Please enter a valid email")
-    
+
+    print(staff_data.pop("send_invitation"))
     db_staff = _models.User(**staff_data)
     db.add(db_staff)
     db.commit()
@@ -183,10 +184,15 @@ def get_all_sources( db: _orm.Session):
     return db.query(_models.Source).all()
 
 async def get_one_staff(staff_id: int, db: _orm.Session):
-    staff_detail = db.query(_models.User).filter(
-        _models.User.is_deleted == False,
-        _models.User.id == staff_id
+    staff_detail = db.query(
+        *models.User.__table__.columns,_models.Role.name.label("role_name")
+        ).join(
+            _models.Role, _models.User.role_id == _models.Role.id
+        ).filter(
+            _models.User.is_deleted == False,
+            _models.User.id == staff_id
     ).first()
+    print(staff_detail)
     if staff_detail:
         return staff_detail
     else :
@@ -222,15 +228,7 @@ def get_filtered_staff(
     params: _schemas.StaffFilterParams
 ) -> List[_schemas.StaffFilterRead]:
     query = db.query(
-        _models.User.id,
-        _models.User.own_staff_id,
-        _models.User.first_name,
-        _models.User.last_name,
-        _models.User.email,
-        _models.User.mobile,
-        _models.User.role_id,
-        _models.User.profile_img,
-        _models.Role.name.label("role_name")    
+        *models.User.__table__.columns,_models.Role.name.label("role_name")    
     ).join(
         _models.Role, _models.User.role_id == _models.Role.id
     ).filter(
@@ -255,7 +253,7 @@ def get_filtered_staff(
             _models.User.first_name.ilike(search_pattern),
             _models.User.last_name.ilike(search_pattern),
             _models.User.email.ilike(search_pattern),
-            _models.User.mobile.ilike(search_pattern),
+            _models.User.mobile_number.ilike(search_pattern),
             _models.User.profile_img.ilike(search_pattern),
             _models.User.notes.ilike(search_pattern),
             _models.User.city.ilike(search_pattern),
@@ -266,20 +264,8 @@ def get_filtered_staff(
 
     staff = query.all()
 
-    return [
-        _schemas.StaffFilterRead(
-            id=st.id,
-            own_staff_id=st.own_staff_id,
-            first_name=st.first_name,
-            last_name=st.last_name,
-            email=st.email,
-            mobile=st.mobile,
-            role_id=st.role_id,
-            role_name=st.role_name,
-            profile_img=st.profile_img
-        )
-        for st in staff
-    ]
+    return staff
+    
 
 async def check_role(role: _schemas.RoleCreate, db: _orm.Session = _fastapi.Depends(get_db)):
     ch_role = db.query(_models.Role).filter(_models.Role.name == role.name, _models.Role.org_id == role.org_id).first()
@@ -318,21 +304,142 @@ async def create_role(role: _schemas.RoleCreate, db: _orm.Session = _fastapi.Dep
 
 
 async def get_all_roles(org_id: int, db: _orm.Session):
-    return db.query(*_models.Role.__table__.columns, _models.Role.id.label("role_id"))\
+    return db.query(*_models.Role.__table__.columns,_models.Resource.name.label("resource_name"), _models.Role.name.label("role_name"), _models.Role.id.label("role_id"))\
         .filter(_models.Role.is_deleted == False, _models.Role.org_id == org_id).all()
+
+async def temp_get_role(role_id: int, db: _orm.Session):
+    role = db.query(_models.Role).filter(_models.Role.id == role_id, _models.Role.is_deleted == False).first()
+    if role is None:
+        raise _fastapi.HTTPException(status_code=404, detail="Role not found")
+    
+    permissions = db.query(_models.Resource.name.label("resource_name"), _models.Permission.access_type, _models.Role.org_id, 
+        _models.Role.status, _models.Permission.id.label("permission_id"), _models.Role.id.label("role_id"), _models.Resource.code, 
+        _models.Resource.link, _models.Resource.icon, _models.Resource.is_parent, _models.Resource.parent)\
+        .join(_models.Permission, _models.Resource.id == _models.Permission.resource_id)\
+        .join(_models.Role, _models.Permission.role_id == _models.Role.id)\
+        .filter(_models.Permission.role_id == role_id, _models.Permission.is_deleted == False).all()
+
+    return permissions
+
+
+from collections import defaultdict
+
+# async def test_get_role(role_id: int, db: _orm.Session):
+#     role = db.query(_models.Role).filter(_models.Role.id == role_id, _models.Role.is_deleted == False).first()
+#     if role is None:
+#         raise _fastapi.HTTPException(status_code=404, detail="Role not found")
+    
+#     permissions = db.query(
+#         _models.Resource.name.label("resource_name"),
+#         _models.Permission.access_type,
+#         _models.Role.org_id,
+#         _models.Role.status,
+#         _models.Permission.id.label("permission_id"),
+#         _models.Role.id.label("role_id"),
+#         _models.Resource.code,
+#         _models.Resource.link,
+#         _models.Resource.icon,
+#         _models.Resource.is_parent,
+#         _models.Resource.parent
+#     ).join(
+#         _models.Permission, _models.Resource.id == _models.Permission.resource_id
+#     ).join(
+#         _models.Role, _models.Permission.role_id == _models.Role.id
+#     ).filter(
+#         _models.Permission.role_id == role_id,
+#         _models.Permission.is_deleted == False
+#     ).options(
+#         joinedload(_models.Resource.resources)
+#     ).all()
+#     print(permissions)
+
+
+#     return permissions
+
 
 async def get_role(role_id: int, db: _orm.Session):
     role = db.query(_models.Role).filter(_models.Role.id == role_id, _models.Role.is_deleted == False).first()
     if role is None:
         raise _fastapi.HTTPException(status_code=404, detail="Role not found")
     
-    permissions = db.query(_models.Resource.name, _models.Permission.access_type, _models.Role.org_id, 
-        _models.Role.status, _models.Permission.id.label("permission_id"), _models.Role.id.label("role_id"))\
-        .join(_models.Permission, _models.Resource.id == _models.Permission.resource_id)\
-        .join(_models.Role, _models.Permission.role_id == _models.Role.id)\
-        .filter(_models.Permission.role_id == role_id, _models.Permission.is_deleted == False).all()
+    permissions = db.query(
+        _models.Resource.name.label("resource_name"),
+        _models.Permission.access_type,
+        _models.Role.org_id,
+        _models.Role.status,
+        _models.Permission.id.label("permission_id"),
+        _models.Role.id.label("role_id"),
+        _models.Role.name.label("role_name"),
+        _models.Resource.code,
+        _models.Resource.link,
+        _models.Resource.icon,
+        _models.Resource.is_parent,
+        _models.Resource.parent
+    ).join(
+        _models.Permission, _models.Resource.id == _models.Permission.resource_id
+    ).join(
+        _models.Role, _models.Permission.role_id == _models.Role.id
+    ).filter(
+        _models.Permission.role_id == role_id,
+        _models.Permission.is_deleted == False
+    ).all()
 
-    return permissions
+    # Create a dictionary to store roles by their code
+    resource_dict = {p.code: _schemas.RoleRead(**p._asdict(), subRows=[]) for p in permissions if p.code is not None}
+
+    # Include parent roles in resource_dict if they are missing
+    for perm in permissions:
+        if perm.parent and perm.parent not in resource_dict:
+            parent_role = db.query(
+                _models.Resource.name.label("resource_name"),
+                _models.Role.org_id,
+                _models.Role.status,
+                _models.Role.id.label("role_id"),
+                _models.Resource.code,
+                _models.Resource.link,
+                _models.Resource.icon,
+                _models.Resource.is_parent,
+                _models.Resource.parent
+            ).filter(
+                _models.Resource.code == perm.parent,
+                _models.Role.id == role_id
+            ).first()
+            if parent_role:
+                resource_dict[perm.parent] = _schemas.RoleRead(
+                    resource_name=parent_role.resource_name,
+                    role_id=parent_role.role_id,
+                    org_id=parent_role.org_id,
+                    status=parent_role.status,
+                    permission_id=None,
+                    access_type=None,
+                    is_parent=parent_role.is_parent,
+                    parent=parent_role.parent,
+                    code=parent_role.code,
+                    link=parent_role.link,
+                    icon=parent_role.icon,
+                    is_deleted=False,
+                    subRows=[]
+                )
+
+    # Create a dictionary to store parent-child relationships
+    children_map = defaultdict(list)
+    for perm in permissions:
+        if perm.parent and perm.parent in resource_dict:
+            children_map[perm.parent].append(_schemas.RoleRead(**perm._asdict(), subRows=[]))
+
+    # Assign children to their respective parents
+    for code, role in resource_dict.items():
+        if code in children_map:
+            role.subRows.extend(children_map[code])
+
+    # Collect all roles (root roles and their children)
+    all_roles = []
+    for code, role in resource_dict.items():
+        if role.parent is None:
+            all_roles.append(role)
+
+    return all_roles
+
 
 async def edit_role(role: _schemas.RoleUpdate, db: _orm.Session):
     db_role = db.query(_models.Role).filter(_models.Role.id == role.id).first()

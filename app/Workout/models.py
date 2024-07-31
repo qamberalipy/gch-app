@@ -31,6 +31,7 @@ class Workout(_database.Base):
     __tablename__ = 'workout'
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    org_id = Column(Integer)
     workout_name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     goals = Column(Enum(WorkoutGoal), nullable=False)
