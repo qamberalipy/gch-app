@@ -324,7 +324,7 @@ async def edit_role(role: _schemas.RoleUpdate, db: _orm.Session = Depends(get_db
 
 
 
-@router.get("/role", response_model=List[_schemas.RoleRead], tags=["Roles and Permissions"])
+@router.get("/role")#, response_model=List[_schemas.RoleRead], tags=["Roles and Permissions"])
 async def get_roles(org_id: Optional[int] = None, role_id: Optional[int] = None, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         if not authorization or not authorization.startswith("Bearer "):
@@ -337,7 +337,7 @@ async def get_roles(org_id: Optional[int] = None, role_id: Optional[int] = None,
             roles = await _services.get_all_roles(org_id, db)
         elif role_id:
             print("In role")
-            roles = await _services.get_role(role_id, db)
+            roles = await _services.test_get_role(role_id, db)
         return roles
     except IntegrityError as e:
         logger.error(f"IntegrityError: {e}")
