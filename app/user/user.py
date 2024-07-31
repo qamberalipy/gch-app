@@ -338,7 +338,6 @@ async def get_roles(org_id: Optional[int] = None, role_id: Optional[int] = None,
         elif role_id:
             print("In role")
             roles = await _services.get_role(role_id, db)
-
         return roles
     except IntegrityError as e:
         logger.error(f"IntegrityError: {e}")
