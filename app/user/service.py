@@ -318,7 +318,7 @@ async def create_role(role: _schemas.RoleCreate, db: _orm.Session = _fastapi.Dep
 
 
 async def get_all_roles(org_id: int, db: _orm.Session):
-    return db.query(*_models.Role.__table__.columns, _models.Role.id.label("role_id"))\
+    return db.query(*_models.Role.__table__.columns,_models.Resource.name.label("resource_name"), _models.Role.name.label("role_name"), _models.Role.id.label("role_id"))\
         .filter(_models.Role.is_deleted == False, _models.Role.org_id == org_id).all()
 
 async def temp_get_role(role_id: int, db: _orm.Session):
@@ -383,6 +383,7 @@ async def get_role(role_id: int, db: _orm.Session):
         _models.Role.status,
         _models.Permission.id.label("permission_id"),
         _models.Role.id.label("role_id"),
+        _models.Role.name.label("role_name"),
         _models.Resource.code,
         _models.Resource.link,
         _models.Resource.icon,

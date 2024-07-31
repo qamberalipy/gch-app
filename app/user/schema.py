@@ -204,6 +204,7 @@ class RoleDelete(pydantic.BaseModel):
 class RoleRead(pydantic.BaseModel):
     resource_name: str
     role_id: Optional[int] = None
+    role_name: Optional[str] = None
     org_id: Optional[int] = None
     status: Optional[bool] = None
     permission_id: Optional[int] = None
