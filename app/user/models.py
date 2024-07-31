@@ -21,9 +21,11 @@ class User(_database.Base):
     email = _sql.Column(_sql.String(100), unique=True, index=True)
     phone = _sql.Column(_sql.String(11))
     activated_on = _sql.Column(_sql.Date)
-    check_in = _sql.Column(_sql.DateTime)
+    last_checkin = _sql.Column(_sql.DateTime)
     last_online = _sql.Column(_sql.DateTime)
-    mobile = _sql.Column(_sql.String(11))
+    status = _sql.Column(_sql.String(20))
+    phone = _sql.Column(_sql.String(15))  # Assuming phone number should not include landline
+    mobile_number = _sql.Column(_sql.String(15))
     notes = _sql.Column(_sql.String)
     source_id = _sql.Column(_sql.Integer)
     org_id =_sql.Column(_sql.Integer)
