@@ -57,6 +57,8 @@ async def create_client_for_app(client: _schemas.RegisterClientApp, db: _orm.Ses
     db.refresh(db_client)
     return db_client
 
+
+
 async def create_client_organization(client_organization: _schemas.CreateClientOrganization, db: _orm.Session = _fastapi.Depends(get_db)):
     db_client_organization = _models.ClientOrganization(**client_organization.dict())
     db.add(db_client_organization)
@@ -128,7 +130,7 @@ async def update_client(client_id: int, client: _schemas.ClientUpdate, db: _orm.
     db_client = db.query(_models.Client).filter(_models.Client.id == client_id).first()
     if not db_client:
         raise _fastapi.HTTPException(status_code=404, detail="Client not found")
-    
+    client.is_deleted=False
     for key, value in client.dict(exclude_unset=True).items():
         setattr(db_client, key, value)
 
