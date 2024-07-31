@@ -1,7 +1,7 @@
 from typing import List, Literal
 from fastapi import Depends, HTTPException
 from sqlalchemy import Column, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 from starlette.types import HTTPExceptionHandler
 
 from app.Workout import workout
@@ -75,7 +75,7 @@ async def save_workout(db: Session, workout: WorkoutCreate, user_id: int):
     return db_workout
 
 async def get_workout(db: Session, workout_id: int):
-    return db.query(Workout).filter(Workout.id == workout_id, Workout.is_deleted == False).first()  
+    return db.query(Workout).filter(Workout.id == workout_id, Workout.is_deleted == False).options(joinedload(Workout.workout_days)).first()  
 
 async def get_all_workout(db: Session, params: WorkoutFilter):
     query = db.query(Workout).filter(Workout.is_deleted == False)
@@ -99,6 +99,8 @@ async def get_all_workout_day(db: Session, params: WorkoutDayFilter):
         query = query.filter(WorkoutDay.week == params.week)
     if params.day:
         query = query.filter(WorkoutDay.day == params.day)
+    if params.include_exercises:
+        query = query.options(joinedload(WorkoutDay.exercises))
     return [WorkoutDayRead.model_validate(item, from_attributes=True) for item in query.all()]
 
 async def save_workout_day(db: Session, workout: WorkoutDayCreate, user_id: int):

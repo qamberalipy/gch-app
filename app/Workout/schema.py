@@ -3,7 +3,7 @@ from typing import List
 from typing_extensions import Optional
 from pydantic import BaseModel, Field
 
-from app.Workout.models import ExerciseIntensity, ExerciseType, WorkoutGoal, WorkoutLevel
+from .models import ExerciseIntensity, ExerciseType, WorkoutGoal, WorkoutLevel
 
 
 class MyBaseModel(BaseModel):
@@ -49,9 +49,29 @@ class WorkoutDayBase(MyBaseModel):
 class WorkoutDayCreate(WorkoutDayBase):
     pass
 
+class WorkoutDayExerciseBase(MyBaseModel):
+    workout_day_id: int
+    exercise_id: int
+    exercise_type: ExerciseType
+    sets: int = Field(ge=0)
+    seconds_per_set: Optional[List[int]] = None
+    repetitions_per_set: Optional[List[int]] = None
+    rest_between_set: Optional[List[int]] = None
+    intensity_type: ExerciseIntensity
+    percentage_of_1rm: Optional[float] = None
+    notes: Optional[str] = None
+
+class WorkoutDayExerciseRead(WorkoutDayExerciseBase):
+    id: int
+    created_at: datetime
+    updated_at: Optional[datetime]
+    created_by: int
+    updated_by: Optional[int]
+    is_deleted: bool
 
 class WorkoutDayRead(WorkoutDayBase):
     id: int
+    exercises: Optional[List[WorkoutDayExerciseRead]] = None
     created_at: datetime
     updated_at: Optional[datetime]
     created_by: int
@@ -68,29 +88,11 @@ class WorkoutDayUpdate(WorkoutDayOptionalBase):
 
 class WorkoutDayFilter(WorkoutDayOptionalBase):
     workout_id: Optional[int] = None
+    include_exercises: Optional[bool] = None
 
-class WorkoutDayExerciseBase(MyBaseModel):
-    workout_day_id: int
-    exercise_id: int
-    exercise_type: ExerciseType
-    sets: int = Field(ge=0)
-    seconds_per_set: Optional[List[int]] = None
-    repetitions_per_set: Optional[List[int]] = None
-    rest_between_set: Optional[List[int]] = None
-    intensity_type: ExerciseIntensity
-    percentage_of_1rm: Optional[float] = None
-    notes: Optional[str] = None
 
 class WorkoutDayExerciseCreate(WorkoutDayExerciseBase):
     pass
-
-class WorkoutDayExerciseRead(WorkoutDayExerciseBase):
-    id: int
-    created_at: datetime
-    updated_at: Optional[datetime]
-    created_by: int
-    updated_by: Optional[int]
-    is_deleted: bool
 
 class WorkoutDayExerciseOptionalBase(MyBaseModel):
     exercise_id: Optional[int] = None
