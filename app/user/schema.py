@@ -1,7 +1,7 @@
 import pydantic
 import datetime
 from datetime import date
-from typing import Optional, List
+from typing import Optional, List, Any
 
 class UserBase(pydantic.BaseModel):
     first_name: str
@@ -214,6 +214,8 @@ class RoleRead(pydantic.BaseModel):
     link: Optional[str] = None
     icon: Optional[str] = None
     is_deleted: Optional[bool] = False
+    # resources: Optional[List['RoleRead']] = None
+    # children: Optional[Any] = None
     subRows: Optional[List['RoleRead']] = None
 
     class Config:
