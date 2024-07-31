@@ -84,7 +84,17 @@ async def register_mobileclient(client: _schemas.ClientCreateApp, db: _orm.Sessi
     try:
         db_client = await _services.get_client_by_email(client.email, db)
         if db_client:
-            raise HTTPException(status_code=400, detail="Email already registered")
+            if db_client.is_deleted==True:
+                
+                updated_client=await _services.update_client(db_client.id, client, db)
+                token = _helpers.create_token(updated_client, "User")
+                return {
+                    "is_registered":True,
+                    "client":updated_client,
+                    "access_token":token
+                }
+            else:   
+                raise HTTPException(status_code=400, detail="Email already registered")
 
         client_data = client.dict() 
         organization_id = client_data.pop('org_id', 0)

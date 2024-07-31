@@ -11,7 +11,7 @@ class MembershipPlan(_database.Base):
     __tablename__ = "membership_plan"
 
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
-    name = _sql.Column(_sql.String)
+    name = _sql.Column(_sql.String, nullable=False)
     org_id = _sql.Column(_sql.Integer)
     group_id = _sql.Column(_sql.Integer)
     status = _sql.Column(_sql.String(10))  
@@ -47,7 +47,7 @@ class Membership_group(_database.Base):
     __tablename__ = "membership_group"
     
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
-    name = _sql.Column(_sql.String)
+    name = _sql.Column(_sql.String, nullable=False)
     org_id = _sql.Column(_sql.Integer)
     created_at=_sql.Column(_sql.DateTime,default=_dt.datetime.now)
     updated_at=_sql.Column(_sql.DateTime,default=_dt.datetime.now)
@@ -59,7 +59,7 @@ class Facility(_database.Base):
     __tablename__ = "facility"
     
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
-    name = _sql.Column(_sql.String)
+    name = _sql.Column(_sql.String, nullable=False)
     min_limit=_sql.Column(_sql.Integer)
     org_id = _sql.Column(_sql.Integer)
     status=_sql.Column(_sql.Boolean,default=True)
@@ -83,7 +83,7 @@ class Income_category(_database.Base):
     __tablename__ = "income_category"
     
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
-    name = _sql.Column(_sql.String)
+    name = _sql.Column(_sql.String, nullable=False)
     position=_sql.Column(_sql.Integer)
     sale_tax_id=_sql.Column(_sql.Integer)
     org_id = _sql.Column(_sql.Integer)
@@ -97,7 +97,7 @@ class Sale_tax(_database.Base):
     __tablename__ = "sale_tax"
     
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
-    name = _sql.Column(_sql.String)
+    name = _sql.Column(_sql.String, nullable=False)
     percentage=_sql.Column(_sql.Float)
     org_id = _sql.Column(_sql.Integer)
     is_deleted= _sql.Column(_sql.Boolean, default=False)
