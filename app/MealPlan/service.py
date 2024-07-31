@@ -117,6 +117,18 @@ def create_meal_plan(meal_plan: _schemas.CreateMealPlan, db: _orm.Session):
     db.refresh(db_meal_plan)
     return db_meal_plan
 
+def create_member_meal_plan(meal_plan_id : int, member_ids: List[int], db: _orm.Session):
+    member_meal_plans = [
+        _models.MemberMealPlan(meal_plan_id=meal_plan_id, member_id=member_id)
+        for member_id in member_ids
+    ]
+
+    db.add_all(member_meal_plans)
+    db.commit()
+
+    return member_meal_plans
+    
+
 def update_meal_plan(meal_plan_id: int, meal_plan: _schemas.UpdateMealPlan, db: _orm.Session):
     # Retrieve the existing meal plan
     db_meal_plan = db.query(_models.MealPlan).filter(_models.MealPlan.id == meal_plan_id).first()

@@ -32,6 +32,7 @@ class MealPlanBase(BaseModel):
 
 class CreateMealPlan(MealPlanBase):
     meals: List[CreateMeal]
+    member_id: Optional[List[int]]
     created_at: Optional[datetime.datetime] = datetime.datetime.now()
 
     class Config:
@@ -88,4 +89,26 @@ class ShowMealPlan(BaseModel):
     created_by: Optional[int] = None
     created_at: Optional[datetime.datetime] = None
     updated_by: Optional[int] = None
-    updated_at: Optional[datetime.datetime] = None
+    updated_at: Optional[datetime.datetime] = None\
+        
+class MemberMealPlanBase(BaseModel):
+    id: int
+    member_id : int
+    meal_plan_id : int
+
+class CreateMemberMealPlan(BaseModel):
+    id: int
+    member_id : int
+    meal_plan_id : int
+    
+class DeleteMemberMealPlan(MemberMealPlanBase):
+    is_deleted : bool 
+
+class UpdateMemberMealPlan(MemberMealPlanBase):
+    pass
+
+class UpdateMemberMealPlan(BaseModel):
+    id: int
+    member_id : Optional[int] = None
+    meal_plan_id : Optional[int] = None
+    
