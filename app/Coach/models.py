@@ -14,7 +14,7 @@ class Coach(_database.Base):
     last_name = _sql.Column(_sql.String, nullable=True)
     dob = _sql.Column(_sql.Date, nullable=True)
     gender = _sql.Column(_sql.String(10))
-    email = _sql.Column(_sql.String, nullable=True, unique=True)
+    email = _sql.Column(_sql.String, nullable=True)
     password = _sql.Column(_sql.String(250))
     phone = _sql.Column(_sql.String(11))
     mobile_number = _sql.Column(_sql.String(11))
