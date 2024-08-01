@@ -201,7 +201,7 @@ class ClientBusinessRead(pydantic.BaseModel):
     first_name: str
         
 class ClientCount(pydantic.BaseModel):
-    total_clients: int
+    total_members: int
     
 class ClientList(pydantic.BaseModel):
     id: int

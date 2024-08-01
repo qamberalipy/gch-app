@@ -97,6 +97,8 @@ app.include_router(root_router)
 AUTH_BASE_URL = os.environ.get("AUTH_BASE_URL")
 # logging.basicConfig(level=logging.INFO)
 
+
+
 if __name__ == "__main__":
 
     import uvicorn

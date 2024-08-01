@@ -22,6 +22,15 @@ async def get_muscle(db: _orm.Session = _fastapi.Depends(get_db)):
     return db.query(*_models.Muscle.__table__.columns)
 
 async def create_exercise(exercise: _schemas.ExerciseCreate, db: _orm.Session):
+
+    existing_exercise = db.query(_models.Exercise).filter(
+        _models.Exercise.exercise_name == exercise.exercise_name,
+        _models.Exercise.org_id == exercise.org_id
+    ).first()
+
+    if existing_exercise:
+        raise _fastapi.HTTPException(status_code=400, detail="Exercise with the same name already exists in the organization.")
+    
     db_exercise = _models.Exercise(
         exercise_name=exercise.exercise_name,
         visible_for=exercise.visible_for,
@@ -43,7 +52,6 @@ async def create_exercise(exercise: _schemas.ExerciseCreate, db: _orm.Session):
         thumbnail_female=exercise.thumbnail_female,
         image_url_female=exercise.image_url_female,
         image_url_male=exercise.image_url_male,
-        created_by=exercise.created_by,
         updated_by=exercise.updated_by)
     
     db.add(db_exercise)
@@ -197,7 +205,6 @@ async def get_exercise(org_id:int,db: _orm.Session = _fastapi.Depends(get_db)):
     return query
 
 
-
 async def get_exercise_by_id(id:int,db: _orm.Session = _fastapi.Depends(get_db)):
 
     Exercise = aliased(_models.Exercise)
@@ -283,6 +290,7 @@ async def get_exercise_by_id(id:int,db: _orm.Session = _fastapi.Depends(get_db))
     ).first()
 
     return query
+
 
 async def get_equipments(db: _orm.Session = _fastapi.Depends(get_db)):
     return db.query(*_models.Equipment.__table__.columns)

@@ -151,12 +151,7 @@ async def create_bank_account(bank_account:_schemas.BankAccountCreate,db: _orm.S
 
 async def create_staff(staff: _schemas.CreateStaff, db: _orm.Session = _fastapi.Depends(get_db)):
     staff_data = staff.dict()
-    try:
-       _email_check.validate_email(staff_data.get('email'))
-
-    except _email_check.EmailNotValidError:
-        raise _fastapi.HTTPException(status_code=400, detail="Please enter a valid email")
-
+    
     print(staff_data.pop("send_invitation"))
     db_staff = _models.User(**staff_data)
     db.add(db_staff)
@@ -185,7 +180,8 @@ def get_all_sources( db: _orm.Session):
 
 async def get_one_staff(staff_id: int, db: _orm.Session):
     staff_detail = db.query(
-        *models.User.__table__.columns,_models.Role.name.label("role_name")
+        *models.User.__table__.columns,
+        _models.Role.name.label("role_name")
         ).join(
             _models.Role, _models.User.role_id == _models.Role.id
         ).filter(
