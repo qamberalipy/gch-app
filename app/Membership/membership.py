@@ -129,6 +129,7 @@ def get_facilitys_by_org_id(org_id: int,request: Request, db: _orm.Session = Dep
         
         params = {
         "org_id": org_id,
+        "search_key": request.query_params.get("search_key"),
         "sort_order": request.query_params.get("sort_order", "desc"),
         "limit": request.query_params.get("limit", 10),
         "offset": request.query_params.get("offset", 0)
@@ -174,10 +175,11 @@ def get_all_income_categories(org_id: int, request: Request, db: _orm.Session = 
         
         
         params = {
-            "org_id": org_id,
+             "org_id": org_id,
+            "search_key": request.query_params.get("search_key"),
             "sort_order": request.query_params.get("sort_order", "desc"),
-            "limit": int(request.query_params.get("limit", 10)),
-            "offset": int(request.query_params.get("offset", 0))
+            "limit": request.query_params.get("limit", 10),
+            "offset": request.query_params.get("offset", 0)
         }
         
         income_categories = _services.get_all_income_categories_by_org_id(db, _schemas.StandardParams(**params))
@@ -249,10 +251,11 @@ def get_all_sale_taxes(org_id: int, request: Request, db: _orm.Session = Depends
     try:    
         
         params = {
-            "org_id": org_id,
+             "org_id": org_id,
+            "search_key": request.query_params.get("search_key"),
             "sort_order": request.query_params.get("sort_order", "desc"),
-            "limit": int(request.query_params.get("limit", 10)),
-            "offset": int(request.query_params.get("offset", 0))
+            "limit": request.query_params.get("limit", 10),
+            "offset": request.query_params.get("offset", 0)
         }
         
         sale_taxes = _services.get_all_sale_taxes_by_org_id(db, _schemas.StandardParams(**params))
@@ -339,10 +342,11 @@ def get_group(org_id: int, request: Request, db: _orm.Session = Depends(get_db))
     try:    
         
         params = {
-            "org_id": org_id,
+             "org_id": org_id,
+            "search_key": request.query_params.get("search_key"),
             "sort_order": request.query_params.get("sort_order", "desc"),
-            "limit": int(request.query_params.get("limit", 10)),
-            "offset": int(request.query_params.get("offset", 0))
+            "limit": request.query_params.get("limit", 10),
+            "offset": request.query_params.get("offset", 0)
         }
         
         groups = _services.get_all_groups_by_org_id(db, _schemas.StandardParams(**params))
