@@ -59,8 +59,7 @@ async def get_leads(
     request: Request,
     limit: Optional[int]=None, 
     offset: Optional[int]=None,  
-    db: _orm.Session = Depends(get_db), 
-    authorization: str = Header(None)):
+    db: _orm.Session = Depends(get_db)):
     try:
         
         

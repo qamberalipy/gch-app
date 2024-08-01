@@ -92,22 +92,6 @@ async def test_token(
 @router.post("/refresh_token", tags=["Auth"])
 async def refresh_token(refresh_token: str = Header(None, alias="refresh_token")):
     return _helpers.refresh_jwt(refresh_token)
-    
-
-@router.get("/countries", response_model=List[_schemas.CountryRead])
-async def read_countries(db: _orm.Session = Depends(get_db)):
-    countries = _services.get_all_countries(db=db)
-    if not countries:
-        raise HTTPException(status_code=404, detail="No countries found")
-    return countries
-
-
-@router.get("/sources", response_model=List[_schemas.SourceRead])
-async def read_sources(db: _orm.Session = Depends(get_db)):
-    sources = _services.get_all_sources(db=db)
-    if not sources:
-        raise HTTPException(status_code=404, detail="No sources found")
-    return sources
 
 
 @router.get("/staff",response_model=List[_schemas.getStaff],tags=["Staff APIs"])
@@ -156,7 +140,7 @@ async def get_staff_by_id(id: int, db: _orm.Session = Depends(get_db)):
         
         
         print("Fetching staff with ID:", id)
-        staff_list = await _services.get_one_staff(id, db)
+        staff_list = await _services.get_one_staff(staff_id=id, db=db)
         print("Staff list:", staff_list)
         if staff_list is None:
             raise HTTPException(status_code=404, detail="Staff not found")
@@ -171,7 +155,7 @@ async def get_staff_by_id(id: int, db: _orm.Session = Depends(get_db)):
         print(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
-@router.get("/staff/count", response_model=_schemas.StaffCount, tags=["Staff APIs"])
+@router.get("/staff/count/{org_id}", response_model=_schemas.StaffCount, tags=["Staff APIs"])
 async def get_all_staff(org_id: int, db: _orm.Session = Depends(get_db)):
     try:
     
@@ -225,10 +209,8 @@ async def delete_staff(id:int, db: _orm.Session = Depends(get_db)):
 async def get_staff(
     org_id: int,
     request: Request,
-    db: _orm.Session = Depends(get_db),
-    authorization: str = Header(None)):
+    db: _orm.Session = Depends(get_db)):
     try:
-        
         
         params = {
             "org_id": org_id,

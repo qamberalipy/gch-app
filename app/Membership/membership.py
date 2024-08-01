@@ -25,11 +25,8 @@ def get_db():
         db.close()
         
 @router.post("/membership_plan", response_model=_schemas.MembershipPlanRead, tags=["Membership Plans"])
-def create_membership_plan(membership_plan: _schemas.MembershipPlanCreate,db: _orm.Session = Depends(get_db),authorization: str = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid or missing access token")
-    
-    _helpers.verify_jwt(authorization, "User")
+def create_membership_plan(membership_plan: _schemas.MembershipPlanCreate,db: _orm.Session = Depends(get_db)):
+
     return _services.create_membership_plan(membership_plan, db)
 
 @router.put("/membership_plan", response_model=_schemas.MembershipPlanRead, tags=["Membership Plans"])
@@ -234,6 +231,7 @@ def delete_income_category(id:int, db: _orm.Session = Depends(get_db)):
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
+    
 @router.post("/sale_taxes", response_model=_schemas.SaleTaxRead, tags=["Sale_tax APIs"])
 def create_sale_tax(sale_tax: _schemas.SaleTaxCreate, db: _orm.Session = Depends(get_db)):
     try:    
@@ -245,12 +243,10 @@ def create_sale_tax(sale_tax: _schemas.SaleTaxCreate, db: _orm.Session = Depends
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
-    
 
 @router.get("/sale_taxes", response_model=List[_schemas.SaleTaxRead], tags=["Sale_tax APIs"])
 def get_all_sale_taxes(org_id: int, request: Request, db: _orm.Session = Depends(get_db)):
     try:    
-        
         
         params = {
             "org_id": org_id,
@@ -290,7 +286,6 @@ def update_sale_tax(sale_tax: _schemas.SaleTaxUpdate, db: _orm.Session = Depends
     
     try:    
         
-        
         db_sale_tax = _services.update_sale_tax(sale_tax=sale_tax,db=db)
         if db_sale_tax is None:
             raise HTTPException(status_code=404, detail="Sale tax not found")
@@ -318,11 +313,8 @@ def delete_sale_tax(id:int, db: _orm.Session = Depends(get_db)):
 
 
 @router.post("/group",response_model=_schemas.GroupRead, tags=["Group API"])
-def create_group(group:_schemas.GroupCreate,db: _orm.Session = Depends(get_db),authorization: str = Header(None)): 
+def create_group(group:_schemas.GroupCreate,db: _orm.Session = Depends(get_db)): 
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
         return _services.create_group(group=group,db=db)
     except IntegrityError as e:
         raise HTTPException(status_code=400, detail="Integrity error occurred")
@@ -332,12 +324,9 @@ def create_group(group:_schemas.GroupCreate,db: _orm.Session = Depends(get_db),a
 
 
 @router.get("/group/{id}",response_model=_schemas.GroupRead, tags=["Group API"])
-def get_group(id:int,db: _orm.Session = Depends(get_db),authorization: str = Header(None)):
+def get_group(id:int,db: _orm.Session = Depends(get_db)):
 
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
         return _services.get_group_by_id(id,db)
     except IntegrityError as e:
         raise HTTPException(status_code=400, detail="Integrity error occurred")
@@ -366,12 +355,9 @@ def get_group(org_id: int, request: Request, db: _orm.Session = Depends(get_db))
 
 
 @router.put("/group",response_model=_schemas.GroupRead, tags=["Group API"])
-def update_group(group:_schemas.GroupUpdate,db: _orm.Session = Depends(get_db),authorization: str = Header(None)):
+def update_group(group:_schemas.GroupUpdate,db: _orm.Session = Depends(get_db)):
     
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
         db_group=_services.update_group(group,db)
         if db_group is None:
             raise HTTPException(status_code=404, detail="Group not found")
