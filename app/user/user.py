@@ -1,10 +1,11 @@
-from typing import Dict, List, Optional
+from typing import Annotated, Dict, List, Optional
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, Header, Request, status
 from sqlalchemy.exc import IntegrityError, DataError
 import app.user.schema as _schemas
 import sqlalchemy.orm as _orm
 import app.user.models as _models
 import app.user.service as _services
+import app.Shared.schema as _h_schema
 import app.core.db.session as _database
 import pika
 import logging
@@ -165,8 +166,8 @@ async def get_staff_by_id(staff_id: int, db: _orm.Session = Depends(get_db), aut
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid or missing access token")
 
-        _helpers.verify_jwt(authorization, "User")
-
+        Users=_helpers.verify_jwt(authorization, "User")
+        print("Mu user: ",Users)
         print("Fetching staff with ID:", staff_id)
         staff_list = await _services.get_one_staff(staff_id, db)
         print("Staff list:", staff_list)
@@ -184,20 +185,14 @@ async def get_staff_by_id(staff_id: int, db: _orm.Session = Depends(get_db), aut
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
 @router.get("/staff/staffs/getTotalStaff", response_model=_schemas.StaffCount, tags=["Staff APIs"])
-async def get_all_staff(org_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def get_all_staff(org_id: int, current_user: Annotated[_h_schema.User, Depends(_helpers.get_current_user)], db: _orm.Session = Depends(get_db)):
     try:
-        
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
-
+        print(current_user)
         total_staffs = await _services.get_Total_count_staff(org_id, db)
         print("Staff list:", total_staffs)
         if total_staffs is None:
             raise HTTPException(status_code=404, detail="Staff not found")
         return {"total_staffs": total_staffs}
-
     except IntegrityError as e:
         logger.error(f"IntegrityError: {e}")
         print(f"IntegrityError: {e}")
@@ -206,7 +201,7 @@ async def get_all_staff(org_id: int, db: _orm.Session = Depends(get_db), authori
         logger.error(f"DataError: {e}")
         print(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
-    
+   
 
 
 @router.put("/staff/staffs", response_model=_schemas.ReadStaff, tags=["Staff APIs"])

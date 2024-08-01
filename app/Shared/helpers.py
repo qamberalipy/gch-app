@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Annotated
 import jwt, json, time, os, random, logging, bcrypt as _bcrypt
 import sqlalchemy.orm as _orm
 from sqlalchemy.sql import and_  
@@ -10,7 +11,7 @@ import app.user.schema as _u_schemas
 import app.Coach.schema as _co_schemas
 import app.user.models as _models
 
-
+oauth2_scheme = _security.OAuth2PasswordBearer(tokenUrl="token")
 user_type_mapping = {
     "User": _u_schemas.UserBase,
     "Coach": _co_schemas.CoachBase
@@ -72,9 +73,23 @@ def refresh_jwt(refresh_token: str):
     except jwt.InvalidTokenError:
         raise _fastapi.HTTPException(status_code=400, detail="Invalid refresh token")
     
-def get_current_user(request: _fastapi.Request):
-    authorization: str = request.headers.get("Authorization")
-    if not authorization:
-        raise _fastapi.HTTPException(status_code=_fastapi.status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-    token = authorization
-    return verify_jwt(token)
+async def get_current_user(token: Annotated[str, _fastapi.Depends(oauth2_scheme)]):
+    credentials_exception = _fastapi.HTTPException(
+        status_code=_fastapi.status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        print("Token time: ", (time.time() - payload["token_time"]) > int(JWT_EXPIRY), time.time() - payload["token_time"], int(JWT_EXPIRY))
+        if (time.time() - payload["token_time"]) > int(JWT_EXPIRY):
+            raise credentials_exception
+        # if payload['user_type'] != str.lower():
+        #     raise credentials_exception
+
+        return payload
+
+    except jwt.InvalidTokenError:
+        raise credentials_exception
+    

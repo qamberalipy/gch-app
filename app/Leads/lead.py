@@ -6,7 +6,6 @@ import app.Leads.schema as _schemas
 import sqlalchemy.orm as _orm
 import app.Leads.models as _models
 import app.Leads.service as _services
-from app.Shared.helpers import get_current_user
 import app.user.service as _user_service
 import app.core.db.session as _database
 import pika
