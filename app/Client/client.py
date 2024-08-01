@@ -75,7 +75,7 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
 
 
 
-@router.post("/member/app", response_model=_schemas.ClientLoginResponse, tags=["App Router"])
+@router.post("/app/member/signup", response_model=_schemas.ClientLoginResponse, tags=["App Router"])
 async def register_mobileclient(client: _schemas.ClientCreateApp,db: _orm.Session = Depends(get_db)):
     try:
         db_client = await _services.get_client_by_email(client.email, db)
@@ -185,7 +185,7 @@ async def delete_client(id:int, db: _orm.Session = Depends(get_db)):
     
 
 
-@router.post("/login", response_model=_schemas.ClientLoginResponse,  tags=["App Router"])
+@router.post("/app/member/login", response_model=_schemas.ClientLoginResponse,  tags=["App Router"])
 async def login_client(client_data: _schemas.ClientLogin, db: _orm.Session = Depends(get_db)):
     try:
         print(client_data)
