@@ -90,6 +90,7 @@ class Resource(_database.Base):
     name=_sql.Column(_sql.String(50))
     code=_sql.Column(_sql.String(50))
     parent = _sql.Column(_sql.String(50))
+    is_root = _sql.Column(_sql.Boolean)
     is_parent = _sql.Column(_sql.Boolean)
     link = _sql.Column(_sql.String(50))
     icon = _sql.Column(_sql.String(50))
@@ -106,20 +107,20 @@ class Resource(_database.Base):
     #     back_populates="resource"
     # )
     # self join of parent with code
-    # rel_parent = _orm.relationship(
-    #     "Resource",
-    #     lazy="select",
-    #     primaryjoin="Resource.parent==foreign(Resource.code)",
-        
-    #     back_populates="children"
-    # )
-    # children = _orm.relationship(
-    #     "Resource",
-    #     lazy="noload",
-    #     primaryjoin="foreign(Resource.parent)==Resource.code",
-    #     remote_side='Resource.code',
-    #     back_populates="rel_parent"
-    # )
+    rel_parent = _orm.relationship(
+        "Resource",
+        lazy="select",
+        primaryjoin="foreign(Resource.parent)==Resource.code",
+        remote_side=[code],
+        back_populates="children"
+    )
+    children = _orm.relationship(
+        "Resource",
+        lazy="select",
+        primaryjoin="Resource.code==foreign(Resource.parent)",
+        remote_side=[parent],
+        back_populates="rel_parent"
+    )
 
 class Permission(_database.Base):
     __tablename__ = 'permission'
