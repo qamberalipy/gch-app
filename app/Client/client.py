@@ -27,7 +27,7 @@ def get_db():
     finally:
         db.close()
         
-@router.post("/register", response_model=_schemas.ClientRead, tags=["Member Router"])
+@router.post("/member", response_model=_schemas.ClientRead, tags=["Member Router"])
 async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         
@@ -76,10 +76,8 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-    
 
-
-@router.post("/mobile/register", response_model=_schemas.ClientLoginResponse, tags=["App Router"])
+@router.post("/member/app", response_model=_schemas.ClientLoginResponse, tags=["App Router"])
 async def register_mobileclient(client: _schemas.ClientCreateApp, db: _orm.Session = Depends(get_db)):
     try:
         db_client = await _services.get_client_by_email(client.email, db)
@@ -140,7 +138,7 @@ async def register_mobileclient(client: _schemas.ClientCreateApp, db: _orm.Sessi
  
     
     
-@router.put("/members", response_model=_schemas.ClientRead, tags=["Member Router"])
+@router.put("/member", response_model=_schemas.ClientRead, tags=["Member Router"])
 async def update_client(client: _schemas.ClientUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         if not authorization or not authorization.startswith("Bearer "):
@@ -171,15 +169,15 @@ async def update_client(client: _schemas.ClientUpdate, db: _orm.Session = Depend
 
     
 
-@router.delete("/members", response_model=_schemas.ClientRead, tags=["Member Router"])
-async def delete_client(client: _schemas.ClientDelete, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.delete("/member/{id}", response_model=_schemas.ClientRead, tags=["Member Router"])
+async def delete_client(id:int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code = 401, detail="Invalid or missing access token")
 
         _helpers.verify_jwt(authorization, "User")
         
-        deleted_client = await _services.delete_client(client.id, db)
+        deleted_client = await _services.delete_client(id, db)
         return deleted_client
 
     except IntegrityError as e:
@@ -205,14 +203,14 @@ async def login_client(client_data: _schemas.ClientLogin, db: _orm.Session = Dep
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
-@router.get("/members", response_model=_schemas.ClientByID, tags=["Member Router"])
-async def get_client_by_id(client_id: int, db:  _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.get("/member/{id}", response_model=_schemas.ClientByID, tags=["Member Router"])
+async def get_client_by_id(id: int, db:  _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:    
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid or missing access token")
 
         _helpers.verify_jwt(authorization, "User")
-        client = await _services.get_client_byid(db=db, client_id=client_id)
+        client = await _services.get_client_byid(db=db, client_id=id)
         if not client:
             raise HTTPException(status_code=404, detail="Client not found")
         return client    
@@ -224,7 +222,7 @@ async def get_client_by_id(client_id: int, db:  _orm.Session = Depends(get_db), 
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
-@router.get("/filter", response_model=List[_schemas.ClientFilterRead], tags=["Member Router"])
+@router.get("/member", response_model=List[_schemas.ClientFilterRead], tags=["Member Router"])
 async def get_client(
     org_id: int,
     request: Request,
@@ -260,7 +258,7 @@ async def get_client(
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-@router.get("/list", response_model=List[_schemas.ClientList], tags=["Member Router"])
+@router.get("member/list", response_model=List[_schemas.ClientList], tags=["Member Router"])
 async def get_client_list(
     org_id: int,
     db: _orm.Session = Depends(get_db),
@@ -284,7 +282,7 @@ async def get_client_list(
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
 
-@router.get("/business", response_model=List[_schemas.ClientBusinessRead], tags=["Member Router"])
+@router.get("/member/business", response_model=List[_schemas.ClientBusinessRead], tags=["Member Router"])
 async def get_business_clients(org_id: int,db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         if not authorization or not authorization.startswith("Bearer "):
@@ -299,7 +297,7 @@ async def get_business_clients(org_id: int,db: _orm.Session = Depends(get_db), a
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
     
 
-@router.get("/getTotalMembers", response_model=_schemas.ClientCount, tags=["Member Router"])
+@router.get("/member/count", response_model=_schemas.ClientCount, tags=["Member Router"])
 async def get_total_clients(org_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         if not authorization or not authorization.startswith("Bearer "):
@@ -308,6 +306,6 @@ async def get_total_clients(org_id: int, db: _orm.Session = Depends(get_db), aut
         _helpers.verify_jwt(authorization, "User")
         
         total_clients = await _services.get_total_clients(org_id, db)
-        return {"total_clients": total_clients}
+        return {"total_members": total_clients}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")

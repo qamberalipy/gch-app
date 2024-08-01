@@ -93,7 +93,7 @@ async def refresh_token(refresh_token: str = Header(None, alias="refresh_token")
     return _helpers.refresh_jwt(refresh_token)
     
 
-@router.get("/get_all_countries/", response_model=List[_schemas.CountryRead])
+@router.get("/countries", response_model=List[_schemas.CountryRead])
 async def read_countries(db: _orm.Session = Depends(get_db)):
     countries = _services.get_all_countries(db=db)
     if not countries:
@@ -101,7 +101,7 @@ async def read_countries(db: _orm.Session = Depends(get_db)):
     return countries
 
 
-@router.get("/get_all_sources/", response_model=List[_schemas.SourceRead])
+@router.get("/sources", response_model=List[_schemas.SourceRead])
 async def read_sources(db: _orm.Session = Depends(get_db)):
     sources = _services.get_all_sources(db=db)
     if not sources:
@@ -109,7 +109,7 @@ async def read_sources(db: _orm.Session = Depends(get_db)):
     return sources
 
 
-@router.get("/get_staff",response_model=List[_schemas.getStaff],tags=["Staff APIs"])
+@router.get("/staff",response_model=List[_schemas.getStaff],tags=["Staff APIs"])
 async def get_staff(org_id:int, db: _orm.Session= Depends(get_db), authorization: str = Header(None)):
     
     if not authorization or not authorization.startswith("Bearer "):
@@ -120,7 +120,7 @@ async def get_staff(org_id:int, db: _orm.Session= Depends(get_db), authorization
     return filtered_users
 
 
-@router.get("/get_privileges",response_model=List[_schemas.getPrivileges],tags=["Staff APIs"])
+@router.get("/privileges",response_model=List[_schemas.getPrivileges],tags=["Staff APIs"])
 async def get_privileges(org_id:int, db: _orm.Session= Depends(get_db), authorization: str = Header(None)):
     
     if not authorization or not authorization.startswith("Bearer "):
@@ -131,7 +131,7 @@ async def get_privileges(org_id:int, db: _orm.Session= Depends(get_db), authoriz
     return organization_roles
 
 
-@router.post("/staff/staffs", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
+@router.post("/staff", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
 async def register_staff(staff: _schemas.CreateStaff, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         
@@ -158,8 +158,8 @@ async def register_staff(staff: _schemas.CreateStaff, db: _orm.Session = Depends
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 
-@router.get("/staff/staffs", response_model=_schemas.GetStaffResponse, tags=["Staff APIs"])
-async def get_staff_by_id(staff_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.get("/staff/{id}", response_model=_schemas.GetStaffResponse, tags=["Staff APIs"])
+async def get_staff_by_id(id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         
         if not authorization or not authorization.startswith("Bearer "):
@@ -167,8 +167,8 @@ async def get_staff_by_id(staff_id: int, db: _orm.Session = Depends(get_db), aut
 
         _helpers.verify_jwt(authorization, "User")
 
-        print("Fetching staff with ID:", staff_id)
-        staff_list = await _services.get_one_staff(staff_id, db)
+        print("Fetching staff with ID:", id)
+        staff_list = await _services.get_one_staff(id, db)
         print("Staff list:", staff_list)
         if staff_list is None:
             raise HTTPException(status_code=404, detail="Staff not found")
@@ -183,7 +183,7 @@ async def get_staff_by_id(staff_id: int, db: _orm.Session = Depends(get_db), aut
         print(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
-@router.get("/staff/staffs/getTotalStaff", response_model=_schemas.StaffCount, tags=["Staff APIs"])
+@router.get("/staff/count", response_model=_schemas.StaffCount, tags=["Staff APIs"])
 async def get_all_staff(org_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         
@@ -209,7 +209,7 @@ async def get_all_staff(org_id: int, db: _orm.Session = Depends(get_db), authori
     
 
 
-@router.put("/staff/staffs", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
+@router.put("/staff", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
 async def update_staff(staff_update: _schemas.UpdateStaff, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         
@@ -227,8 +227,8 @@ async def update_staff(staff_update: _schemas.UpdateStaff, db: _orm.Session = De
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 
-@router.delete("/staff/staffs", tags=["Staff APIs"])
-async def delete_staff(staff_delete: _schemas.DeleteStaff, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.delete("/staff/{id}", tags=["Staff APIs"])
+async def delete_staff(id:int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         
         if not authorization or not authorization.startswith("Bearer "):
@@ -236,7 +236,7 @@ async def delete_staff(staff_delete: _schemas.DeleteStaff, db: _orm.Session = De
 
         _helpers.verify_jwt(authorization, "User")
         
-        return await _services.delete_staff(staff_delete.id, db)
+        return await _services.delete_staff(id, db)
     except IntegrityError as e:
         logger.error(f"IntegrityError: {e}")
         raise HTTPException(status_code=400, detail="Integrity error occurred")
@@ -246,7 +246,7 @@ async def delete_staff(staff_delete: _schemas.DeleteStaff, db: _orm.Session = De
     
     
     
-@router.get("/staff/staffs/getAll", response_model=List[_schemas.GetStaffResponse], tags=["Staff APIs"])
+@router.get("/staff", response_model=List[_schemas.GetStaffResponse], tags=["Staff APIs"])
 async def get_staff(
     org_id: int,
     request: Request,
