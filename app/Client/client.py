@@ -28,13 +28,10 @@ def get_db():
         db.close()
         
 @router.post("/member", response_model=_schemas.ClientRead, tags=["Member Router"])
-async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depends(get_db)):
     try:
         
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         
         db_client = await _services.get_client_by_email(client.email, db)
         if db_client:
@@ -139,12 +136,9 @@ async def register_mobileclient(client: _schemas.ClientCreateApp, db: _orm.Sessi
     
     
 @router.put("/member", response_model=_schemas.ClientRead, tags=["Member Router"])
-async def update_client(client: _schemas.ClientUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def update_client(client: _schemas.ClientUpdate, db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         
         # Update client details
         updated_client = await _services.update_client(client.id, client, db)
@@ -170,12 +164,8 @@ async def update_client(client: _schemas.ClientUpdate, db: _orm.Session = Depend
     
 
 @router.delete("/member/{id}", response_model=_schemas.ClientRead, tags=["Member Router"])
-async def delete_client(id:int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def delete_client(id:int, db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code = 401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
         
         deleted_client = await _services.delete_client(id, db)
         return deleted_client
@@ -204,12 +194,9 @@ async def login_client(client_data: _schemas.ClientLogin, db: _orm.Session = Dep
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
 @router.get("/member/{id}", response_model=_schemas.ClientByID, tags=["Member Router"])
-async def get_client_by_id(id: int, db:  _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def get_client_by_id(id: int, db:  _orm.Session = Depends(get_db)):
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         client = await _services.get_client_byid(db=db, client_id=id)
         if not client:
             raise HTTPException(status_code=404, detail="Client not found")
@@ -226,14 +213,9 @@ async def get_client_by_id(id: int, db:  _orm.Session = Depends(get_db), authori
 async def get_client(
     org_id: int,
     request: Request,
-    db: _orm.Session = Depends(get_db),
-    authorization: str = Header(None)):
+    db: _orm.Session = Depends(get_db)):
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
-        print("MY LIST ",Request)
+        
         params = {
             "org_id": org_id,
             "search_key": request.query_params.get("search_key"),
@@ -241,8 +223,9 @@ async def get_client(
             "status": request.query_params.get("status"),
             "coach_assigned": request.query_params.get("coach_assigned"),
             "membership_plan": request.query_params.get("membership_plan"),
-            "limit":request.query_params.get('limit') ,
-            "offset":request.query_params.get('offset')
+            "sort_order": request.query_params.get("sort_order", "desc"),
+            "limit": request.query_params.get("limit", 10),
+            "offset": request.query_params.get("offset", 0)
         }
         clients = _services.get_filtered_clients(db=db, params=_schemas.ClientFilterParams(**params))
         
@@ -283,12 +266,9 @@ async def get_client_list(
     
 
 @router.get("/member/business", response_model=List[_schemas.ClientBusinessRead], tags=["Member Router"])
-async def get_business_clients(org_id: int,db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def get_business_clients(org_id: int,db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         clients = await _services.get_business_clients(org_id, db)
         if not clients:
             return []
@@ -298,12 +278,9 @@ async def get_business_clients(org_id: int,db: _orm.Session = Depends(get_db), a
     
 
 @router.get("/member/count", response_model=_schemas.ClientCount, tags=["Member Router"])
-async def get_total_clients(org_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def get_total_clients(org_id: int, db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         
         total_clients = await _services.get_total_clients(org_id, db)
         return {"total_members": total_clients}

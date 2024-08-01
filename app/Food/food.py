@@ -28,11 +28,9 @@ def get_db():
         db.close()
 
 @router.post("/food", response_model=_schemas.FoodCreateResponse)
-async def create_food(food: _schemas.FoodCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def create_food(food: _schemas.FoodCreate, db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+        
         return await _services.create_food(food, db)
     except IntegrityError as e:
         raise HTTPException(status_code=400, detail="Food already exists")
@@ -40,44 +38,36 @@ async def create_food(food: _schemas.FoodCreate, db: _orm.Session = Depends(get_
         raise HTTPException(status_code=400, detail="Invalid data")
 
 @router.get("/food", response_model=List[_schemas.FoodRead])
-async def get_all_foods(db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def get_all_foods(db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+        
         return await _services.get_all_foods(db)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/food/{id}", response_model=_schemas.FoodRead)
-async def get_food_by_id(id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def get_food_by_id(id: int, db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+        
         return await _services.get_food_by_id(id, db)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.put("/food", response_model=_schemas.FoodCreateResponse)
-async def update_food(food: _schemas.FoodUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def update_food(food: _schemas.FoodUpdate, db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+        
         return await _services.update_food(food, db)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.delete("/food/{id}")
-async def delete_food(id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def delete_food(id: int, db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+        
         await _services.delete_food(id, db)
         return {
             "id": id,

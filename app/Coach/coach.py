@@ -28,10 +28,8 @@ def get_db():
         db.close()
 
 @router.post("/coach/register", response_model=_schemas.CoachRead ,tags=["App Router"])
-def create_mobilecoach(coach: _schemas.CoachAppBase, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid or missing access token")
-    _helpers.verify_jwt(authorization, "User")
+def create_mobilecoach(coach: _schemas.CoachAppBase, db: _orm.Session = Depends(get_db)):
+    
     return _services.create_appcoach(coach,db)
 
 
@@ -47,37 +45,29 @@ async def login_coach(coach_data: _schemas.CoachLogin, db: _orm.Session = Depend
     
 
 @router.post("/coach", response_model=_schemas.CoachRead ,tags=["Coach API"])
-def create_coach(coach: _schemas.CoachCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid or missing access token")
-    _helpers.verify_jwt(authorization, "User")
+def create_coach(coach: _schemas.CoachCreate, db: _orm.Session = Depends(get_db)):
+    
     return _services.create_coach(coach,db)
 
 @router.put("/coach", response_model=_schemas.CoachUpdate , tags=["Coach API"])
-def update_coach(coach: _schemas.CoachUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid or missing access token")
-    _helpers.verify_jwt(authorization, "User")
+def update_coach(coach: _schemas.CoachUpdate, db: _orm.Session = Depends(get_db)):
+    
     db_coach = _services.update_coach(coach,db)
     if db_coach is None:
         raise HTTPException(status_code=404, detail="Coach not found")
     return db_coach
 
 @router.delete("/coach/{id}", response_model=_schemas.CoachRead, tags=["Coach API"])
-def delete_coach(id:int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid or missing access token")
-    _helpers.verify_jwt(authorization, "User")
+def delete_coach(id:int, db: _orm.Session = Depends(get_db)):
+    
     db_coach = _services.delete_coach(id,db)
     if db_coach is None:
         raise HTTPException(status_code=404, detail="Coach not found")
     return db_coach
 
 @router.get("/coach/{id}", response_model=_schemas.CoachReadSchema, tags=["Coach API"])
-def get_coach_by_id(id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid or missing access token")
-    _helpers.verify_jwt(authorization, "User")
+def get_coach_by_id(id: int, db: _orm.Session = Depends(get_db)):
+    
 
     db_coach = _services.get_coach_by_id(id, db)
     if db_coach is None:
@@ -86,19 +76,17 @@ def get_coach_by_id(id: int, db: _orm.Session = Depends(get_db), authorization: 
 
 
 @router.get("/coach", response_model=List[_schemas.CoachReadSchema], tags=["Coach API"])
-def get_coaches_by_org_id(org_id: int,request: Request,db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+def get_coaches_by_org_id(org_id: int,request: Request,db: _orm.Session = Depends(get_db)):
     
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid or missing access token")
-    _helpers.verify_jwt(authorization, "User")
+   
     print("MY LIST ",Request)
     params = {
         "org_id": org_id,
         "search_key": request.query_params.get("search_key"),
-        "sort_by": request.query_params.get("sort_by"),
         "status": request.query_params.get("status"),
-        "limit":request.query_params.get('limit') ,
-        "offset":request.query_params.get('offset')
+        "sort_order": request.query_params.get("sort_order", "desc"),
+        "limit": request.query_params.get("limit", 10),
+        "offset": request.query_params.get("offset", 0)
     }
     print(params)
     coaches = _services.get_all_coaches_by_org_id(db,params=_schemas.CoachFilterParams(**params))
@@ -107,12 +95,9 @@ def get_coaches_by_org_id(org_id: int,request: Request,db: _orm.Session = Depend
 
 
 @router.get("/coach/count", response_model=_schemas.CoachCount, tags=["Coach API"])
-async def get_total_coaches(org_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def get_total_coaches(org_id: int, db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         
         total_coaches = await _services.get_total_coaches(org_id, db)
         return {"total_coaches": total_coaches}

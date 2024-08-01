@@ -33,20 +33,16 @@ def create_membership_plan(membership_plan: _schemas.MembershipPlanCreate,db: _o
     return _services.create_membership_plan(membership_plan, db)
 
 @router.put("/membership_plan", response_model=_schemas.MembershipPlanRead, tags=["Membership Plans"])
-def update_membership_plan(membership_plan: _schemas.MembershipPlanUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid or missing access token")
-    _helpers.verify_jwt(authorization, "User")
+def update_membership_plan(membership_plan: _schemas.MembershipPlanUpdate, db: _orm.Session = Depends(get_db)):
+    
     db_membership_plan = _services.update_membership_plan(membership_plan.id, membership_plan,db)
     if db_membership_plan is None:
         raise HTTPException(status_code=404, detail="Membership plan not found")
     return db_membership_plan
 
 @router.delete("/membership_plan/{id}", tags=["Membership Plans"])
-def delete_membership_plan(id:int,db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid or missing access token")
-    _helpers.verify_jwt(authorization, "User")
+def delete_membership_plan(id:int,db: _orm.Session = Depends(get_db)):
+    
     db_membership_plan = _services.delete_membership_plan(id,db)
     if db_membership_plan is None:
         raise HTTPException(status_code=404, detail="Membership plan not found")
@@ -56,10 +52,8 @@ def delete_membership_plan(id:int,db: _orm.Session = Depends(get_db), authorizat
     }
 
 @router.get("/membership_plan/{id}", response_model=_schemas.MembershipPlanResponse, tags=["Membership Plans"])
-def get_membership_plan_by_id(id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid or missing access token")
-    _helpers.verify_jwt(authorization, "User")
+def get_membership_plan_by_id(id: int, db: _orm.Session = Depends(get_db)):
+    
     db_membership_plan = _services.get_membership_plan_by_id(id,db)
     if db_membership_plan is None:
         raise HTTPException(status_code=404, detail="Membership plan not found")
@@ -69,12 +63,9 @@ def get_membership_plan_by_id(id: int, db: _orm.Session = Depends(get_db), autho
 def get_membership_plans_by_org_id(
     org_id: int,
     request: Request,
-    db: _orm.Session = Depends(get_db),
-    authorization: str = Header(None)
+    db: _orm.Session = Depends(get_db)
 ):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid or missing access token")
-    _helpers.verify_jwt(authorization, "User")  
+    
     
     params = {
         "org_id": org_id,
@@ -97,11 +88,9 @@ def get_membership_plans_by_org_id(
 
     
 @router.post("/facilities", response_model=_schemas.FacilityRead, tags=["Facility APIs"])
-def create_facility(facility: _schemas.FacilityCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+def create_facility(facility: _schemas.FacilityCreate, db: _orm.Session = Depends(get_db)):
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+        
         return _services.create_facility(facility, db)
     except IntegrityError as e:
         raise HTTPException(status_code=400, detail="Integrity error occurred")
@@ -109,11 +98,9 @@ def create_facility(facility: _schemas.FacilityCreate, db: _orm.Session = Depend
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 @router.put("/facilities", response_model=_schemas.FacilityRead, tags=["Facility APIs"])
-def update_facility(facility: _schemas.FacilityUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+def update_facility(facility: _schemas.FacilityUpdate, db: _orm.Session = Depends(get_db)):
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+        
         
         db_facility = _services.update_facility(facility, db)
         if db_facility is None:
@@ -125,11 +112,9 @@ def update_facility(facility: _schemas.FacilityUpdate, db: _orm.Session = Depend
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 @router.delete("/facilities/{id}", response_model=_schemas.FacilityRead, tags=["Facility APIs"])
-def delete_facility(id:int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+def delete_facility(id:int, db: _orm.Session = Depends(get_db)):
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+       
         
         db_facility = _services.delete_facility(id, db)
         if db_facility is None:
@@ -142,11 +127,9 @@ def delete_facility(id:int, db: _orm.Session = Depends(get_db), authorization: s
 
 
 @router.get("/facilities", response_model=List[_schemas.FacilityRead], tags=["Facility APIs"])
-def get_facilitys_by_org_id(org_id: int,request: Request, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+def get_facilitys_by_org_id(org_id: int,request: Request, db: _orm.Session = Depends(get_db)):
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+        
         params = {
         "org_id": org_id,
         "sort_order": request.query_params.get("sort_order", "desc"),
@@ -164,11 +147,9 @@ def get_facilitys_by_org_id(org_id: int,request: Request, db: _orm.Session = Dep
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
 @router.get("/facilities/{id}", response_model=_schemas.FacilityRead, tags=["Facility APIs"])
-def get_facility_by_id(id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+def get_facility_by_id(id: int, db: _orm.Session = Depends(get_db)):
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+        
         
         db_facility = _services.get_facility_by_id(id, db)
         if db_facility is None:
@@ -180,11 +161,9 @@ def get_facility_by_id(id: int, db: _orm.Session = Depends(get_db), authorizatio
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
 @router.post("/income_category", response_model=_schemas.IncomeCategoryRead, tags=["Income Category APIs"])
-def create_income_category(income_category: _schemas.IncomeCategoryCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+def create_income_category(income_category: _schemas.IncomeCategoryCreate, db: _orm.Session = Depends(get_db)):
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+        
             
         return _services.create_income_category(income_category=income_category, db=db)
     except IntegrityError as e:
@@ -193,12 +172,9 @@ def create_income_category(income_category: _schemas.IncomeCategoryCreate, db: _
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
 @router.get("/income_category", response_model=List[_schemas.IncomeCategoryRead], tags=["Income Category APIs"])
-def get_all_income_categories(org_id: int, request: Request, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+def get_all_income_categories(org_id: int, request: Request, db: _orm.Session = Depends(get_db)):
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
         
-        _helpers.verify_jwt(authorization, "User")
         
         params = {
             "org_id": org_id,
@@ -217,11 +193,9 @@ def get_all_income_categories(org_id: int, request: Request, db: _orm.Session = 
 
 
 @router.get("/income_category/{id}", response_model=_schemas.IncomeCategoryRead, tags=["Income Category APIs"])
-def get_income_category(id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+def get_income_category(id: int, db: _orm.Session = Depends(get_db)):
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+        
         db_income_category = _services.get_income_category_by_id(income_category_id=id, db=db)
         if db_income_category is None:
             raise HTTPException(status_code=404, detail="Income category not found")
@@ -233,11 +207,9 @@ def get_income_category(id: int, db: _orm.Session = Depends(get_db), authorizati
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 @router.put("/income_category", response_model=_schemas.IncomeCategoryRead, tags=["Income Category APIs"])
-def update_income_category(income_category: _schemas.IncomeCategoryUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+def update_income_category(income_category: _schemas.IncomeCategoryUpdate, db: _orm.Session = Depends(get_db)):
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+        
         db_income_category = _services.update_income_category(income_category=income_category, db=db)
         if db_income_category is None:
             raise HTTPException(status_code=404, detail="Income category not found")
@@ -249,11 +221,9 @@ def update_income_category(income_category: _schemas.IncomeCategoryUpdate, db: _
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 @router.delete("/income_category/{id}", response_model=_schemas.IncomeCategoryRead, tags=["Income Category APIs"])
-def delete_income_category(id:int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+def delete_income_category(id:int, db: _orm.Session = Depends(get_db)):
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+        
         db_income_category = _services.delete_income_category(income_category_id=id, db=db)
         if db_income_category is None:
             raise HTTPException(status_code=404, detail="Income category not found")
@@ -265,11 +235,9 @@ def delete_income_category(id:int, db: _orm.Session = Depends(get_db), authoriza
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
 @router.post("/sale_taxes", response_model=_schemas.SaleTaxRead, tags=["Sale_tax APIs"])
-def create_sale_tax(sale_tax: _schemas.SaleTaxCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+def create_sale_tax(sale_tax: _schemas.SaleTaxCreate, db: _orm.Session = Depends(get_db)):
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+        
         return _services.create_sale_tax(sale_tax=sale_tax,db=db)
     
     except IntegrityError as e:
@@ -280,12 +248,9 @@ def create_sale_tax(sale_tax: _schemas.SaleTaxCreate, db: _orm.Session = Depends
     
 
 @router.get("/sale_taxes", response_model=List[_schemas.SaleTaxRead], tags=["Sale_tax APIs"])
-def get_all_sale_taxes(org_id: int, request: Request, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+def get_all_sale_taxes(org_id: int, request: Request, db: _orm.Session = Depends(get_db)):
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
         
-        _helpers.verify_jwt(authorization, "User")
         
         params = {
             "org_id": org_id,
@@ -306,11 +271,9 @@ def get_all_sale_taxes(org_id: int, request: Request, db: _orm.Session = Depends
        
 
 @router.get("/sale_taxes/{id}", response_model=_schemas.SaleTaxRead, tags=["Sale_tax APIs"])
-def get_sale_tax(id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+def get_sale_tax(id: int, db: _orm.Session = Depends(get_db)):
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+        
         db_sale_tax = _services.get_sale_tax_by_id(db=db, sale_tax_id=id)
         if db_sale_tax is None:
             raise HTTPException(status_code=404, detail="Sale tax not found")
@@ -323,12 +286,10 @@ def get_sale_tax(id: int, db: _orm.Session = Depends(get_db), authorization: str
     
 
 @router.put("/sale_taxes", response_model=_schemas.SaleTaxRead, tags=["Sale_tax APIs"])
-def update_sale_tax(sale_tax: _schemas.SaleTaxUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+def update_sale_tax(sale_tax: _schemas.SaleTaxUpdate, db: _orm.Session = Depends(get_db)):
     
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+        
         
         db_sale_tax = _services.update_sale_tax(sale_tax=sale_tax,db=db)
         if db_sale_tax is None:
@@ -341,11 +302,9 @@ def update_sale_tax(sale_tax: _schemas.SaleTaxUpdate, db: _orm.Session = Depends
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 @router.delete("/sale_taxes/{id}", response_model=_schemas.SaleTaxRead, tags=["Sale_tax APIs"])
-def delete_sale_tax(id:int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+def delete_sale_tax(id:int, db: _orm.Session = Depends(get_db)):
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+        
         
         db_sale_tax = _services.delete_sale_tax(sale_tax_id=id,db=db)
         if db_sale_tax is None:
@@ -387,12 +346,8 @@ def get_group(id:int,db: _orm.Session = Depends(get_db),authorization: str = Hea
      
 
 @router.get("/group", response_model=List[_schemas.GroupRead], tags=["Group API"])
-def get_group(org_id: int, request: Request, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+def get_group(org_id: int, request: Request, db: _orm.Session = Depends(get_db)):
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        
-        _helpers.verify_jwt(authorization, "User")
         
         params = {
             "org_id": org_id,

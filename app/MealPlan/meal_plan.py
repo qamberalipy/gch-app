@@ -22,12 +22,9 @@ def get_db():
 
 
 @router.post("/meal_plans", response_model=_schemas.ReadMealPlan)
-async def create_meal_plan(meal_plan: _schemas.CreateMealPlan, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def create_meal_plan(meal_plan: _schemas.CreateMealPlan, db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
 
         new_meal_plan = _service.create_meal_plan(meal_plan, db)
 
@@ -43,12 +40,9 @@ async def create_meal_plan(meal_plan: _schemas.CreateMealPlan, db: _orm.Session 
    
 
 @router.get("/meal_plans", response_model=_schemas.ShowMealPlan)
-async def get_meal_plans(id:int , db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def get_meal_plans(id:int , db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         meal_plans = _service.get_meal_plan_by_id(id,db)    
         return meal_plans
     
@@ -61,12 +55,9 @@ async def get_meal_plans(id:int , db: _orm.Session = Depends(get_db), authorizat
 
 
 @router.put("/meal_plans", response_model=_schemas.ReadMealPlan)
-async def update_meal_plan(meal_plan: _schemas.UpdateMealPlan, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def update_meal_plan(meal_plan: _schemas.UpdateMealPlan, db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
 
         updated_meal_plan = _service.update_meal_plan(meal_plan.id, meal_plan, db)
 
@@ -81,12 +72,9 @@ async def update_meal_plan(meal_plan: _schemas.UpdateMealPlan, db: _orm.Session 
 
 
 @router.delete("/meal_plans", response_model=_schemas.ReadMealPlan)
-async def delete_meal_plan(meal_plan: _schemas.DeleteMealPlan, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def delete_meal_plan(meal_plan: _schemas.DeleteMealPlan, db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
 
         deleted_meal_plan = _service.delete_meal_plan(meal_plan.id, db)
         if deleted_meal_plan is None:
@@ -101,12 +89,9 @@ async def delete_meal_plan(meal_plan: _schemas.DeleteMealPlan, db: _orm.Session 
        
     
 @router.get("/meal_plans/getAll", response_model=List[_schemas.ShowMealPlan])
-async def get_all_meal_plans(org_id: int, request:Request,db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def get_all_meal_plans(org_id: int, request:Request,db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         
         params = {
             "org_id": org_id,

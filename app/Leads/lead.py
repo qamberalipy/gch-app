@@ -31,13 +31,10 @@ def get_db():
     
 
 @router.post("/leads",response_model= _schemas.LeadCreate)
-async def register_lead(lead_data: _schemas.LeadCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def register_lead(lead_data: _schemas.LeadCreate, db: _orm.Session = Depends(get_db)):
     try:
         
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         
         existing_lead = await _services.get_lead_by_email(lead_data.email, db)
         if existing_lead:
@@ -67,10 +64,7 @@ async def get_leads(
     try:
         
         
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         params = {
             "org_id": org_id,
             "limit": limit,
@@ -94,12 +88,9 @@ async def get_leads(
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 @router.put('/leads/staff', response_model=_schemas.UpdateStaff)
-async def update_status(data: _schemas.UpdateStaff, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def update_status(data: _schemas.UpdateStaff, db: _orm.Session = Depends(get_db)):
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         db_lead = await _services.update_staff(data,db)    
         return db_lead
     
@@ -111,12 +102,9 @@ async def update_status(data: _schemas.UpdateStaff, db: _orm.Session = Depends(g
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 @router.put('/leads/status', response_model=_schemas.UpdateStatus)
-async def update_status(data: _schemas.UpdateStatus, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def update_status(data: _schemas.UpdateStatus, db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         db_lead = await _services.update_status(data,db)    
         return db_lead
     
@@ -128,12 +116,9 @@ async def update_status(data: _schemas.UpdateStatus, db: _orm.Session = Depends(
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 @router.put('/leads', response_model=_schemas.LeadUpdate)
-async def update_data(lead_id:int,data: _schemas.LeadUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def update_data(lead_id:int,data: _schemas.LeadUpdate, db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         db_lead = await _services.update_data(lead_id,data,db)    
         return db_lead
     
@@ -145,12 +130,9 @@ async def update_data(lead_id:int,data: _schemas.LeadUpdate, db: _orm.Session = 
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 @router.get("/leads")
-async def get_lead_by_id(lead_id:int,db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def get_lead_by_id(lead_id:int,db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         
         existing_lead = await _services.get_lead_by_id(lead_id, db)
         return existing_lead

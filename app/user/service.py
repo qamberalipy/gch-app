@@ -1,7 +1,7 @@
 from datetime import date,datetime
 from typing import List
 import jwt
-from sqlalchemy import desc, func, or_
+from sqlalchemy import asc, desc, func, or_
 import sqlalchemy.orm as _orm
 from sqlalchemy.sql import and_  
 import email_validator as _email_check
@@ -227,6 +227,9 @@ def get_filtered_staff(
     db: _orm.Session,
     params: _schemas.StaffFilterParams
 ) -> List[_schemas.StaffFilterRead]:
+    
+    sort_order = desc(_models.User.created_at) if params.sort_order == "desc" else asc(_models.User.created_at)
+    
     query = db.query(
         *models.User.__table__.columns,_models.Role.name.label("role_name")    
     ).join(
