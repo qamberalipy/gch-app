@@ -94,8 +94,8 @@ async def refresh_token(refresh_token: str = Header(None, alias="refresh_token")
     return _helpers.refresh_jwt(refresh_token)
 
 
-@router.get("/staff",response_model=List[_schemas.getStaff],tags=["Staff APIs"])
-async def get_staff(org_id:int, db: _orm.Session= Depends(get_db)):
+@router.get("/staff/list",response_model=List[_schemas.getStaff],tags=["Staff APIs"])
+async def get_staff_list(org_id:int, db: _orm.Session= Depends(get_db)):
     
     
     filtered_users =  db.query(_models.User.org_id,_models.User.id,_models.User.first_name).filter(_models.User.org_id == org_id, _models.User.is_deleted == False).all()
