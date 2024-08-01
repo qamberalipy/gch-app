@@ -18,7 +18,7 @@ class User(_database.Base):
     last_name = _sql.Column(_sql.String(50))
     gender = _sql.Column(_sql.String(10))
     dob = _sql.Column(_sql.DateTime)
-    email = _sql.Column(_sql.String(100), unique=True, index=True)
+    email = _sql.Column(_sql.String(100), index=True)
     phone = _sql.Column(_sql.String(11))
     activated_on = _sql.Column(_sql.Date)
     last_checkin = _sql.Column(_sql.DateTime)
