@@ -33,14 +33,11 @@ def get_db():
 # async def read_event_by_id(event_id: int, db: _orm.Session = Depends(get_db)):
 #     return _services.read_event_by_id(event_id, db)
 
-@router.post("/create_event", response_model=_schemas.EventCreate)
-async def create_event(event: _schemas.EventCreate,db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.post("/events", response_model=_schemas.EventCreate)
+async def create_event(event: _schemas.EventCreate,db: _orm.Session = Depends(get_db)):
     try:
         
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         
         return _services.create_event(event, db)
     
@@ -51,14 +48,11 @@ async def create_event(event: _schemas.EventCreate,db: _orm.Session = Depends(ge
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-@router.post("/update_event/{event_id}", response_model=_schemas.EventUpdate)
-async def update_event(event_id: int, event: _schemas.EventUpdate,db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.post("/events/{event_id}", response_model=_schemas.EventUpdate)
+async def update_event(event_id: int, event: _schemas.EventUpdate,db: _orm.Session = Depends(get_db)):
     try:
         
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         return _services.update_event(event_id, event, db)
     
     except IntegrityError as e:
@@ -68,14 +62,11 @@ async def update_event(event_id: int, event: _schemas.EventUpdate,db: _orm.Sessi
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-@router.get("/get_events", response_model=List[_schemas.EventRead])
-async def read_events(event_id: int = 0, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.get("/events", response_model=List[_schemas.EventRead])
+async def read_events(event_id: int = 0, db: _orm.Session = Depends(get_db)):
     try:
         
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         if event_id != 0:
             return _services.read_event_by_id(event_id, db)
         return _services.read_all_events(db)

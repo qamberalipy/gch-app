@@ -31,38 +31,64 @@ def get_db():
     finally:
         db.close()
 
-
-
-@router.get("/get_staff",response_model=List[_schemas.getStaff],tags=["Staff APIs"])
-async def get_staff(org_id:int, db: _orm.Session= Depends(get_db), authorization: str = Header(None)):
+@router.post("/login")
+async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_db)):
     
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid or missing access token")
+    if user.email in lockout_expiry and datetime.datetime.now() < lockout_expiry[user.email]:
+        raise HTTPException(status_code=403, detail="Account locked. Try again later.")
 
-    _helpers.verify_jwt(authorization, "User")
+    authenticated_user = await _services.authenticate_user(user.email, user.password, db)
+    if not authenticated_user:
+        login_attempts[user.email] = login_attempts.get(user.email, 0) + 1
+
+        if login_attempts[user.email] >= MAX_ATTEMPTS:
+            # Lock the account if maximum attempts are reached
+            lockout_expiry[user.email] = datetime.now() + LOCKOUT_TIME
+            raise HTTPException(status_code=403, detail="Account locked. Try again later.")
+
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    login_attempts[user.email] = 0
+    # token = await _services.create_token(authenticated_user)
+    token = _helpers.create_token(authenticated_user, "User")
+    user_data = await _services.get_alluser_data(email=user.email, db=db)
+    return {
+        "user": user_data,
+        "token": token
+    }
+
+
+@router.post("/test_token")
+async def test_token(
+        token: str,
+        db: _orm.Session = Depends(get_db)
+    ):
+    print("Token 1: ", token)
+    payload = _helpers.verify_jwt(token, "User")
+    return payload
+
+
+@router.get("/staff",response_model=List[_schemas.getStaff],tags=["Staff APIs"])
+async def get_staff(org_id:int, db: _orm.Session= Depends(get_db)):
+    
+    
     filtered_users =  db.query(_models.User.org_id,_models.User.id,_models.User.first_name).filter(_models.User.org_id == org_id, _models.User.is_deleted == False).all()
     return filtered_users
 
 
-@router.get("/get_privileges",response_model=List[_schemas.getPrivileges],tags=["Staff APIs"])
-async def get_privileges(org_id:int, db: _orm.Session= Depends(get_db), authorization: str = Header(None)):
+@router.get("/privileges",response_model=List[_schemas.getPrivileges],tags=["Staff APIs"])
+async def get_privileges(org_id:int, db: _orm.Session= Depends(get_db)):
     
-    if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-    _helpers.verify_jwt(authorization, "User")
+    
     organization_roles=  db.query(_models.Role).filter(_models.Role.org_id == org_id and _models.Role.is_deleted==False).all()
     return organization_roles
 
 
-@router.post("/staff/staffs", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
-async def register_staff(staff: _schemas.CreateStaff, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.post("/staff", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
+async def register_staff(staff: _schemas.CreateStaff, db: _orm.Session = Depends(get_db)):
     try:
         
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         
         db_staff = await _services.get_user_by_email(staff.email, db)
         if db_staff:
@@ -82,17 +108,11 @@ async def register_staff(staff: _schemas.CreateStaff, db: _orm.Session = Depends
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 
-@router.get("/staff/staffs", response_model=_schemas.GetStaffResponse, tags=["Staff APIs"])
-async def get_staff_by_id(staff_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.get("/staff/{id}", response_model=_schemas.GetStaffResponse, tags=["Staff APIs"])
+async def get_staff_by_id(id: int, db: _orm.Session = Depends(get_db)):
     try:
-        
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        Users=_helpers.verify_jwt(authorization, "User")
-        print("Mu user: ",Users)
-        print("Fetching staff with ID:", staff_id)
-        staff_list = await _services.get_one_staff(staff_id, db)
+        print("Fetching staff with ID:", id)
+        staff_list = await _services.get_one_staff(id, db)
         print("Staff list:", staff_list)
         if staff_list is None:
             raise HTTPException(status_code=404, detail="Staff not found")
@@ -107,10 +127,10 @@ async def get_staff_by_id(staff_id: int, db: _orm.Session = Depends(get_db), aut
         print(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
-@router.get("/staff/staffs/getTotalStaff", response_model=_schemas.StaffCount, tags=["Staff APIs"])
+@router.get("/staff/count", response_model=_schemas.StaffCount, tags=["Staff APIs"])
 async def get_all_staff(org_id: int, db: _orm.Session = Depends(get_db)):
     try:
-        print(current_user)
+    
         total_staffs = await _services.get_Total_count_staff(org_id, db)
         print("Staff list:", total_staffs)
         if total_staffs is None:
@@ -127,14 +147,10 @@ async def get_all_staff(org_id: int, db: _orm.Session = Depends(get_db)):
    
 
 
-@router.put("/staff/staffs", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
-async def update_staff(staff_update: _schemas.UpdateStaff, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.put("/staff", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
+async def update_staff(staff_update: _schemas.UpdateStaff, db: _orm.Session = Depends(get_db)):
     try:
-        
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
-        
+            
         updated_staff = await _services.update_staff(staff_update.id, staff_update, db)
         return updated_staff
     except IntegrityError as e:
@@ -145,16 +161,13 @@ async def update_staff(staff_update: _schemas.UpdateStaff, db: _orm.Session = De
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 
-@router.delete("/staff/staffs", tags=["Staff APIs"])
-async def delete_staff(staff_delete: _schemas.DeleteStaff, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.delete("/staff/{id}", tags=["Staff APIs"])
+async def delete_staff(id:int, db: _orm.Session = Depends(get_db)):
     try:
         
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
         
-        return await _services.delete_staff(staff_delete.id, db)
+        
+        return await _services.delete_staff(id, db)
     except IntegrityError as e:
         logger.error(f"IntegrityError: {e}")
         raise HTTPException(status_code=400, detail="Integrity error occurred")
@@ -164,7 +177,7 @@ async def delete_staff(staff_delete: _schemas.DeleteStaff, db: _orm.Session = De
     
     
     
-@router.get("/staff/staffs/getAll", response_model=List[_schemas.GetStaffResponse], tags=["Staff APIs"])
+@router.get("/staff", response_model=List[_schemas.GetStaffResponse], tags=["Staff APIs"])
 async def get_staff(
     org_id: int,
     request: Request,
@@ -172,15 +185,15 @@ async def get_staff(
     authorization: str = Header(None)):
     try:
         
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         params = {
             "org_id": org_id,
             "search_key": request.query_params.get("search_key"),
             "staff_name": request.query_params.get("staff_name"),
             "role_name": request.query_params.get("role_name"),
+            "sort_order": request.query_params.get("sort_order", "desc"),
+            "limit": request.query_params.get("limit", 10),
+            "offset": request.query_params.get("offset", 0)
         }
         staff = _services.get_filtered_staff(db=db, params=_schemas.StaffFilterParams(**params))
         return staff
@@ -196,11 +209,9 @@ async def get_staff(
 
 ## Roles and Permissions
 @router.post("/role", tags=["Roles and Permissions"])
-async def create_role(role: _schemas.RoleCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def create_role(role: _schemas.RoleCreate, db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+    
         await _services.check_role(role, db)
         new_role = await _services.create_role(role, db)
         print("New Role: ", new_role)
@@ -218,12 +229,9 @@ async def create_role(role: _schemas.RoleCreate, db: _orm.Session = Depends(get_
 
 
 @router.put("/role", tags=["Roles and Permissions"])
-async def edit_role(role: _schemas.RoleUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def edit_role(role: _schemas.RoleUpdate, db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        print("Authorization: ", authorization)
-        _helpers.verify_jwt(authorization, "User")
+        
         print("Role: ", role)
         new_role = await _services.edit_role(role, db)
         print("New Role: ", new_role)
@@ -242,11 +250,9 @@ async def edit_role(role: _schemas.RoleUpdate, db: _orm.Session = Depends(get_db
 
 
 @router.get("/role")#, response_model=List[_schemas.RoleRead], tags=["Roles and Permissions"])
-async def get_roles(org_id: Optional[int] = None, role_id: Optional[int] = None, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def get_roles(org_id: Optional[int] = None, role_id: Optional[int] = None, db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+        
         if not org_id and not role_id:
             raise HTTPException(status_code=400, detail="Provide either org_id or role_id")
         if org_id:
@@ -265,11 +271,9 @@ async def get_roles(org_id: Optional[int] = None, role_id: Optional[int] = None,
 
 
 @router.delete("/role", tags=["Roles and Permissions"])
-async def delete_role(role_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def delete_role(role_id: int, db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+        
         deleted_role = await _services.delete_role(role_id, db)
         if not deleted_role:
             raise HTTPException(status_code=404, detail="Role not found")
@@ -286,11 +290,9 @@ async def delete_role(role_id: int, db: _orm.Session = Depends(get_db), authoriz
 
 
 @router.get("/role/resource", response_model = List[_schemas.ResourceRead], tags=["Roles and Permissions"])
-async def get_resources(db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+async def get_resources(db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-        _helpers.verify_jwt(authorization, "User")
+        
         resources = await _services.get_all_resources(db)
         return resources
     except IntegrityError as e:

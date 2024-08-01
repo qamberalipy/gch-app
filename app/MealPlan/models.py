@@ -7,12 +7,12 @@ import sqlalchemy.ext.declarative as _declarative
 from enum import Enum as PyEnum
 
 class MealTimeEnum(PyEnum):
-    breakfast = "Breakfast"
-    breakfast_snack = "Breakfast_Snack"
-    lunch = "Lunch"
-    lunch_snack = "Lunch_Snack"
-    dinner = "Dinner"
-    dinner_snack = "Dinner_Snack"
+    breakfast = "breakfast"
+    breakfast_snack = "breakfast_snack"
+    lunch = "lunch"
+    lunch_snack = "lunch_snack"
+    dinner = "dinner"
+    dinner_snack = "dinner_snack"
     
 class VisibleForEnum(PyEnum):
     only_myself = "Only myself"
@@ -24,6 +24,7 @@ class MealPlan(_database.Base):
     __tablename__ = "meal_plan"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     name = _sql.Column(_sql.String,nullable=False)
+    persona = _sql.Column(_sql.String)
     profile_img = _sql.Column(_sql.String)
     visible_for = _sql.Column(_sql.Enum(VisibleForEnum), nullable=False)
     description = _sql.Column(_sql.String)
@@ -48,3 +49,9 @@ class Meal(_database.Base):
     updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now, onupdate=_dt.datetime.now)
     is_deleted = _sql.Column(_sql.Boolean, default=False)
     
+class Member_MealPlan(_database.Base):
+    __tablename__ = "member_meal_plan"
+    id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
+    member_id = _sql.Column(_sql.Integer)
+    meal_plan_id = _sql.Column(_sql.Integer)
+    is_deleted = _sql.Column(_sql.Boolean, default=False)

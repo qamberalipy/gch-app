@@ -50,9 +50,10 @@ class Workout(_database.Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     is_deleted = Column(Boolean, default=False)
 
-    workout_days = relationship(
+    days = relationship(
         "WorkoutDay",
         primaryjoin="Workout.id == foreign(WorkoutDay.workout_id)",
+        lazy='noload',
         back_populates="workout",
     )
 
@@ -74,7 +75,8 @@ class WorkoutDay(_database.Base):
     workout = relationship(
         "Workout",
         primaryjoin="Workout.id == foreign(WorkoutDay.workout_id)",
-        back_populates="workout_days",
+        lazy='noload',
+        back_populates="days",
     )
     exercises = relationship(
         "WorkoutDayExercise",

@@ -93,8 +93,15 @@ async def read_countries(db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="No countries found")
     return countries
 
+@router.get("/countries", response_model=List[_schemas.CountryRead])
+async def read_countries(db: _orm.Session = Depends(get_db)):
+    countries = _services.get_all_countries(db=db)
+    if not countries:
+        raise HTTPException(status_code=404, detail="No countries found")
+    return countries
 
-@router.get("/get_all_sources/", response_model=List[_schemas.SourceRead])
+
+@router.get("/sources", response_model=List[_schemas.SourceRead])
 async def read_sources(db: _orm.Session = Depends(get_db)):
     sources = _services.get_all_sources(db=db)
     if not sources:

@@ -364,11 +364,11 @@ def get_all_coaches_by_org_id(db: _orm.Session,params: _schemas.CoachFilterParam
         BankDetail.acc_holder_name,
         BankDetail.swift_code,
         func.array_agg(func.coalesce(ClientCoach.client_id,0)).label('member_ids').label('member_ids')
-    ).outerjoin(
+    ).join(
         CoachOrg, _models.Coach.id == CoachOrg.coach_id and CoachOrg.org_id==params.org_id
-    ).outerjoin(
+    ).join(
         BankDetail, _models.Coach.bank_detail_id == BankDetail.id
-    ).outerjoin(
+    ).join(
         ClientCoach, ClientCoach.coach_id == _models.Coach.id
     ).filter(
         _models.Coach.is_deleted == False
@@ -379,11 +379,11 @@ def get_all_coaches_by_org_id(db: _orm.Session,params: _schemas.CoachFilterParam
         BankDetail.bank_name,
         BankDetail.iban_no,
         BankDetail.acc_holder_name,
-        BankDetail.swift_code
-    )
-    
+        BankDetail.swift_code)
+
+    query = query.offset(params.offset).limit(params.limit)
     db_coaches = query.all()
-    print(db_coaches)
+
     coaches = []
     for coach in db_coaches:
         coaches.append(_schemas.CoachReadSchema(**coach._asdict()))

@@ -87,7 +87,7 @@ class CoachCount(pydantic.BaseModel):
 class CoachFilterParams(pydantic.BaseModel):
     org_id: int
     search_key: Optional[str] = None
-    sort_by: Optional[str] = None
+    sort_order: Optional[str] = None
     status: Optional[str] = None
     limit:Optional[int] = None
     offset:Optional[int] = None
