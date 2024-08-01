@@ -27,7 +27,7 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/", response_model=_schemas.FoodCreateResponse)
+@router.post("/food", response_model=_schemas.FoodCreateResponse)
 async def create_food(food: _schemas.FoodCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         if not authorization or not authorization.startswith("Bearer "):
@@ -39,7 +39,7 @@ async def create_food(food: _schemas.FoodCreate, db: _orm.Session = Depends(get_
     except DataError as e:
         raise HTTPException(status_code=400, detail="Invalid data")
 
-@router.get("/", response_model=List[_schemas.FoodRead])
+@router.get("/food", response_model=List[_schemas.FoodRead])
 async def get_all_foods(db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         if not authorization or not authorization.startswith("Bearer "):
@@ -50,18 +50,18 @@ async def get_all_foods(db: _orm.Session = Depends(get_db), authorization: str =
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/{food_id}", response_model=_schemas.FoodRead)
-async def get_food_by_id(food_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.get("/food/{id}", response_model=_schemas.FoodRead)
+async def get_food_by_id(id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid or missing access token")
         _helpers.verify_jwt(authorization, "User")
-        return await _services.get_food_by_id(food_id, db)
+        return await _services.get_food_by_id(id, db)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.put("/", response_model=_schemas.FoodCreateResponse)
+@router.put("/food", response_model=_schemas.FoodCreateResponse)
 async def update_food(food: _schemas.FoodUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         if not authorization or not authorization.startswith("Bearer "):
@@ -72,15 +72,15 @@ async def update_food(food: _schemas.FoodUpdate, db: _orm.Session = Depends(get_
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.delete("/{food_id}")
-async def delete_food(food_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.delete("/food/{id}")
+async def delete_food(id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
     try:
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid or missing access token")
         _helpers.verify_jwt(authorization, "User")
-        await _services.delete_food(food_id, db)
+        await _services.delete_food(id, db)
         return {
-            "id": food_id,
+            "id": id,
             "status_code": 200,
             "message": "Food deleted successfully"
         }
