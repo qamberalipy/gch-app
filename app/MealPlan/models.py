@@ -18,7 +18,7 @@ class VisibleForEnum(PyEnum):
     only_myself = "Only myself"
     staff = "Staff of my gym"
     members =  "Members of my gym"
-    everyone = "Everyone in my gym (Staff + Members)"
+    everyone = "Everyone in my gym"
     
 class MealPlan(_database.Base):
     __tablename__ = "meal_plan"

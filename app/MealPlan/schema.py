@@ -43,12 +43,13 @@ class ReadMealPlan(MealPlanBase):
 
 class UpdateMealPlan(BaseModel):
     id: int
-    org_id : Optional[int] = None
+    org_id : int
     name: Optional[str] = None
     profile_img: Optional[str] = None
     visible_for: Optional[VisibleForEnum] = None
     description: Optional[str] = None
     meals: Optional[List[CreateMeal]] = []
+    member_id : Optional[List[int]] = []
     updated_by: Optional[int] = None
     updated_at: Optional[datetime.datetime] = None
 
@@ -56,7 +57,6 @@ class DeleteMealPlan(BaseModel):
     id: int
 
 class MealPlanFilterParams(BaseModel):
-    org_id: int
     visible_for : Optional[VisibleForEnum] = None
     assign_to : Optional[str] = None
     food_nutrients : Optional[str] = None
@@ -86,6 +86,7 @@ class ShowMealPlan(BaseModel):
     visible_for: Optional[VisibleForEnum] = None
     description: Optional[str] = None
     meals: Optional[List[CreateMeal]] = []
+    member_id : Optional[List[int]] = []
     created_by: Optional[int] = None
     created_at: Optional[datetime.datetime] = None
     updated_by: Optional[int] = None
