@@ -1,5 +1,5 @@
 from datetime import date
-from typing import List
+from typing import Any, List
 import jwt
 from sqlalchemy import String, asc, cast, desc, func, literal_column, or_
 import sqlalchemy.orm as _orm
@@ -74,22 +74,24 @@ def create_appcoach(coach: _schemas.CoachAppBase,db: _orm.Session):
     print("db_coach",db_coach)
     return db_coach
 
-async def login_coach(email_address: str, wallet_address: str, db: _orm.Session = _fastapi.Depends(get_db)) -> dict:
+async def login_coach(
+    org_id: int,
+    email_address: str,
+    wallet_address: str,
+    db: _orm.Session = _fastapi.Depends(get_db),
+) -> dict:
     coach = get_coach_by_email(email_address, db)
-    
+
     if not coach:
         return {"is_registered": False}
-    print("MYCLIENT: ",coach)
-    coach.wallet_address = wallet_address
+    print("MYCLIENT: ", coach)
+    setattr(coach, wallet_address, wallet_address)
     db.commit()
     db.refresh(coach)
-    
-    token = _helpers.create_token(coach, "User")
-    
-    return {"is_registered": True,
-            "coach":coach,
-            "access_token":token
-            }        
+
+    token = _helpers.create_token(dict(id=coach.id, org_id=org_id), "Coach")
+
+    return {"is_registered": True, "coach": coach, "access_token": token}
 
 def get_coach_by_email(email_address: str, db: _orm.Session = _fastapi.Depends(get_db)) -> _models.Coach:
     return db.query(_models.Coach).filter(models.Coach.email == email_address).first()

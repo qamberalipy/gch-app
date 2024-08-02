@@ -44,8 +44,8 @@ class PaginationOptions(BaseModel):
     offset: Optional[int] = None
 
 class UserBase(BaseModel):
-    first_name: str
-    email: str
+    id: int
+    role_id: int
+    org_id: int
     class Config:
         from_attributes=True
-

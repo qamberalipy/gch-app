@@ -117,4 +117,3 @@ class WorkoutDayExerciseUpdate(WorkoutDayExerciseOptionalBase):
 class WorkoutDayExerciseFilter(WorkoutDayExerciseOptionalBase):
     workout_day_id: Optional[int] = None
 
-

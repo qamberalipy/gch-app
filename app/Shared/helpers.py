@@ -1,5 +1,6 @@
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Any, Dict
+from fastapi.exceptions import HTTPException
 import jwt, json, time, os, random, logging, bcrypt as _bcrypt
 import sqlalchemy.orm as _orm
 from sqlalchemy.sql import and_  
@@ -9,30 +10,14 @@ import fastapi.security as _security
 import app.core.db.session as _database
 from .schema import UserBase, CoachBase
 
-user_type_mapping = {
-    "User": UserBase,
-    "Coach": CoachBase
-}
-JWT_SECRET = os.getenv("JWT_SECRET")
-JWT_EXPIRY = os.getenv("JWT_EXPIRY")
+JWT_SECRET = os.getenv("JWT_SECRET", "")
+JWT_EXPIRY = os.getenv("JWT_EXPIRY", "")
 
-def create_token(obj, obj_type: str):
-    schema_class = user_type_mapping.get(obj_type)
-    print("In Create Token")
-    if schema_class is None:
-        raise ValueError("Invalid user type")
-
-    user_obj = schema_class.from_orm(obj)
-    user_dict = user_obj.dict()
-    print(user_dict)
-    if "date_created" in user_dict:
-        del user_dict["date_created"]
-    user_dict['token_time'] = time.time()
-    user_dict['user_type'] = obj_type.lower()
-    
-    access_token = jwt.encode(user_dict, JWT_SECRET, algorithm="HS256")
+def create_token(payload: Dict[str, Any], persona: str):
+    payload['token_time'] = time.time()
+    payload['user_type'] = persona.lower()
+    access_token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
     return dict(access_token=access_token,token_type="bearer")
-
 
 def verify_jwt(token: str, obj_type: str = "User"):
     # Verify a JWT token

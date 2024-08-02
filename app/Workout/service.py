@@ -78,7 +78,6 @@ async def delete_workout_day(
     db.refresh(model)
     return model
 
-
 async def update_workout_day_exercise(
     db: Session,
     workout_day_exercise_model: WorkoutDayExercise,
@@ -104,7 +103,6 @@ async def delete_workout_day_exercise(
     db.commit()
     db.refresh(model)
     return model
-
 
 async def save_workout(db: Session, workout: WorkoutCreate, user_id: int):
     data = workout.model_dump()
