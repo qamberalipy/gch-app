@@ -53,31 +53,31 @@ async def register_user(user: _schemas.UserCreate, db: _orm.Session = Depends(ge
     return new_user
 
 
-@router.post("/login")
-async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_db)):
+# @router.post("/login")
+# async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_db)):
     
-    if user.email in lockout_expiry and datetime.datetime.now() < lockout_expiry[user.email]:
-        raise HTTPException(status_code=403, detail="Account locked. Try again later.")
+#     if user.email in lockout_expiry and datetime.datetime.now() < lockout_expiry[user.email]:
+#         raise HTTPException(status_code=403, detail="Account locked. Try again later.")
 
-    authenticated_user = await _services.authenticate_user(user.email, user.password, db)
-    if not authenticated_user:
-        login_attempts[user.email] = login_attempts.get(user.email, 0) + 1
+#     authenticated_user = await _services.authenticate_user(user.email, user.password, db)
+#     if not authenticated_user:
+#         login_attempts[user.email] = login_attempts.get(user.email, 0) + 1
 
-        if login_attempts[user.email] >= MAX_ATTEMPTS:
-            # Lock the account if maximum attempts are reached
-            lockout_expiry[user.email] = datetime.now() + LOCKOUT_TIME
-            raise HTTPException(status_code=403, detail="Account locked. Try again later.")
+#         if login_attempts[user.email] >= MAX_ATTEMPTS:
+#             # Lock the account if maximum attempts are reached
+#             lockout_expiry[user.email] = datetime.now() + LOCKOUT_TIME
+#             raise HTTPException(status_code=403, detail="Account locked. Try again later.")
 
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+#         raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    login_attempts[user.email] = 0
-    # token = await _services.create_token(authenticated_user)
-    token = _helpers.create_token(authenticated_user, "User")
-    user_data = await _services.get_alluser_data(email=user.email, db=db)
-    return {
-        "user": user_data,
-        "token": token
-    }
+#     login_attempts[user.email] = 0
+#     # token = await _services.create_token(authenticated_user)
+#     token = _helpers.create_token(authenticated_user, "User")
+#     user_data = await _services.get_alluser_data(email=user.email, db=db)
+#     return {
+#         "user": user_data,
+#         "token": token
+#     }
 
 
 @router.post("/test_token")
