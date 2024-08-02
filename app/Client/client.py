@@ -85,7 +85,7 @@ async def register_mobileclient(client: _schemas.ClientCreateApp,db: _orm.Sessio
                 token = _helpers.create_token(updated_client, "User")
                 return {
                     "is_registered": True,
-                    "client": updated_client,
+                    "client": updated_client,   
                     "access_token": token
                 }
             else:
