@@ -90,6 +90,7 @@ class Resource(_database.Base):
     name=_sql.Column(_sql.String(50))
     code=_sql.Column(_sql.String(50))
     parent = _sql.Column(_sql.String(50))
+    is_root = _sql.Column(_sql.Boolean)
     is_parent = _sql.Column(_sql.Boolean)
     link = _sql.Column(_sql.String(50))
     icon = _sql.Column(_sql.String(50))

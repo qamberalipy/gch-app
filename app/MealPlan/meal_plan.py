@@ -57,7 +57,11 @@ async def get_meal_plans(id:int , db: _orm.Session = Depends(get_db)):
 async def update_meal_plan(meal_plan: _schemas.UpdateMealPlan, db: _orm.Session = Depends(get_db)):
     try:
         updated_meal_plan = _service.update_meal_plan(meal_plan.id, meal_plan, db)
-        return updated_meal_plan
+        
+        if updated_meal_plan is None:
+            raise HTTPException(status_code=404, detail="Meal plan not found")
+        else:
+            return updated_meal_plan
     except IntegrityError as e:
         logger.error(f"IntegrityError: {e}")
         raise HTTPException(status_code=400, detail="Integrity error occurred")

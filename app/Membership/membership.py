@@ -63,7 +63,6 @@ def get_membership_plans_by_org_id(
     db: _orm.Session = Depends(get_db)
 ):
     
-    
     params = {
         "org_id": org_id,
         "search_key": request.query_params.get("search_key"),
@@ -87,7 +86,6 @@ def get_membership_plans_by_org_id(
 @router.post("/facilities", response_model=_schemas.FacilityRead, tags=["Facility APIs"])
 def create_facility(facility: _schemas.FacilityCreate, db: _orm.Session = Depends(get_db)):
     try:    
-        
         return _services.create_facility(facility, db)
     except IntegrityError as e:
         raise HTTPException(status_code=400, detail="Integrity error occurred")
@@ -97,11 +95,9 @@ def create_facility(facility: _schemas.FacilityCreate, db: _orm.Session = Depend
 @router.put("/facilities", response_model=_schemas.FacilityRead, tags=["Facility APIs"])
 def update_facility(facility: _schemas.FacilityUpdate, db: _orm.Session = Depends(get_db)):
     try:    
-        
-        
         db_facility = _services.update_facility(facility, db)
         if db_facility is None:
-            raise HTTPException(status_code=404, detail="Credit not found")
+            raise HTTPException(status_code=404, detail="Facility not found")
         return db_facility
     except IntegrityError as e:
         raise HTTPException(status_code=400, detail="Integrity error occurred")
@@ -111,11 +107,9 @@ def update_facility(facility: _schemas.FacilityUpdate, db: _orm.Session = Depend
 @router.delete("/facilities/{id}", response_model=_schemas.FacilityRead, tags=["Facility APIs"])
 def delete_facility(id:int, db: _orm.Session = Depends(get_db)):
     try:    
-       
-        
         db_facility = _services.delete_facility(id, db)
         if db_facility is None:
-            raise HTTPException(status_code=404, detail="Credit not found")
+            raise HTTPException(status_code=404, detail="Facility not found")
         return db_facility
     except IntegrityError as e:
         raise HTTPException(status_code=400, detail="Integrity error occurred")
@@ -126,7 +120,6 @@ def delete_facility(id:int, db: _orm.Session = Depends(get_db)):
 @router.get("/facilities", response_model=List[_schemas.FacilityRead], tags=["Facility APIs"])
 def get_facilitys_by_org_id(org_id: int,request: Request, db: _orm.Session = Depends(get_db)):
     try:    
-        
         params = {
         "org_id": org_id,
         "search_key": request.query_params.get("search_key"),
@@ -147,11 +140,9 @@ def get_facilitys_by_org_id(org_id: int,request: Request, db: _orm.Session = Dep
 @router.get("/facilities/{id}", response_model=_schemas.FacilityRead, tags=["Facility APIs"])
 def get_facility_by_id(id: int, db: _orm.Session = Depends(get_db)):
     try:    
-        
-        
         db_facility = _services.get_facility_by_id(id, db)
         if db_facility is None:
-            raise HTTPException(status_code=404, detail="Credit not found")
+            raise HTTPException(status_code=404, detail="Facility not found")
         return db_facility
     except IntegrityError as e:
         raise HTTPException(status_code=400, detail="Integrity error occurred")
@@ -161,8 +152,6 @@ def get_facility_by_id(id: int, db: _orm.Session = Depends(get_db)):
 @router.post("/income_category", response_model=_schemas.IncomeCategoryRead, tags=["Income Category APIs"])
 def create_income_category(income_category: _schemas.IncomeCategoryCreate, db: _orm.Session = Depends(get_db)):
     try:    
-        
-            
         return _services.create_income_category(income_category=income_category, db=db)
     except IntegrityError as e:
         raise HTTPException(status_code=400, detail="Integrity error occurred")
@@ -172,8 +161,6 @@ def create_income_category(income_category: _schemas.IncomeCategoryCreate, db: _
 @router.get("/income_category", response_model=List[_schemas.IncomeCategoryRead], tags=["Income Category APIs"])
 def get_all_income_categories(org_id: int, request: Request, db: _orm.Session = Depends(get_db)):
     try:    
-        
-        
         params = {
              "org_id": org_id,
             "search_key": request.query_params.get("search_key"),
@@ -194,7 +181,6 @@ def get_all_income_categories(org_id: int, request: Request, db: _orm.Session = 
 @router.get("/income_category/{id}", response_model=_schemas.IncomeCategoryRead, tags=["Income Category APIs"])
 def get_income_category(id: int, db: _orm.Session = Depends(get_db)):
     try:    
-        
         db_income_category = _services.get_income_category_by_id(income_category_id=id, db=db)
         if db_income_category is None:
             raise HTTPException(status_code=404, detail="Income category not found")
@@ -208,7 +194,6 @@ def get_income_category(id: int, db: _orm.Session = Depends(get_db)):
 @router.put("/income_category", response_model=_schemas.IncomeCategoryRead, tags=["Income Category APIs"])
 def update_income_category(income_category: _schemas.IncomeCategoryUpdate, db: _orm.Session = Depends(get_db)):
     try:    
-        
         db_income_category = _services.update_income_category(income_category=income_category, db=db)
         if db_income_category is None:
             raise HTTPException(status_code=404, detail="Income category not found")
@@ -222,7 +207,6 @@ def update_income_category(income_category: _schemas.IncomeCategoryUpdate, db: _
 @router.delete("/income_category/{id}", response_model=_schemas.IncomeCategoryRead, tags=["Income Category APIs"])
 def delete_income_category(id:int, db: _orm.Session = Depends(get_db)):
     try:    
-        
         db_income_category = _services.delete_income_category(income_category_id=id, db=db)
         if db_income_category is None:
             raise HTTPException(status_code=404, detail="Income category not found")
@@ -237,7 +221,6 @@ def delete_income_category(id:int, db: _orm.Session = Depends(get_db)):
 @router.post("/sale_taxes", response_model=_schemas.SaleTaxRead, tags=["Sale_tax APIs"])
 def create_sale_tax(sale_tax: _schemas.SaleTaxCreate, db: _orm.Session = Depends(get_db)):
     try:    
-        
         return _services.create_sale_tax(sale_tax=sale_tax,db=db)
     
     except IntegrityError as e:
@@ -249,7 +232,6 @@ def create_sale_tax(sale_tax: _schemas.SaleTaxCreate, db: _orm.Session = Depends
 @router.get("/sale_taxes", response_model=List[_schemas.SaleTaxRead], tags=["Sale_tax APIs"])
 def get_all_sale_taxes(org_id: int, request: Request, db: _orm.Session = Depends(get_db)):
     try:    
-        
         params = {
              "org_id": org_id,
             "search_key": request.query_params.get("search_key"),
@@ -272,7 +254,6 @@ def get_all_sale_taxes(org_id: int, request: Request, db: _orm.Session = Depends
 @router.get("/sale_taxes/{id}", response_model=_schemas.SaleTaxRead, tags=["Sale_tax APIs"])
 def get_sale_tax(id: int, db: _orm.Session = Depends(get_db)):
     try:    
-        
         db_sale_tax = _services.get_sale_tax_by_id(db=db, sale_tax_id=id)
         if db_sale_tax is None:
             raise HTTPException(status_code=404, detail="Sale tax not found")
@@ -288,7 +269,6 @@ def get_sale_tax(id: int, db: _orm.Session = Depends(get_db)):
 def update_sale_tax(sale_tax: _schemas.SaleTaxUpdate, db: _orm.Session = Depends(get_db)):
     
     try:    
-        
         db_sale_tax = _services.update_sale_tax(sale_tax=sale_tax,db=db)
         if db_sale_tax is None:
             raise HTTPException(status_code=404, detail="Sale tax not found")
@@ -302,8 +282,6 @@ def update_sale_tax(sale_tax: _schemas.SaleTaxUpdate, db: _orm.Session = Depends
 @router.delete("/sale_taxes/{id}", response_model=_schemas.SaleTaxRead, tags=["Sale_tax APIs"])
 def delete_sale_tax(id:int, db: _orm.Session = Depends(get_db)):
     try:    
-        
-        
         db_sale_tax = _services.delete_sale_tax(sale_tax_id=id,db=db)
         if db_sale_tax is None:
             raise HTTPException(status_code=404, detail="Sale tax not found")
@@ -340,7 +318,6 @@ def get_group(id:int,db: _orm.Session = Depends(get_db)):
 @router.get("/group", response_model=List[_schemas.GroupRead], tags=["Group API"])
 def get_group(org_id: int, request: Request, db: _orm.Session = Depends(get_db)):
     try:    
-        
         params = {
              "org_id": org_id,
             "search_key": request.query_params.get("search_key"),

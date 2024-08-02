@@ -142,10 +142,11 @@ def create_member_meal_plan(meal_plan_id : int, member_ids: List[int], db: _orm.
 def update_meal_plan(meal_plan_id: int, meal_plan: _schemas.UpdateMealPlan, db: _orm.Session):
     try:
         # Retrieve the existing meal plan
-        db_meal_plan = db.query(_models.MealPlan).filter(_models.MealPlan.id == meal_plan_id).first()
+        db_meal_plan = db.query(_models.MealPlan).filter(_models.MealPlan.id == meal_plan_id, 
+                                _models.MealPlan.is_deleted == False).first()
         if not db_meal_plan:
-            raise HTTPException(status_code=404, detail="Meal plan not found")
-
+            return None
+     
         # Update meal plan details
         for key, value in meal_plan.dict(exclude={'meals', 'member_id'}, exclude_unset=True).items():
             setattr(db_meal_plan, key, value)

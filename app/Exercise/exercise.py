@@ -75,14 +75,16 @@ async def get_muscle(db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Data` error occurred, check your input")
 
 
-@router.post("/exercise",response_model=_schemas.ExerciseBase)
+@router.post("/exercise")
 async def create_exercise(exercise: _schemas.ExerciseCreate, db: _orm.Session = Depends(get_db)):
     try:
         
-        
-        
         new_exercise = await _services.create_exercise(exercise,db)
-        return new_exercise
+        return {
+            "status_code": "201",
+            "id": new_exercise,
+            "message": "Exercise created successfully"
+        }
 
     except DataError:
         db.rollback()
@@ -99,8 +101,8 @@ async def get_exercise(org_id:int,db: _orm.Session = Depends(get_db)):
 @router.get("/exercise/{id}", response_model=_schemas.ExerciseRead)
 async def get_exercise(id:int,db: _orm.Session = Depends(get_db)):
     
-        exercises = await _services.get_exercise_by_id(id,db)
-        return exercises   
+    exercises = await _services.get_exercise_by_id(id,db)
+    return exercises   
 
 @router.put("/exercise",response_model=_schemas.ExerciseUpdate)
 async def update_exercise(data:_schemas.ExerciseUpdate,db: _orm.Session = Depends(get_db)):

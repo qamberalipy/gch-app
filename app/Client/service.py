@@ -452,5 +452,5 @@ async def get_client_byid(db: _orm.Session, client_id: int) -> _schemas.ClientBy
         business_name=business_name,
         coach_id=result.coach_id,
         org_id=result.org_id,
-        membership_plan_id=result.membership_plan_id,
+        membership_plan_id=result.membership_plan_id
     )
