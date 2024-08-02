@@ -197,6 +197,8 @@ async def get_exercise(org_id:int,params: _schemas.ExerciseFilterParams,db: _orm
         Equipment, _models.ExerciseEquipment.equipment_id == Equipment.id
     ).group_by(_models.ExerciseEquipment.exercise_id).subquery()
     
+    if params.equipment:
+        equipment_query = equipment_query.filter(_models.Equipment.id.in_(params.equipment))
 
     primary_muscle_query = db.query(
         _models.ExercisePrimaryMuscle.exercise_id,
@@ -270,9 +272,6 @@ async def get_exercise(org_id:int,params: _schemas.ExerciseFilterParams,db: _orm
 
     if params.category!=0:
         query = query.filter(_models.ExerciseCategory.id == params.category)
-
-    if params.equipment:
-        query = query.filter(_models.Equipment.id.in_(params.equipment))
 
     if params.primary_muscle:
         query = query.filter(_models.Muscle.id.in_(params.primary_muscle))

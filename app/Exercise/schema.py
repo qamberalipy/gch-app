@@ -32,7 +32,6 @@ class Category(pydantic.BaseModel):
     id:int 
     category_name:str
 
-
 class ExerciseFilterParams(pydantic.BaseModel):
     category : Optional[int] = None
     equipment : Optional[List[int]] = None
