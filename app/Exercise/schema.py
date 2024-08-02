@@ -8,7 +8,6 @@ class ExerciseBase(pydantic.BaseModel):
     exercise_name:str
     visible_for:VisibleFor
     org_id:int
-    category_id :int
     exercise_type :ExerciseType
     difficulty:Difficulty
     sets :int
@@ -28,9 +27,23 @@ class ExerciseBase(pydantic.BaseModel):
 
     class Config:
             from_attributes = True
-            
+
+class Category(pydantic.BaseModel):
+    id:int 
+    category_name:str
+
+
+class ExerciseFilterParams(pydantic.BaseModel):
+    category : Optional[int] = None
+    equipment : Optional[List[int]] = None
+    primary_muscle: Optional[List[int]] = None
+    search_key: Optional[str] = None
+    sort_order: Optional[str] = None
+    limit:Optional[int] = None
+    offset:Optional[int] = None
 
 class ExerciseCreate(ExerciseBase):
+    category_id:int
     equipment_ids:Optional[List[int]]
     primary_muscle_ids:Optional[List[int]]
     secondary_muscle_ids:Optional[List[int]]
@@ -40,6 +53,7 @@ class ExerciseCreate(ExerciseBase):
 
 class ExerciseRead(ExerciseBase):
     id:int
+    category_name:str
     equipments:Optional[List[Dict]]
     primary_muscles:Optional[List[Dict]]
     secondary_muscles:Optional[List[Dict]]

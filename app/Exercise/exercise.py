@@ -27,9 +27,7 @@ def get_db():
 @router.get("/exercise/muscles", response_model=List[_schemas.Muscle])
 async def get_muscle(db: _orm.Session = Depends(get_db)):
     try:
-        
-        
-    
+            
         muscles = await _services.get_muscle(db)
         return muscles
     
@@ -41,12 +39,9 @@ async def get_muscle(db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")        
     
 
-@router.get("/exercise/equipments", response_model=List[_schemas.Equipments])
+@router.get("/exercise/equipments", response_model=List[_schemas.Equipments],summary="Get Equipments")
 async def get_muscle(db: _orm.Session = Depends(get_db)):
     try:
-        
-        
-    
         equipments = await _services.get_equipments(db)
         return equipments
     
@@ -56,13 +51,23 @@ async def get_muscle(db: _orm.Session = Depends(get_db)):
     except DataError as e:
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
-    
 
-@router.get("/exercise/primary_joints", response_model=List[_schemas.PrimaryJoint])
+@router.get("/exercise/category", response_model=List[_schemas.Category])
+async def get_category(db: _orm.Session = Depends(get_db)):
+    try:
+        categories = await _services.get_category(db)
+        return categories
+    
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")    
+
+@router.get("/exercise/primary_joints", response_model=List[_schemas.PrimaryJoint],summary="Get Primary Joints")
 async def get_muscle(db: _orm.Session = Depends(get_db)):
     try:
-        
-        
     
         primary_joints = await _services.get_primary_joints(db)
         return primary_joints
@@ -92,13 +97,12 @@ async def create_exercise(exercise: _schemas.ExerciseCreate, db: _orm.Session = 
     
 
 @router.get("/exercise", response_model=List[_schemas.ExerciseRead])
-async def get_exercise(org_id:int,db: _orm.Session = Depends(get_db)):
+async def get_exercise(org_id:int,filters: Annotated[_schemas.ExerciseFilterParams, Depends(_services.get_filters)] = None,db: _orm.Session = Depends(get_db)):
     
-        exercises = await _services.get_exercise(org_id,db)
+        exercises = await _services.get_exercise(org_id,params=filters,db=db)
         return exercises   
 
-
-@router.get("/exercise/{id}", response_model=_schemas.ExerciseRead)
+@router.get("/exercise/{id}", response_model=_schemas.ExerciseRead,summary="Get Exercise By ID")
 async def get_exercise(id:int,db: _orm.Session = Depends(get_db)):
     
     exercises = await _services.get_exercise_by_id(id,db)
