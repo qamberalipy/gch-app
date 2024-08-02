@@ -94,7 +94,7 @@ def get_coaches_by_org_id(org_id: int,request: Request,db: _orm.Session = Depend
 
 
 
-@router.get("/coach/count", response_model=_schemas.CoachCount, tags=["Coach API"])
+@router.get("/coach/count/{org_id}", response_model=_schemas.CoachCount, tags=["Coach API"])
 async def get_total_coaches(org_id: int, db: _orm.Session = Depends(get_db)):
     try:
         
