@@ -274,6 +274,34 @@ def get_filtered_clients(
     db: _orm.Session, params: _schemas.ClientFilterParams
 ) -> List[_schemas.ClientFilterRead]:
     # Create a base query with the necessary joins
+    query = db.query(
+        _models.Client.id,
+        _models.Client.own_member_id,
+        _models.Client.first_name,
+        _models.Client.last_name,
+        _models.Client.phone,
+        _models.Client.mobile_number,
+        _models.Client.check_in,
+        _models.Client.last_online,
+        _models.Client.client_since,
+        func.coalesce(
+            _models.Client.first_name,
+            db.query(_models.Client.first_name).filter(_models.Client.id == _models.Client.business_id)
+        ).label("business_name"),
+        _coach_models.Coach.first_name.label("coach_name")
+    ).join(
+        _models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id
+    ).join(
+        _models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id
+    ).join(
+        _models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id
+    ).join(
+        _coach_models.Coach, _models.ClientCoach.coach_id == _coach_models.Coach.id
+    ).filter(
+        _models.ClientOrganization.org_id == params.org_id,
+        _models.ClientOrganization.is_deleted == False,
+        _models.Client.is_deleted==False
+    )
 
     sort_order = (
         desc(_models.Client.created_at)
