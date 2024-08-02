@@ -1,7 +1,7 @@
 bcrypt
 cryptography
 email-validator
-fastapi
+fastapi==0.111.0
 passlib
 psycopg2-binary
 pydantic
@@ -12,6 +12,6 @@ python-dotenv
 uvicorn
 python-multipart
 pika
-fastapi_sqlalchemy
+fastapi_sqlalchemy==0.2.1
 loguru
-alembic
+alembic==1.13.1
