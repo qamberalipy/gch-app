@@ -33,9 +33,10 @@ def create_coach(coach: _schemas.CoachCreate, db: _orm.Session = Depends(get_db)
     return _services.create_coach(coach,db)
 
 @router.put("/coach", response_model=_schemas.CoachUpdate , tags=["Coach API"])
-def update_coach(coach: _schemas.CoachUpdate, db: _orm.Session = Depends(get_db)):
+async def update_coach(coach: _schemas.CoachUpdate, db: _orm.Session = Depends(get_db)):
     
-    db_coach = _services.update_coach(coach,db)
+    
+    db_coach = await _services.update_coach(coach.id,coach,"web",db)
     if db_coach is None:
         raise HTTPException(status_code=404, detail="Coach not found")
     return db_coach

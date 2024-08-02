@@ -1,5 +1,5 @@
-from typing import List
-from fastapi import FastAPI, Header,APIRouter, Depends, HTTPException, Request, status
+from typing import Annotated, List
+from fastapi import FastAPI, Header,APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.exc import IntegrityError, DataError
 import app.Membership.schema as _schemas
 import sqlalchemy.orm as _orm
@@ -56,29 +56,41 @@ def get_membership_plan_by_id(id: int, db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Membership plan not found")
     return db_membership_plan
 
+def get_membership_filters(
+    
+    search_key: Annotated[str | None, Query(title="Search Key")] = None,
+    group_id: Annotated[int, Query(description="Coach ID")] = None,
+    income_category_id: Annotated[int, Query(description="Coach ID")] = None,
+    discount_percentage: Annotated[int, Query(description="Coach ID")] = None,
+    tax_rate: Annotated[int, Query(description="Coach ID")] = None,
+    total_amount: Annotated[int, Query(description="Membership ID")] = None,
+    status: Annotated[str | None, Query(title="status")] = None,
+    sort_order: Annotated[str,Query(title="Sorting Order")] = 'desc',
+    limit: Annotated[int, Query(description="Pagination Limit")] = None,
+    offset: Annotated[int, Query(description="Pagination offset")] = None
+):
+    return _schemas.MembershipFilterParams(
+        search_key=search_key,
+        group_id=group_id,
+        income_category_id=income_category_id,
+        discount_percentage=discount_percentage,
+        tax_rate=tax_rate,
+        total_amount=total_amount,
+        status=status,
+        sort_order = sort_order,
+        limit=limit,
+        offset = offset
+    )
+   
 @router.get("/membership_plan", response_model=List[_schemas.MembershipPlanResponse], tags=["Membership Plans"])
 def get_membership_plans_by_org_id(
     org_id: int,
-    request: Request,
+    filters: Annotated[_schemas.MembershipFilterParams, Depends(get_membership_filters)] = None,
     db: _orm.Session = Depends(get_db)
 ):
     
-    params = {
-        "org_id": org_id,
-        "search_key": request.query_params.get("search_key"),
-        "group_id": request.query_params.get("group_id"),
-        "income_category_id": request.query_params.get("income_category_id"),
-        "discount_percentage": request.query_params.get("discount_percentage"),
-        "tax_rate": request.query_params.get("tax_rate"),
-        "total_amount": request.query_params.get("total_amount"),
-        "status": request.query_params.get("status"),
-        "sort_order": request.query_params.get("sort_order", "desc"),
-        "limit": request.query_params.get("limit", 10),
-        "offset": request.query_params.get("offset", 0)
-    }
-    print(params)
     membership_plans = _services.get_membership_plans_by_org_id(
-        db, parameters=_schemas.MembershipFilterParams(**params)
+        db,org_id,filters
     )
     return membership_plans
 

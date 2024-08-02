@@ -45,7 +45,7 @@ class PaginationOptions(BaseModel):
 
 class UserBase(BaseModel):
     id: int
-    role_id: int
+    role_id: Optional[int]=0
     org_id: int
     class Config:
         from_attributes=True

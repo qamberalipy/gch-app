@@ -5,7 +5,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import DataError, IntegrityError
 from app.Client.schema import ClientCreateApp, ClientLogin, ClientLoginResponse, CreateClientCoach, CreateClientMembership, CreateClientOrganization, RegisterClientApp
-from app.Coach.schema import CoachAppBase, CoachLogin, CoachLoginResponse, CoachRead
+from app.Coach.schema import CoachAppBase, CoachLogin, CoachLoginResponse, CoachRead,CoachLoginResponse
 from app.Coach.service import create_appcoach
 import app.Client.service as _client_service 
 import app.Coach.service as _coach_service 
@@ -116,8 +116,9 @@ async def register_mobileclient(client: ClientCreateApp,db: _orm.Session = Depen
         db_client = await _client_service.get_client_by_email(client.email, db)
         if db_client:
             if db_client.is_deleted:
-                updated_client = await _services.update_client(db_client.id, client, db)
-                token = _helpers.create_token(updated_client, "User")
+                updated_client = await _client_service.update_client(db_client.id, client, db)
+                member_base=dict(id=updated_client.id, org_id=0)
+                token = _helpers.create_token(member_base, "Member")
                 return {
                     "is_registered": True,
                     "client": updated_client,
@@ -148,8 +149,9 @@ async def register_mobileclient(client: ClientCreateApp,db: _orm.Session = Depen
             await _client_service.create_client_coach(
                 CreateClientCoach(client_id=new_client.id, coach_id=coach_id), db
             )
+        member_base=dict(id=new_client.id, org_id=0)
+        token = _helpers.create_token(member_base, "Member")
         
-        token = _helpers.create_token(new_client, "User")
         return {
             "is_registered": True,
             "client": new_client,
@@ -166,11 +168,7 @@ async def register_mobileclient(client: ClientCreateApp,db: _orm.Session = Depen
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-    except Exception as e:
-        db.rollback()
-        logger.error(f"An unexpected error occurred: {e}")
-        raise HTTPException(status_code=500, detail="An unexpected error occurred")
-
+   
 
 @router.post("/app/member/login", response_model=ClientLoginResponse,  tags=["App Router"])
 async def login_client(client_data: ClientLogin, db: _orm.Session = Depends(get_db)):
@@ -180,10 +178,44 @@ async def login_client(client_data: ClientLogin, db: _orm.Session = Depends(get_
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
-@router.post("/app/coach/signup", response_model=CoachRead,tags=["App Router"])
-def create_mobilecoach(coach: CoachAppBase, db: _orm.Session = Depends(get_db)):
-    
-    return create_appcoach(coach,db)
+@router.post("/app/coach/signup", response_model=CoachLoginResponse,tags=["App Router"])
+async def create_mobilecoach(coach: CoachAppBase, db: _orm.Session = Depends(get_db)):
+    try:
+        db_coach =  await _coach_service.get_coach_by_email(coach.email, db)
+        print("MY COACH",db_coach)
+        if db_coach:
+            if db_coach.is_deleted:
+                updated_coach = await _coach_service.update_coach(db_coach.id,coach,"app", db)
+                coach_base=dict(id=db_coach.id, org_id=0)
+                token = _helpers.create_token(coach_base, "Coach")
+                return {
+                    "is_registered": True,
+                    "coach": updated_coach,
+                    "access_token": token
+                }
+            else:
+                raise HTTPException(status_code=400, detail="Email already registered")
+
+        new_coach=_coach_service.create_appcoach(coach,db)
+        new_coach.org_id=0
+        member_base=dict(id=new_coach.id, org_id=0)
+        token = _helpers.create_token(member_base, "Coach")
+        return {
+            "is_registered": True,
+            "coach": new_coach,
+            "access_token": token
+        }
+
+    except IntegrityError as e:
+        db.rollback()
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Duplicate entry or integrity constraint violation")
+        
+    except DataError as e:
+        db.rollback()
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")    
+                    
 
 
 @router.post("/app/coach/login", response_model=CoachLoginResponse,  tags=["App Router"])

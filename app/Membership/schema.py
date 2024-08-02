@@ -157,7 +157,6 @@ class GroupUpdate(pydantic.BaseModel):
     name: Optional[str] = None
 
 class MembershipFilterParams(pydantic.BaseModel):
-    org_id: int
     group_id: Optional[int] = None
     income_category_id: Optional[int] = None
     discount_percentage: Optional[float] = None

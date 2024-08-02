@@ -80,7 +80,7 @@ async def login_coach(
     wallet_address: str,
     db: _orm.Session = _fastapi.Depends(get_db),
 ) -> dict:
-    coach = get_coach_by_email(email_address, db)
+    coach = await get_coach_by_email(email_address, db)
 
     if not coach:
         return {"is_registered": False}
@@ -93,7 +93,7 @@ async def login_coach(
 
     return {"is_registered": True, "coach": coach, "access_token": token}
 
-def get_coach_by_email(email_address: str, db: _orm.Session = _fastapi.Depends(get_db)) -> _models.Coach:
+async def get_coach_by_email(email_address: str, db: _orm.Session = _fastapi.Depends(get_db)) -> _models.Coach:
     return db.query(_models.Coach).filter(models.Coach.email == email_address).first()
 
 
@@ -164,8 +164,8 @@ def create_client_coach_mappings(coach_id: int, member_ids: List[int], db: _orm.
         db.add(db_client_coach)
     db.commit()
 
-def create_coach(coach: _schemas.CoachCreate, db: _orm.Session):
-    coach_db = get_coach_by_email(coach.email, db)
+async def create_coach(coach: _schemas.CoachCreate, db: _orm.Session):
+    coach_db = await get_coach_by_email(coach.email, db)
     if coach_db:
             raise _fastapi.HTTPException(status_code=400, detail="Email already registered")
         
@@ -208,6 +208,7 @@ def update_bank_detail(coach: _schemas.CoachUpdate, db: _orm.Session, db_coach):
     return db_bank_detail
 
 def update_coach_record(coach: _schemas.CoachUpdate, db: _orm.Session, db_coach):
+    coach.is_deleted = False
     for field, value in coach.dict(exclude_unset=True).items():
         if hasattr(db_coach, field):
             setattr(db_coach, field, value)
@@ -259,10 +260,10 @@ def update_coach_organization(coach_id: int, org_id: int, coach_status: str, upd
     return db_coach_org
 
 
-def update_coach(coach: _schemas.CoachUpdate, db: _orm.Session):
+async def update_coach(coach_id:int , coach: _schemas.CoachUpdate,Type:str,db: _orm.Session):
+    print("hello ",coach_id, coach)
     db_coach = db.query(_models.Coach).filter(
-        _models.Coach.id == coach.id,
-        _models.Coach.is_deleted == False
+        _models.Coach.id == coach_id
     ).first()
     
     if not db_coach:
@@ -276,13 +277,14 @@ def update_coach(coach: _schemas.CoachUpdate, db: _orm.Session):
         update_client_coach_mappings(db_coach.id, coach.member_ids, db)
     
     db_coach_org = update_coach_organization(
-        coach_id=coach.id,
+        coach_id=coach_id,
         org_id=coach.org_id,
         coach_status=coach.coach_status,
         updated_by=coach.updated_by,
         db=db
     )
-    
+    if Type=="app":
+        return db_coach
     return coach
 
 
