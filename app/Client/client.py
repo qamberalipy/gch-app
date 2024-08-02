@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import Header,FastAPI, APIRouter, Depends, HTTPException, Request, status
+from fastapi import Header,FastAPI, APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.exc import IntegrityError, DataError
 import app.Client.schema as _schemas
 import sqlalchemy.orm as _orm
@@ -27,14 +27,11 @@ def get_db():
     finally:
         db.close()
         
-@router.post("/register", response_model=_schemas.ClientRead, tags=["Member Router"])
-async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.post("/member", response_model=_schemas.ClientRead, tags=["Member Router"])
+async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depends(get_db)):
     try:
         
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         
         db_client = await _services.get_client_by_email(client.email, db)
         if db_client:
@@ -76,33 +73,30 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-    
 
 
-@router.post("/mobile/register", response_model=_schemas.ClientLoginResponse, tags=["App Router"])
-async def register_mobileclient(client: _schemas.ClientCreateApp, db: _orm.Session = Depends(get_db)):
+@router.post("/app/member/signup", response_model=_schemas.ClientLoginResponse, tags=["App Router"])
+async def register_mobileclient(client: _schemas.ClientCreateApp,db: _orm.Session = Depends(get_db)):
     try:
         db_client = await _services.get_client_by_email(client.email, db)
         if db_client:
-            if db_client.is_deleted==True:
-                
-                updated_client=await _services.update_client(db_client.id, client, db)
+            if db_client.is_deleted:
+                updated_client = await _services.update_client(db_client.id, client, db)
                 token = _helpers.create_token(updated_client, "User")
                 return {
-                    "is_registered":True,
-                    "client":updated_client,
-                    "access_token":token
+                    "is_registered": True,
+                    "client": updated_client,   
+                    "access_token": token
                 }
-            else:   
+            else:
                 raise HTTPException(status_code=400, detail="Email already registered")
 
-        client_data = client.dict() 
+        client_data = client.dict()
         organization_id = client_data.pop('org_id', 0)
         status = client_data.pop('status', 'pending')
         coach_id = client_data.pop('coach_id', None)
         membership_id = client_data.pop('membership_plan_id', 0)
 
-        # Generate random own_member_id
         client_data['own_member_id'] = _services.generate_own_member_id()
 
         new_client = await _services.create_client_for_app(_schemas.RegisterClientApp(**client_data), db)
@@ -119,11 +113,12 @@ async def register_mobileclient(client: _schemas.ClientCreateApp, db: _orm.Sessi
             await _services.create_client_coach(
                 _schemas.CreateClientCoach(client_id=new_client.id, coach_id=coach_id), db
             )
+        
         token = _helpers.create_token(new_client, "User")
         return {
-            "is_registered":True,
-            "client":new_client,
-            "access_token":token
+            "is_registered": True,
+            "client": new_client,
+            "access_token": token
         }
 
     except IntegrityError as e:
@@ -136,17 +131,16 @@ async def register_mobileclient(client: _schemas.ClientCreateApp, db: _orm.Sessi
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
+    except Exception as e:
+        db.rollback()
+        logger.error(f"An unexpected error occurred: {e}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
     
- 
     
-    
-@router.put("/members", response_model=_schemas.ClientRead, tags=["Member Router"])
-async def update_client(client: _schemas.ClientUpdate, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.put("/member", response_model=_schemas.ClientRead, tags=["Member Router"])
+async def update_client(client: _schemas.ClientUpdate, db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         
         # Update client details
         updated_client = await _services.update_client(client.id, client, db)
@@ -171,15 +165,11 @@ async def update_client(client: _schemas.ClientUpdate, db: _orm.Session = Depend
 
     
 
-@router.delete("/members", response_model=_schemas.ClientRead, tags=["Member Router"])
-async def delete_client(client: _schemas.ClientDelete, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.delete("/member/{id}", response_model=_schemas.ClientRead, tags=["Member Router"])
+async def delete_client(id:int, db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code = 401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
         
-        deleted_client = await _services.delete_client(client.id, db)
+        deleted_client = await _services.delete_client(id, db)
         return deleted_client
 
     except IntegrityError as e:
@@ -195,7 +185,7 @@ async def delete_client(client: _schemas.ClientDelete, db: _orm.Session = Depend
     
 
 
-@router.post("/login", response_model=_schemas.ClientLoginResponse,  tags=["App Router"])
+@router.post("/app/member/login", response_model=_schemas.ClientLoginResponse,  tags=["App Router"])
 async def login_client(client_data: _schemas.ClientLogin, db: _orm.Session = Depends(get_db)):
     try:
         print(client_data)
@@ -205,14 +195,11 @@ async def login_client(client_data: _schemas.ClientLogin, db: _orm.Session = Dep
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
-@router.get("/members", response_model=_schemas.ClientByID, tags=["Member Router"])
-async def get_client_by_id(client_id: int, db:  _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.get("/member/{id}", response_model=_schemas.ClientByID, tags=["Member Router"])
+async def get_client_by_id(id: int, db:  _orm.Session = Depends(get_db)):
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
-        client = await _services.get_client_byid(db=db, client_id=client_id)
+        
+        client = await _services.get_client_byid(db=db, client_id=id)
         if not client:
             raise HTTPException(status_code=404, detail="Client not found")
         return client    
@@ -224,18 +211,10 @@ async def get_client_by_id(client_id: int, db:  _orm.Session = Depends(get_db), 
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
-@router.get("/filter", response_model=List[_schemas.ClientFilterRead], tags=["Member Router"])
-async def get_client(
-    org_id: int,
-    request: Request,
-    db: _orm.Session = Depends(get_db),
-    authorization: str = Header(None)):
+@router.get("/member", response_model=List[_schemas.ClientFilterRead], tags=["Member Router"])
+async def get_client(org_id: int,request: Request,db: _orm.Session = Depends(get_db)):
     try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
-        print("MY LIST ",Request)
+        
         params = {
             "org_id": org_id,
             "search_key": request.query_params.get("search_key"),
@@ -243,8 +222,9 @@ async def get_client(
             "status": request.query_params.get("status"),
             "coach_assigned": request.query_params.get("coach_assigned"),
             "membership_plan": request.query_params.get("membership_plan"),
-            "limit":request.query_params.get('limit') ,
-            "offset":request.query_params.get('offset')
+            "sort_order": request.query_params.get("sort_order", "desc"),
+            "limit": request.query_params.get("limit", 10),
+            "offset": request.query_params.get("offset", 0)
         }
         clients = _services.get_filtered_clients(db=db, params=_schemas.ClientFilterParams(**params))
         
@@ -260,21 +240,16 @@ async def get_client(
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-@router.get("/list", response_model=List[_schemas.ClientList], tags=["Member Router"])
-async def get_client_list(
-    org_id: int,
-    db: _orm.Session = Depends(get_db),
-    authorization: str = Header(None)):
-    try:    
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        clients = _services.get_list_clients(org_id=org_id,db=db)
+@router.get("/member/list/{org_id}", response_model=List[_schemas.ClientList], tags=["Member Router"])
+async def get_client_list(org_id: int,db: _orm.Session = Depends(get_db)):
+    
+    try:
+        clients = _services.get_list_clients(org_id=org_id, db=db)
         
         if clients:
             return clients
         else:
-            raise HTTPException(status_code=404,detail = "client not found")
+            raise HTTPException(status_code=404, detail="Client not found")
 
     except IntegrityError as e:
         logger.error(f"IntegrityError: {e}")
@@ -282,15 +257,16 @@ async def get_client_list(
     except DataError as e:
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {e}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+
     
 
-@router.get("/business", response_model=List[_schemas.ClientBusinessRead], tags=["Member Router"])
-async def get_business_clients(org_id: int,db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.get("/member/business/{org_id}", response_model=List[_schemas.ClientBusinessRead], tags=["Member Router"])
+async def get_business_clients(org_id: int,db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
+        
         clients = await _services.get_business_clients(org_id, db)
         if not clients:
             return []
@@ -299,15 +275,11 @@ async def get_business_clients(org_id: int,db: _orm.Session = Depends(get_db), a
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
     
 
-@router.get("/getTotalMembers", response_model=_schemas.ClientCount, tags=["Member Router"])
-async def get_total_clients(org_id: int, db: _orm.Session = Depends(get_db), authorization: str = Header(None)):
+@router.get("/member/count/{org_id}", response_model=_schemas.ClientCount, tags=["Member Router"])
+async def get_total_clients(org_id: int, db: _orm.Session = Depends(get_db)):
     try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid or missing access token")
-
-        _helpers.verify_jwt(authorization, "User")
         
         total_clients = await _services.get_total_clients(org_id, db)
-        return {"total_clients": total_clients}
+        return {"total_members": total_clients}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")

@@ -201,7 +201,7 @@ class ClientBusinessRead(pydantic.BaseModel):
     first_name: str
         
 class ClientCount(pydantic.BaseModel):
-    total_clients: int
+    total_members: int
     
 class ClientList(pydantic.BaseModel):
     id: int
@@ -231,10 +231,11 @@ class ClientFilterParams(pydantic.BaseModel):
     search_key: Optional[str] = None
     client_name: Optional[str] = None
     status: Optional[str] = None
+    sort_order: Optional[str] = None
     coach_assigned: Optional[int] = None
     membership_plan: Optional[int] = None
-    limit:Optional[int] = None
-    offset:Optional[int] = None
+    limit:Optional[int] = 10
+    offset:Optional[int] = 0
     
 class ClientDelete(pydantic.BaseModel):
     id : int

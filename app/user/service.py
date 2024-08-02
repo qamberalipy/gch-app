@@ -1,7 +1,7 @@
 from datetime import date,datetime
 from typing import List
 import jwt
-from sqlalchemy import desc, func, or_
+from sqlalchemy import asc, desc, func, or_
 import sqlalchemy.orm as _orm
 from sqlalchemy.sql import and_  
 import email_validator as _email_check
@@ -18,7 +18,7 @@ import os
 import bcrypt as _bcrypt
 from . import models, schema
 import logging
-import pydantic
+
 # Load environment variables
 
 logger = logging.getLogger("uvicorn.error")
@@ -151,12 +151,7 @@ async def create_bank_account(bank_account:_schemas.BankAccountCreate,db: _orm.S
 
 async def create_staff(staff: _schemas.CreateStaff, db: _orm.Session = _fastapi.Depends(get_db)):
     staff_data = staff.dict()
-    try:
-       _email_check.validate_email(staff_data.get('email'))
-
-    except _email_check.EmailNotValidError:
-        raise _fastapi.HTTPException(status_code=400, detail="Please enter a valid email")
-
+    
     print(staff_data.pop("send_invitation"))
     db_staff = _models.User(**staff_data)
     db.add(db_staff)
@@ -185,7 +180,8 @@ def get_all_sources( db: _orm.Session):
 
 async def get_one_staff(staff_id: int, db: _orm.Session):
     staff_detail = db.query(
-        *models.User.__table__.columns,_models.Role.name.label("role_name")
+        *models.User.__table__.columns,
+        _models.Role.name.label("role_name")
         ).join(
             _models.Role, _models.User.role_id == _models.Role.id
         ).filter(
@@ -227,6 +223,9 @@ def get_filtered_staff(
     db: _orm.Session,
     params: _schemas.StaffFilterParams
 ) -> List[_schemas.StaffFilterRead]:
+    
+    sort_order = desc(_models.User.created_at) if params.sort_order == "desc" else asc(_models.User.created_at)
+    
     query = db.query(
         *models.User.__table__.columns,_models.Role.name.label("role_name")    
     ).join(
@@ -304,11 +303,8 @@ async def create_role(role: _schemas.RoleCreate, db: _orm.Session = _fastapi.Dep
 
 
 async def get_all_roles(org_id: int, db: _orm.Session):
-    data = db.query(_models.Role.name.label("role_name"), _models.Role.id.label("role_id"))\
+    return db.query(*_models.Role.__table__.columns,_models.Resource.name.label("resource_name"), _models.Role.name.label("role_name"), _models.Role.id.label("role_id"))\
         .filter(_models.Role.is_deleted == False, _models.Role.org_id == org_id).all()
-
-    data = [{"role_name": role_name, "role_id": role_id} for role_name, role_id in data]
-    return data
 
 async def temp_get_role(role_id: int, db: _orm.Session):
     role = db.query(_models.Role).filter(_models.Role.id == role_id, _models.Role.is_deleted == False).first()
@@ -332,19 +328,31 @@ async def test_get_role(role_id: int, db: _orm.Session):
     if role is None:
         raise _fastapi.HTTPException(status_code=404, detail="Role not found")
   
-    permissions = db.query(
-        _models.Resource
-    ).options(
-        _orm.joinedload(_models.Resource.children)
-    ).filter(
-        # _models.Resource.is_parent == True,
-        _models.Permission.role_id == role_id,
-        _models.Permission.is_deleted == False,
-    ).all()
-    
-    permissions = [p for p in permissions if p.is_root]
+    # permissions = db.query(
+    #     _models.Resource.name.label("resource_name"),
+    #     _models.Permission.access_type,
+    #     _models.Role.org_id,
+    #     _models.Role.status,
+    #     _models.Permission.id.label("permission_id"),
+    #     _models.Role.id.label("role_id"),
+    #     _models.Resource.code,
+    #     _models.Resource.link,
+    #     _models.Resource.icon,
+    #     _models.Resource.is_parent,
+    #     _models.Resource.parent
+    # ).join(
+    #     _models.Permission, _models.Resource.id == _models.Permission.resource_id
+    # ).join(
+    #     _models.Role, _models.Permission.role_id == _models.Role.id
+    # ).filter(
+    #     _models.Permission.role_id == role_id,
+    #     _models.Permission.is_deleted == False
+    # ).options(
+    #     _orm.joinedload(_models.Resource.children)
+    # )
+    permissions = db.query(_models.Resource).options(_orm.joinedload(_models.Resource.children)).all()
+    print(permissions)
 
-    # permission_pydantic = pydantic.parse_obj_as(List[_schemas.RoleRead], permissions)
 
     return permissions
 
@@ -502,9 +510,7 @@ async def get_all_resources(db: _orm.Session):
 
 async def get_Total_count_staff(org_id: int, db: _orm.Session = _fastapi.Depends(get_db)) -> int:
     total_staffs = db.query(func.count(models.User.id)).filter(
-        _models.User.org_id == org_id,
-        _models.User.is_deleted == False
-        
+        _models.User.org_id == org_id
     ).scalar()
     print(total_staffs)
     return total_staffs

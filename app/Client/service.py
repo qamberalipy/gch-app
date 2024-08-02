@@ -3,7 +3,7 @@ import datetime
 import string
 from typing import List
 import jwt
-from sqlalchemy import func, or_
+from sqlalchemy import asc, desc, func, or_
 import sqlalchemy.orm as _orm
 from sqlalchemy.sql import and_  
 import email_validator as _email_check
@@ -169,7 +169,7 @@ async def delete_client(client_id: int, db: _orm.Session = _fastapi.Depends(get_
         raise _fastapi.HTTPException(status_code=404, detail="Client not found")
     
     db_client.is_deleted = True
-    db_client.updated_at = datetime.datetime.utcnow()
+    db_client.updated_at = datetime.datetime.now()
     db.commit()
     db.refresh(db_client)
     return db_client
@@ -194,50 +194,6 @@ async def get_total_clients(org_id: int, db: _orm.Session = _fastapi.Depends(get
     
     return total_clients
 
-# async def get_filtered_clients(params: _schemas.ClientFilterParams,db: _orm.Session = _fastapi.Depends(get_db)) -> List[_schemas.ClientFilterRead]:
-#     query = db.query(_models.Client)\
-#         .join(_models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id)\
-#         .join(_models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id)\
-#         .join(_models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id)\
-#         .filter(_models.ClientOrganization.org_id == params.org_id, _models.ClientOrganization.is_deleted == False)
-
-#     if params.client_name:
-#         query = query.filter(or_(
-#             _models.Client.first_name.ilike(f"%{params.client_name}%"),
-#             _models.Client.last_name.ilike(f"%{params.client_name}%")
-#         ))
-    
-#     if params.status:
-#         query = query.filter(_models.ClientOrganization.client_status.ilike(f"%{params.status}%"))
-    
-#     if params.coach_assigned:
-#         query = query.filter(_models.ClientCoach.coach_id == params.coach_assigned)
-    
-#     if params.membership_plan:
-#         query = query.filter(_models.ClientMembership.membership_plan_id == params.membership_plan)
-    
-#     if params.search_key:
-#         search_pattern = f"%{params.search_key}%"
-#         query = query.filter(or_(
-#             _models.Client.wallet_address.ilike(search_pattern),
-#             _models.Client.profile_img.ilike(search_pattern),
-#             _models.Client.own_member_id.ilike(search_pattern),
-#             _models.Client.first_name.ilike(search_pattern),
-#             _models.Client.last_name.ilike(search_pattern),
-#             _models.Client.gender.ilike(search_pattern),
-#             _models.Client.email.ilike(search_pattern),
-#             _models.Client.phone.ilike(search_pattern),
-#             _models.Client.mobile_number.ilike(search_pattern),
-#             _models.Client.notes.ilike(search_pattern),
-#             _models.Client.language.ilike(search_pattern),
-#             _models.Client.city.ilike(search_pattern),
-#             _models.Client.zipcode.ilike(search_pattern),
-#             _models.Client.address_1.ilike(search_pattern),
-#             _models.Client.address_2.ilike(search_pattern)
-#         ))
-
-#     clients = query.all()
-#     return clients
 
 
 def get_filtered_clients(
@@ -245,6 +201,9 @@ def get_filtered_clients(
     params: _schemas.ClientFilterParams
 ) -> List[_schemas.ClientFilterRead]:
     # Create a base query with the necessary joins
+    
+    sort_order = desc(_models.Client.created_at) if params.sort_order == "desc" else asc(_models.Client.created_at)
+    
     query = db.query(
         _models.Client.id,
         _models.Client.own_member_id,
@@ -262,19 +221,17 @@ def get_filtered_clients(
         _coach_models.Coach.first_name.label("coach_name")
     ).join(
         _models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id
-    ).outerjoin(
+    ).join(
         _models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id
-    ).outerjoin(
+    ).join(
         _models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id
-    ).outerjoin(
+    ).join(
         _coach_models.Coach, _models.ClientCoach.coach_id == _coach_models.Coach.id
     ).filter(
         _models.ClientOrganization.org_id == params.org_id,
         _models.ClientOrganization.is_deleted == False,
         _models.Client.is_deleted==False
     )
-
-
 
     # Apply filters conditionally
     if params.client_name:
@@ -313,7 +270,7 @@ def get_filtered_clients(
         ))
 
     # Add order by created_at and limit/offset for pagination
-    query = query.order_by(_models.Client.created_at).offset(params.offset).limit(params.limit)
+    query = query.order_by(sort_order).offset(params.offset).limit(params.limit)
     clients = query.all()
     print(clients)
     return [
@@ -376,9 +333,9 @@ async def get_client_byid(db: _orm.Session, client_id: int) -> _schemas.ClientBy
             _models.ClientOrganization.org_id,
             _models.ClientMembership.membership_plan_id,
         )
-        .outerjoin(_models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id)
-        .outerjoin(_models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id)
-        .outerjoin(_models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id)
+        .join(_models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id)
+        .join(_models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id)
+        .join(_models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id)
         .filter(_models.Client.id == client_id,
                 _models.Client.is_deleted == False
             )

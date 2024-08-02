@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import List
+from typing import Annotated, List
 from typing_extensions import Optional
-from pydantic import BaseModel, Field
+from pydantic import AfterValidator, BaseModel, Field, validator
 
 from .models import ExerciseIntensity, ExerciseType, WorkoutGoal, WorkoutLevel
 
@@ -9,45 +9,13 @@ from .models import ExerciseIntensity, ExerciseType, WorkoutGoal, WorkoutLevel
 class MyBaseModel(BaseModel):
     class Config:
         extra = 'forbid'
-
-class WorkoutBase(MyBaseModel):
-    workout_name: str
-    description: Optional[str] = None
-    goals: WorkoutGoal
-    level: WorkoutLevel
-    notes: Optional[str] = None
-    weeks: int = Field(ge=1)
-
-class WorkoutCreate(WorkoutBase):
-    pass
-
-class WorkoutRead(WorkoutBase):
-    pass
-
-
-class WorkoutUpdate(MyBaseModel):
-    workout_name: Optional[str] = None
-    description: Optional[str] = None
-    goals: Optional[WorkoutGoal] = None
-    level: Optional[WorkoutLevel] = None
-    notes: Optional[str] = None
-    weeks: Optional[int] = None
-
-class WorkoutFilter(MyBaseModel):
-    workout_name: Optional[str] = None
-    goals: Optional[WorkoutGoal] = None
-    level: Optional[WorkoutLevel] = None
-    search: Optional[str] = None
-
+        from_attributes = True
 
 class WorkoutDayBase(MyBaseModel):
     workout_id: int
     day_name: str
     week: int = Field(ge=1)
     day: int = Field(ge=1, le=7)
-
-class WorkoutDayCreate(WorkoutDayBase):
-    pass
 
 class WorkoutDayExerciseBase(MyBaseModel):
     workout_day_id: int
@@ -77,6 +45,44 @@ class WorkoutDayRead(WorkoutDayBase):
     created_by: int
     updated_by: Optional[int]
     is_deleted: bool
+
+class WorkoutBase(MyBaseModel):
+    workout_name: str
+    description: Optional[str] = None
+    goals: WorkoutGoal
+    level: WorkoutLevel
+    notes: Optional[str] = None
+    weeks: int = Field(ge=1)
+
+class WorkoutCreate(WorkoutBase):
+    pass
+
+def check_empty(v):
+    return None if len(v) == 0 else v
+
+class WorkoutRead(WorkoutBase):
+    id: int
+    days: Annotated[None | List[WorkoutDayRead], AfterValidator(check_empty)]
+
+
+class WorkoutUpdate(MyBaseModel):
+    workout_name: Optional[str] = None
+    description: Optional[str] = None
+    goals: Optional[WorkoutGoal] = None
+    level: Optional[WorkoutLevel] = None
+    notes: Optional[str] = None
+    weeks: Optional[int] = None
+
+class WorkoutFilter(MyBaseModel):
+    workout_name: Optional[str] = None
+    goals: Optional[WorkoutGoal] = None
+    level: Optional[WorkoutLevel] = None
+    search: Optional[str] = None
+    include_days: Optional[bool] = False
+    include_days_and_exercises: Optional[bool] = False
+
+class WorkoutDayCreate(WorkoutDayBase):
+    pass
 
 class WorkoutDayOptionalBase(MyBaseModel):
     day_name: Optional[str] = None
@@ -110,4 +116,5 @@ class WorkoutDayExerciseUpdate(WorkoutDayExerciseOptionalBase):
 
 class WorkoutDayExerciseFilter(WorkoutDayExerciseOptionalBase):
     workout_day_id: Optional[int] = None
+
 

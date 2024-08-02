@@ -18,7 +18,7 @@ class VisibleForEnum(PyEnum):
     only_myself = "Only myself"
     staff = "Staff of my gym"
     members =  "Members of my gym"
-    everyone = "Everyone in my gym (Staff + Members)"
+    everyone = "Everyone in my gym"
     
 class MealPlan(_database.Base):
     __tablename__ = "meal_plan"
@@ -49,7 +49,7 @@ class Meal(_database.Base):
     updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now, onupdate=_dt.datetime.now)
     is_deleted = _sql.Column(_sql.Boolean, default=False)
     
-class Member_MealPlan(_database.Base):
+class MemberMealPlan(_database.Base):
     __tablename__ = "member_meal_plan"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     member_id = _sql.Column(_sql.Integer)

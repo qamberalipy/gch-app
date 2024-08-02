@@ -24,7 +24,8 @@ from .service import (
 )
 
 from .models import Workout, WorkoutDay, WorkoutDayExercise, WorkoutGoal, WorkoutLevel
-from ..dependencies import get_db, get_user
+from ..Shared.dependencies import get_db, get_pagination_options, get_user
+from ..Shared.schema import PaginationOptions
 from .schema import (
     WorkoutCreate,
     WorkoutDayCreate,
@@ -40,8 +41,8 @@ from .schema import (
 from ..Client import schema as _client_schema
 from ..Exercise import service as _exercise_service
 
-
-router = APIRouter(tags=["Workout router"])
+API_STR = "/workout_plans"
+router = APIRouter(prefix=API_STR, tags=["Workout router"])
 
 
 async def verify_update_workout_day_exercise(
@@ -176,13 +177,29 @@ def get_filters(
     _search: Annotated[
         str | None, Query(title="Search", description="Search workout by name")
     ] = None,
+    _include_days: Annotated[
+        bool,
+        Query(title="Days", description="Whether to includes days of that workout"),
+    ] = False,
+    _include_days_and_exercises: Annotated[
+        bool, Query(description="To include that workout's days and exercises")
+    ] = False,
 ):
-    return WorkoutFilter(goals=goals, level=level, search=_search)
+    return WorkoutFilter(
+        goals=goals,
+        level=level,
+        search=_search,
+        include_days=_include_days,
+        include_days_and_exercises=_include_days_and_exercises,
+    )
 
 
 @router.get("/day/exercise")
-async def get_all_day_exercise(db: Annotated[Session, Depends(get_db)]):
-    return await get_all_workout_day_exercise(db)
+async def get_all_day_exercise(
+    db: Annotated[Session, Depends(get_db)],
+    pagination_options: Annotated[PaginationOptions, Depends(get_pagination_options)],
+):
+    return await get_all_workout_day_exercise(db, WorkoutDayExerciseFilter(), pagination_options)
 
 
 @router.get("/day/exercise/{workout_day_exercise_id}")
@@ -276,6 +293,7 @@ async def get_one_day_exercise(
 @router.get("/day")
 async def get_all_day(
     db: Annotated[Session, Depends(get_db)],
+    pagination_options: Annotated[PaginationOptions, Depends(get_pagination_options)],
     _include_exercises: Annotated[
         bool,
         Query(
@@ -284,7 +302,7 @@ async def get_all_day(
     ] = False,
 ):
     return await get_all_workout_day(
-        db, WorkoutDayFilter(include_exercises=_include_exercises)
+        db, WorkoutDayFilter(include_exercises=_include_exercises), pagination_options
     )
 
 
@@ -292,19 +310,36 @@ async def get_all_day(
 async def get_one_day(
     day_id: Annotated[int, Path(description="Id of the workout day")],
     db: Annotated[Session, Depends(get_db)],
+    _include_exercises: Annotated[
+        bool,
+        Query(
+            description="Whether the days should include the exercises associated with that day"
+        ),
+    ] = False,
 ):
-    workout = await get_workout_day(db, day_id)
+    workout = await get_workout_day(db, day_id, _include_exercises)
     if not workout:
         raise HTTPException(status_code=404, detail="Workout day not found")
     return workout
 
 
 @router.get("/{workout_id}/day")
-async def get_one_day(
+async def get_day_by_workout_id(
     workout_id: Annotated[int, Path(description="Id of the workout")],
     db: Annotated[Session, Depends(get_db)],
+    pagination_options: Annotated[PaginationOptions, Depends(get_pagination_options)],
+    _include_exercises: Annotated[
+        bool,
+        Query(
+            description="Whether the days should include the exercises associated with that day"
+        ),
+    ] = False,
 ):
-    return await get_all_workout_day(db, WorkoutDayFilter(workout_id=workout_id))
+    return await get_all_workout_day(
+        db,
+        WorkoutDayFilter(workout_id=workout_id, include_exercises=_include_exercises),
+        pagination_options
+    )
 
 
 @router.post("/day", dependencies=[Depends(verify_create_workout_day)])
@@ -366,26 +401,35 @@ async def delete_day(
         raise e
 
 
-@router.get("/")
+@router.get("")
 async def get_all(
     db: Annotated[Session, Depends(get_db)],
     filters: Annotated[WorkoutFilter, Depends(get_filters)],
+    pagination_options: Annotated[PaginationOptions, Depends(get_pagination_options)],
 ):
-    return await get_all_workout(db, filters)
+    return await get_all_workout(db, filters, pagination_options)
 
 
 @router.get("/{workout_id}")
 async def get_one(
     workout_id: Annotated[int, Path(description="Id of the workout")],
     db: Annotated[Session, Depends(get_db)],
+    _include_days: Annotated[
+        bool, Query(description="To include that workout's days")
+    ] = False,
+    _include_days_and_exercises: Annotated[
+        bool, Query(description="To include that workout's days and exercises")
+    ] = False,
 ):
-    workout = await get_workout(db, workout_id)
+    workout = await get_workout(
+        db, workout_id, _include_days, _include_days_and_exercises
+    )
     if not workout:
         raise HTTPException(status_code=404, detail="Workout not found")
     return workout
 
 
-@router.post("/")
+@router.post("")
 async def save(
     workout: WorkoutCreate,
     db: Annotated[Session, Depends(get_db)],

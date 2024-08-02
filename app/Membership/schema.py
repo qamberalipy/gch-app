@@ -171,6 +171,7 @@ class MembershipFilterParams(pydantic.BaseModel):
 
 class StandardParams(pydantic.BaseModel):
     org_id: int
+    search_key: Optional[str] = None
     sort_order: Optional[str] = "desc"
     limit: Optional[int] = 10
     offset: Optional[int] = 0

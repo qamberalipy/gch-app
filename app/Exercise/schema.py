@@ -28,6 +28,7 @@ class ExerciseBase(pydantic.BaseModel):
 
     class Config:
             from_attributes = True
+            
 
 class ExerciseCreate(ExerciseBase):
     equipment_ids:Optional[List[int]]
@@ -43,6 +44,37 @@ class ExerciseRead(ExerciseBase):
     primary_muscles:Optional[List[Dict]]
     secondary_muscles:Optional[List[Dict]]
     primary_joints:Optional[List[Dict]]   
+
+class ExerciseUpdate(pydantic.BaseModel):
+    id:int
+    exercise_name:str
+    visible_for:VisibleFor
+    org_id:int
+    category_id :int
+    exercise_type :ExerciseType
+    difficulty:Difficulty
+    sets :int
+    seconds_per_set:List[int]
+    repetitions_per_set:List[int] 
+    rest_between_set:List[int]  
+    distance:float
+    speed:float
+    met_id :int
+    gif_url :str
+    video_url_male :str 
+    video_url_female :str
+    thumbnail_male :str 
+    thumbnail_female :str
+    image_url_female :str
+    image_url_male :str 
+    equipment_ids:Optional[List[int]]
+    primary_muscle_ids:Optional[List[int]]
+    secondary_muscle_ids:Optional[List[int]]
+    primary_joint_ids:Optional[List[int]]   
+    updated_by:int
+    class Config:
+        from_attributes = True
+
 
 class Muscle(pydantic.BaseModel):
     id:int           
@@ -61,4 +93,12 @@ class PrimaryJoint(pydantic.BaseModel):
     joint_name:str
     class Config:
             from_attributes = True
+
+
+class ExerciseDelete(pydantic.BaseModel):
+    exercise_id:int
+    equipment_ids:Optional[int]=None
+    primary_muscle_ids:Optional[int]=None
+    secondary_muscle_ids:Optional[int]=None
+    primary_joint_ids:Optional[int]=None
 

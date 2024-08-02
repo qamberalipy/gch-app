@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Annotated
 import jwt, json, time, os, random, logging, bcrypt as _bcrypt
 import sqlalchemy.orm as _orm
 from sqlalchemy.sql import and_  
@@ -6,14 +7,11 @@ import email_validator as _email_check
 import fastapi as _fastapi
 import fastapi.security as _security
 import app.core.db.session as _database
-import app.user.schema as _u_schemas
-import app.Coach.schema as _co_schemas
-import app.user.models as _models
-
+from .schema import UserBase, CoachBase
 
 user_type_mapping = {
-    "User": _u_schemas.UserBase,
-    "Coach": _co_schemas.CoachBase
+    "User": UserBase,
+    "Coach": CoachBase
 }
 JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_EXPIRY = os.getenv("JWT_EXPIRY")
@@ -72,9 +70,3 @@ def refresh_jwt(refresh_token: str):
     except jwt.InvalidTokenError:
         raise _fastapi.HTTPException(status_code=400, detail="Invalid refresh token")
     
-def get_current_user(request: _fastapi.Request):
-    authorization: str = request.headers.get("Authorization")
-    if not authorization:
-        raise _fastapi.HTTPException(status_code=_fastapi.status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-    token = authorization
-    return verify_jwt(token)
