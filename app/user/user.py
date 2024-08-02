@@ -37,7 +37,6 @@ def get_db():
 @router.get("/staff/list",response_model=List[_schemas.getStaff],tags=["Staff APIs"])
 async def get_staff_list(org_id:int, db: _orm.Session= Depends(get_db)):
     
-    
     filtered_users =  db.query(_models.User.org_id,_models.User.id,_models.User.first_name).filter(_models.User.org_id == org_id, _models.User.is_deleted == False).all()
     return filtered_users
 
@@ -53,8 +52,6 @@ async def get_privileges(org_id:int, db: _orm.Session= Depends(get_db)):
 @router.post("/staff", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
 async def register_staff(staff: _schemas.CreateStaff, db: _orm.Session = Depends(get_db)):
     try:
-        
-        
         
         db_staff = await _services.get_user_by_email(staff.email, db)
         if db_staff:
@@ -112,7 +109,6 @@ async def get_all_staff(org_id: int, db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
    
 
-
 @router.put("/staff", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
 async def update_staff(staff_update: _schemas.UpdateStaff, db: _orm.Session = Depends(get_db)):
     try:
@@ -131,8 +127,6 @@ async def update_staff(staff_update: _schemas.UpdateStaff, db: _orm.Session = De
 async def delete_staff(id:int, db: _orm.Session = Depends(get_db)):
     try:
         
-        
-        
         return await _services.delete_staff(id, db)
     except IntegrityError as e:
         logger.error(f"IntegrityError: {e}")
@@ -146,20 +140,11 @@ async def delete_staff(id:int, db: _orm.Session = Depends(get_db)):
 @router.get("/staff", response_model=List[_schemas.GetStaffResponse], tags=["Staff APIs"])
 async def get_staff(
     org_id: int,
-    request: Request,
+    filters: Annotated[_schemas.StaffFilterParams, Depends(_services.get_filters)] = None,
     db: _orm.Session = Depends(get_db)):
     try:
         
-        params = {
-            "org_id": org_id,
-            "search_key": request.query_params.get("search_key"),
-            "staff_name": request.query_params.get("staff_name"),
-            "role_name": request.query_params.get("role_name"),
-            "sort_order": request.query_params.get("sort_order", "desc"),
-            "limit": request.query_params.get("limit", 10),
-            "offset": request.query_params.get("offset", 0)
-        }
-        staff = _services.get_filtered_staff(db=db, params=_schemas.StaffFilterParams(**params))
+        staff = _services.get_filtered_staff(db=db, params=filters)
         return staff
     
     except IntegrityError as e:

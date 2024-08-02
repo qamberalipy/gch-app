@@ -1,5 +1,6 @@
 from datetime import date
-from typing import Any, List
+
+from typing import Annotated,Any, List
 import jwt
 from sqlalchemy import String, asc, cast, desc, func, literal_column, or_
 import sqlalchemy.orm as _orm
@@ -475,3 +476,21 @@ async def get_total_coaches(org_id: int, db: _orm.Session = _fastapi.Depends(get
     ).scalar()
     
     return total_coaches
+
+
+def get_filters(
+
+    search_key: Annotated[str, _fastapi.Query(title="Search Key")] = None,
+    status: Annotated[str , _fastapi.Query(title="Equipment")] = None,
+    sort_order: Annotated[str,_fastapi.Query(title="Primary Muscle")]=None,
+    limit: Annotated[int, _fastapi.Query(description="Pagination Limit")] = None,
+    offset: Annotated[int, _fastapi.Query(description="Pagination offset")] = None):
+    
+    return _schemas.CoachFilterParams(
+        search_key=search_key,
+        sort_order=sort_order,
+        status=status,
+        limit=limit,
+        offset = offset
+    )
+

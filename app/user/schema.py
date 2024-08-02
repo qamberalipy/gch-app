@@ -173,7 +173,6 @@ class UpdateStaff(pydantic.BaseModel):
         from_attributes = True
         
 class StaffFilterParams(pydantic.BaseModel):
-    org_id: int
     search_key: Optional[str] = None
     staff_name: Optional[str] = None
     role_name: Optional[str] = None
