@@ -56,14 +56,16 @@ async def create_exercise(exercise: _schemas.ExerciseCreate, db: _orm.Session):
     
     db.add(db_exercise)
     db.commit()
-    db.refresh(db_exercise)
 
-    create_exercise_equipment(db_exercise.id,exercise.equipment_ids,db)
-    create_exercise_primary_muscle(db_exercise.id,exercise.primary_muscle_ids,db)
-    create_exercise_primary_joint(db_exercise.id,exercise.primary_joint_ids,db)
-    create_exercise_secondary_muscle(db_exercise.id,exercise.secondary_muscle_ids,db)
+    equipments=create_exercise_equipment(db_exercise.id,exercise.equipment_ids,db)
+    primary_muscles=create_exercise_primary_muscle(db_exercise.id,exercise.primary_muscle_ids,db)
+    primary_joints=create_exercise_primary_joint(db_exercise.id,exercise.primary_joint_ids,db)
+    secondary_muscles=create_exercise_secondary_muscle(db_exercise.id,exercise.secondary_muscle_ids,db)
 
-    return db_exercise
+    db.add_all(equipments + primary_muscles + primary_joints + secondary_muscles) 
+    db.commit()   
+    
+    return db_exercise.id
 
 
 def create_exercise_equipment(exercise_id,equipment_ids,db: _orm.Session = _fastapi.Depends(get_db)):
@@ -71,12 +73,8 @@ def create_exercise_equipment(exercise_id,equipment_ids,db: _orm.Session = _fast
     exercise_id=exercise_id,
     equipment_id=equipment_id    
     )for equipment_id in equipment_ids]    
-    
-    db.add_all(db_exercise_equipment)
-    db.commit()
 
-    for new_exercise_equipment in db_exercise_equipment:
-        db.refresh(new_exercise_equipment) 
+    return db_exercise_equipment 
 
 def create_exercise_primary_muscle(exercise_id,primary_muscle_ids,db: _orm.Session = _fastapi.Depends(get_db)):
     db_exercise_primary_muscle=[_models.ExercisePrimaryMuscle(
@@ -84,14 +82,10 @@ def create_exercise_primary_muscle(exercise_id,primary_muscle_ids,db: _orm.Sessi
     muscle_id=primary_muscle_id    
     )for primary_muscle_id in primary_muscle_ids]    
     
-    db.add_all(db_exercise_primary_muscle)
-    db.commit()
-
-    for new_exercise_primary_muscle in db_exercise_primary_muscle:
-        db.refresh(new_exercise_primary_muscle)  
+    return db_exercise_primary_muscle
 
 async def exercise_update(data:_schemas.ExerciseUpdate,db: _orm.Session = _fastapi.Depends(get_db)):
-
+    data_update=[]
     db_exercise=db.query(_models.Exercise).filter(_models.Exercise.id==data.id).first()
     if db_exercise:
         for key, value in data.dict(exclude_unset=True).items():
@@ -135,14 +129,20 @@ async def exercise_update(data:_schemas.ExerciseUpdate,db: _orm.Session = _fasta
             add_primary_joint_ids.remove(joint_id)
 
     if add_equipment_ids:
-        create_exercise_equipment(data.id,add_equipment_ids,db)  
+        equipments=create_exercise_equipment(data.id,add_equipment_ids,db)
+    
     if add_primary_muscle_ids:
-        create_exercise_primary_muscle(data.id,add_primary_muscle_ids,db)  
+        primary_muscles=create_exercise_primary_muscle(data.id,add_primary_muscle_ids,db)   
+    
     if add_secondary_muscle_ids:
-        create_exercise_secondary_muscle(data.id,add_secondary_muscle_ids,db)  
+        secondary_muscles=create_exercise_secondary_muscle(data.id,add_secondary_muscle_ids,db)  
+        data_update.append(secondary_muscles) 
+    
     if add_primary_joint_ids:
-        create_exercise_primary_joint(data.id,add_primary_joint_ids,db)  
-
+        primary_joints=create_exercise_primary_joint(data.id,add_primary_joint_ids,db)   
+   
+    db.add_all(equipments + primary_muscles + secondary_muscles + primary_joints) 
+    
     if delete_equipment_ids:
         delete_exercise_data(data.id,equipment_ids=delete_equipment_ids,db=db)
 
@@ -155,6 +155,8 @@ async def exercise_update(data:_schemas.ExerciseUpdate,db: _orm.Session = _fasta
     if delete_primary_joint_ids:
         delete_exercise_data(data.id,primary_joint_ids=delete_primary_joint_ids,db=db)   
 
+    db.commit()
+
     return data    
 
 def create_exercise_primary_joint(exercise_id,primary_joint_ids,db: _orm.Session = _fastapi.Depends(get_db)):
@@ -163,12 +165,7 @@ def create_exercise_primary_joint(exercise_id,primary_joint_ids,db: _orm.Session
     primary_joint_id=primary_joint_id    
     )for primary_joint_id in primary_joint_ids]    
     
-    db.add_all(db_exercise_primary_joint)
-    db.commit()
-
-    for new_exercise_primary_joint in db_exercise_primary_joint:
-        db.refresh(new_exercise_primary_joint)  
-
+    return db_exercise_primary_joint
 
 def create_exercise_secondary_muscle(exercise_id,secondary_muscle_ids,db: _orm.Session = _fastapi.Depends(get_db)):
     db_exercise_secondary_muscle=[_models.ExerciseSecondaryMuscle(
@@ -176,11 +173,7 @@ def create_exercise_secondary_muscle(exercise_id,secondary_muscle_ids,db: _orm.S
     muscle_id=secondary_muscle_id   
     )for secondary_muscle_id in secondary_muscle_ids]    
     
-    db.add_all(db_exercise_secondary_muscle)
-    db.commit()
-
-    for new_exercise_secondary_muscle in db_exercise_secondary_muscle:
-        db.refresh(new_exercise_secondary_muscle)
+    return db_exercise_secondary_muscle
 
     
 async def get_exercise(org_id:int,db: _orm.Session = _fastapi.Depends(get_db)):
@@ -195,7 +188,7 @@ async def get_exercise(org_id:int,db: _orm.Session = _fastapi.Depends(get_db)):
     equipment_query = db.query(
         _models.ExerciseEquipment.exercise_id,
         func.json_agg(
-            func.json_build_object('id', func.coalesce(Equipment.id,0), 'name', func.coalesce(Equipment.equipment_name,""))
+            func.json_build_object('id',Equipment.id, 'name',Equipment.equipment_name)
         ).label('equipments')
     ).join(
         Equipment, _models.ExerciseEquipment.equipment_id == Equipment.id
@@ -265,10 +258,37 @@ async def get_exercise(org_id:int,db: _orm.Session = _fastapi.Depends(get_db)):
     secondary_muscle_query, Exercise.id == secondary_muscle_query.c.exercise_id
     ).join(
     primary_joint_query, Exercise.id == primary_joint_query.c.exercise_id).filter(
-    Exercise.is_deleted == False and Exercise.org_id==org_id
-    ).all()
-
+    Exercise.is_deleted == False and Exercise.org_id==org_id).all()
+    print("this is query",query)
     return query
+
+
+def delete_exercise_data(exercise_id:int,equipment_ids:list[int]=None,primary_muscle_ids:list[int]=None,
+secondary_muscle_ids:list[int]=None,primary_joint_ids:list[int]=None,db: _orm.Session = _fastapi.Depends(get_db)):
+    
+    if equipment_ids:
+        db.query(_models.ExerciseEquipment).filter(
+        _models.ExerciseEquipment.exercise_id == exercise_id,
+       _models.ExerciseEquipment.equipment_id.in_(equipment_ids)
+       ).delete(synchronize_session=False)
+
+    if primary_muscle_ids:
+        db.query(_models.ExercisePrimaryMuscle).filter(
+        _models.ExercisePrimaryMuscle.exercise_id == exercise_id,
+       _models.ExercisePrimaryMuscle.muscle_id.in_(primary_muscle_ids)
+       ).delete(synchronize_session=False)
+
+    if secondary_muscle_ids:
+        db.query(_models.ExerciseSecondaryMuscle).filter(
+        _models.ExerciseSecondaryMuscle.exercise_id == exercise_id,
+       _models.ExerciseSecondaryMuscle.muscle_id.in_(secondary_muscle_ids)
+       ).delete(synchronize_session=False)    
+
+    if primary_joint_ids:
+        db.query(_models.ExercisePrimaryJoint).filter(
+        _models.ExercisePrimaryJoint.exercise_id == exercise_id,
+       _models.ExercisePrimaryJoint.primary_joint_id.in_(primary_joint_ids)
+       ).delete(synchronize_session=False)    
 
 
 async def get_exercise_by_id(id:int,db: _orm.Session = _fastapi.Depends(get_db)):
@@ -278,6 +298,10 @@ async def get_exercise_by_id(id:int,db: _orm.Session = _fastapi.Depends(get_db))
     SecondaryMuscle = aliased(_models.Muscle)
     PrimaryJoint = aliased(_models.PrimaryJoint)
     Equipment = aliased(_models.Equipment)
+
+    check_exercise=db.query(_models.Exercise).filter(_models.Exercise.id==id)
+    if not check_exercise:
+        raise _fastapi.HTTPException(status_code=404, detail="Exercise not found")
 
     equipment_query = db.query(
         _models.ExerciseEquipment.exercise_id,
@@ -352,8 +376,9 @@ async def get_exercise_by_id(id:int,db: _orm.Session = _fastapi.Depends(get_db))
     secondary_muscle_query, Exercise.id == secondary_muscle_query.c.exercise_id
     ).join(
     primary_joint_query, Exercise.id == primary_joint_query.c.exercise_id).filter(
-    Exercise.is_deleted == False 
-    ).first()
+    Exercise.is_deleted == False).first()
+
+    print("this is queyr",query)
 
     return query
 
