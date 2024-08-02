@@ -12,6 +12,6 @@ python-dotenv
 uvicorn
 python-multipart
 pika
-fastapi_sqlalchemy
+fastapi_sqlalchemy==0.2.1
 loguru
-alembic
+alembic==1.13.1
