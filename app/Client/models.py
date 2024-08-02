@@ -16,7 +16,7 @@ class Client(_database.Base):
     last_name = _sql.Column(_sql.String, nullable=False)
     gender = _sql.Column(_sql.String(10))  # varchar(10) in the image is likely the intended length
     dob = _sql.Column(_sql.Date, nullable=False)
-    email = _sql.Column(_sql.String, nullable=False, unique=True)
+    email = _sql.Column(_sql.String, nullable=False)
     phone = _sql.Column(_sql.String(11))  # Assuming phone number should not include landline
     mobile_number = _sql.Column(_sql.String(11))
     notes = _sql.Column(_sql.String)

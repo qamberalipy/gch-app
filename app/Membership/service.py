@@ -17,7 +17,7 @@ from sqlalchemy.sql import and_  ,desc
 from fastapi import FastAPI, Header,APIRouter, Depends, HTTPException, Request, status
 from . import models, schema
 from typing import List 
-from sqlalchemy import asc, text
+from sqlalchemy import asc, or_, text
 
 # Load environment variables
 JWT_SECRET = os.getenv("JWT_SECRET")
@@ -316,7 +316,10 @@ def get_facility_by_org_id(db: _orm.Session, params: _schemas.StandardParams):
         .order_by(sort_order)\
         .offset(params.offset)\
         .limit(params.limit)
-    
+    if params.search_key:
+        facilities_query = facilities_query.filter(or_(
+            _models.Facility.name.ilike(f"%{params.search_key}%")
+        ))
     return facilities_query.all()
 
 def get_facility_by_id(facility_id: int,db: _orm.Session):
@@ -337,7 +340,10 @@ def get_all_income_categories_by_org_id(db: _orm.Session, params: _schemas.Stand
         .order_by(sort_order)\
         .offset(params.offset)\
         .limit(params.limit)
-    
+    if params.search_key:
+        income_categories_query = income_categories_query.filter(or_(
+            _models.Income_category.name.ilike(f"%{params.search_key}%")
+        ))  
     return income_categories_query.all()
 
 def get_income_category_by_id(income_category_id: int, db: _orm.Session):
@@ -390,7 +396,10 @@ def get_all_sale_taxes_by_org_id(db: _orm.Session, params: _schemas.StandardPara
         .order_by(sort_order)\
         .offset(params.offset)\
         .limit(params.limit)
-    
+    if params.search_key:
+        sale_taxes_query = sale_taxes_query.filter(or_(
+            _models.Sale_tax.name.ilike(f"%{params.search_key}%")
+        ))
     return sale_taxes_query.all()
 
 
@@ -450,7 +459,10 @@ def get_all_groups_by_org_id(db: _orm.Session, params: _schemas.StandardParams):
         .order_by(sort_order)\
         .offset(params.offset)\
         .limit(params.limit)
-    
+    if params.search_key:
+        groups_query = groups_query.filter(or_(
+            _models.Membership_group.name.ilike(f"%{params.search_key}%")
+        ))
     return groups_query.all()
 
 

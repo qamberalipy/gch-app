@@ -350,7 +350,8 @@ def get_coach_by_id(coach_id: int, db: _orm.Session):
     
 def get_all_coaches_by_org_id(db: _orm.Session,params: _schemas.CoachFilterParams):
     
-    # Aliases for joined tables
+    sort_order = desc(_models.Coach.created_at) if params.sort_order == "desc" else asc(_models.Coach.created_at)
+    
     CoachOrg = aliased(_models.CoachOrganization)
     BankDetail = aliased(_usermodels.Bank_detail)
     ClientCoach = aliased(_client_models.ClientCoach)
@@ -372,7 +373,7 @@ def get_all_coaches_by_org_id(db: _orm.Session,params: _schemas.CoachFilterParam
         ClientCoach, ClientCoach.coach_id == _models.Coach.id
     ).filter(
         _models.Coach.is_deleted == False
-    ).group_by(
+    ).order_by(sort_order).group_by(
         _models.Coach.id,
         CoachOrg.coach_status,
         CoachOrg.org_id,

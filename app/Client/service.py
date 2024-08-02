@@ -169,7 +169,7 @@ async def delete_client(client_id: int, db: _orm.Session = _fastapi.Depends(get_
         raise _fastapi.HTTPException(status_code=404, detail="Client not found")
     
     db_client.is_deleted = True
-    db_client.updated_at = datetime.datetime.utcnow()
+    db_client.updated_at = datetime.datetime.now()
     db.commit()
     db.refresh(db_client)
     return db_client
@@ -232,8 +232,6 @@ def get_filtered_clients(
         _models.ClientOrganization.is_deleted == False,
         _models.Client.is_deleted==False
     )
-
-
 
     # Apply filters conditionally
     if params.client_name:
@@ -335,9 +333,9 @@ async def get_client_byid(db: _orm.Session, client_id: int) -> _schemas.ClientBy
             _models.ClientOrganization.org_id,
             _models.ClientMembership.membership_plan_id,
         )
-        .outerjoin(_models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id)
-        .outerjoin(_models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id)
-        .outerjoin(_models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id)
+        .join(_models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id)
+        .join(_models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id)
+        .join(_models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id)
         .filter(_models.Client.id == client_id,
                 _models.Client.is_deleted == False
             )

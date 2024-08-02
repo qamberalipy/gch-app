@@ -86,13 +86,6 @@ async def test_token(
 
     
 
-@router.get("/get_all_countries/", response_model=List[_schemas.CountryRead])
-async def read_countries(db: _orm.Session = Depends(get_db)):
-    countries = _services.get_all_countries(db=db)
-    if not countries:
-        raise HTTPException(status_code=404, detail="No countries found")
-    return countries
-
 @router.get("/countries", response_model=List[_schemas.CountryRead])
 async def read_countries(db: _orm.Session = Depends(get_db)):
     countries = _services.get_all_countries(db=db)

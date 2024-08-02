@@ -1,9 +1,10 @@
-from typing import List
-from fastapi import FastAPI, Header,APIRouter, Depends, HTTPException, Request, status
+from typing import List, Annotated
+from fastapi import FastAPI, Header,APIRouter, Depends, HTTPException, Request, status, Query
 from sqlalchemy.exc import IntegrityError, DataError
 import app.MealPlan.schema as _schemas
 import sqlalchemy.orm as _orm
 import app.MealPlan.service as _service
+import app.MealPlan.models as _model
 import app.core.db.session as _database
 import logging
 import app.Shared.helpers as _helpers
@@ -24,11 +25,10 @@ def get_db():
 @router.post("/meal_plans", response_model=_schemas.ReadMealPlan)
 async def create_meal_plan(meal_plan: _schemas.CreateMealPlan, db: _orm.Session = Depends(get_db)):
     try:
-        
-
         new_meal_plan = _service.create_meal_plan(meal_plan, db)
 
         _service.create_meal(new_meal_plan.id,meal_plan.meals, db)
+        _service.create_member_meal_plan(new_meal_plan.id, meal_plan.member_ids,db)
 
         return new_meal_plan
     except IntegrityError as e:
@@ -39,10 +39,9 @@ async def create_meal_plan(meal_plan: _schemas.CreateMealPlan, db: _orm.Session 
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
    
 
-@router.get("/meal_plans", response_model=_schemas.ShowMealPlan)
+@router.get("/meal_plans/{id}", response_model=_schemas.ShowMealPlan)
 async def get_meal_plans(id:int , db: _orm.Session = Depends(get_db)):
     try:
-        
         meal_plans = _service.get_meal_plan_by_id(id,db)    
         return meal_plans
     
@@ -57,10 +56,7 @@ async def get_meal_plans(id:int , db: _orm.Session = Depends(get_db)):
 @router.put("/meal_plans", response_model=_schemas.ReadMealPlan)
 async def update_meal_plan(meal_plan: _schemas.UpdateMealPlan, db: _orm.Session = Depends(get_db)):
     try:
-        
-
         updated_meal_plan = _service.update_meal_plan(meal_plan.id, meal_plan, db)
-
         return updated_meal_plan
     except IntegrityError as e:
         logger.error(f"IntegrityError: {e}")
@@ -71,12 +67,10 @@ async def update_meal_plan(meal_plan: _schemas.UpdateMealPlan, db: _orm.Session 
    
 
 
-@router.delete("/meal_plans", response_model=_schemas.ReadMealPlan)
-async def delete_meal_plan(meal_plan: _schemas.DeleteMealPlan, db: _orm.Session = Depends(get_db)):
+@router.delete("/meal_plans/{id}", response_model=_schemas.ReadMealPlan)
+async def delete_meal_plan(id:int, db: _orm.Session = Depends(get_db)):
     try:
-        
-
-        deleted_meal_plan = _service.delete_meal_plan(meal_plan.id, db)
+        deleted_meal_plan = _service.delete_meal_plan(id, db)
         if deleted_meal_plan is None:
             raise HTTPException(status_code=404, detail="Meal plan not found")
         return deleted_meal_plan
@@ -87,25 +81,34 @@ async def delete_meal_plan(meal_plan: _schemas.DeleteMealPlan, db: _orm.Session 
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
        
+def get_filters(
     
-@router.get("/meal_plans/getAll", response_model=List[_schemas.ShowMealPlan])
-async def get_all_meal_plans(org_id: int, request:Request,db: _orm.Session = Depends(get_db)):
+    search_key: Annotated[str | None, Query(title="Search Key")] = None,
+    visible_for: Annotated[_model.VisibleForEnum | None, Query(title="visible for Enum")] = None,
+    status: Annotated[str | None, Query(title="status")] = None,
+    sort_order: Annotated[str,Query(title="Sorting Order")] = 'desc',
+    food_nutrients: Annotated[str, Query(description="Food/Nutrients")] = None,
+    limit: Annotated[int, Query(description="Pagination Limit")] = None,
+    offset: Annotated[int, Query(description="Pagination offset")] = None
+):
+    return _schemas.MealPlanFilterParams(
+        search_key=search_key,
+        visible_for=visible_for,
+        status=status,
+        sort_order=sort_order,
+        food_nutrients = food_nutrients,
+        limit=limit,
+        offset = offset
+    )
+   
+@router.get("/meal_plans", response_model=List[_schemas.ShowMealPlan])
+async def get_all_meal_plans(
+    request:Request,
+    org_id: Annotated[int, Query(title="Organization id")],
+    filters: Annotated[_schemas.MealPlanFilterParams, Depends(get_filters)] = None,
+        db: _orm.Session = Depends(get_db)):
     try:
-        
-        
-        params = {
-            "org_id": org_id,
-            "search_key": request.query_params.get("search_key"),
-            "visible_for" : request.query_params.get("visible_for"),
-            "assign_to" : request.query_params.get("assign_to"),
-            "sort_order": request.query_params.get("sort_order"),
-            "status": request.query_params.get("status"),
-            "limit":request.query_params.get('limit') ,
-            "offset":request.query_params.get('offset')
-        }
-        print(params)
-
-        meal_plans = _service.get_meal_plans_by_org_id(org_id,db,params=_schemas.MealPlanFilterParams(**params))
+        meal_plans = _service.get_meal_plans_by_org_id(org_id,db,params=filters)
         return meal_plans
     except IntegrityError as e:
         logger.error(f"IntegrityError: {e}")

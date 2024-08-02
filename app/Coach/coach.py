@@ -27,13 +27,13 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/coach/register", response_model=_schemas.CoachRead ,tags=["App Router"])
+@router.post("/app/coach/signup", response_model=_schemas.CoachRead ,tags=["App Router"])
 def create_mobilecoach(coach: _schemas.CoachAppBase, db: _orm.Session = Depends(get_db)):
     
     return _services.create_appcoach(coach,db)
 
 
-@router.post("/coach/login", response_model=_schemas.CoachLoginResponse,  tags=["App Router"])
+@router.post("/app/coach/login", response_model=_schemas.CoachLoginResponse,  tags=["App Router"])
 async def login_coach(coach_data: _schemas.CoachLogin, db: _orm.Session = Depends(get_db)):
     try:
         print(coach_data)

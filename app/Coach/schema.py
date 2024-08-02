@@ -56,7 +56,7 @@ class CoachDelete(pydantic.BaseModel):
         from_attributes = True
 
 class CoachAppBase(pydantic.BaseModel):
-    org_id: Optional[str] = None
+    org_id: Optional[int] = None
     first_name: str
     last_name: Optional[str] = None
     dob: datetime.date
