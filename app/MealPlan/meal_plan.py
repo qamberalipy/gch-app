@@ -70,7 +70,6 @@ async def update_meal_plan(meal_plan: _schemas.UpdateMealPlan, db: _orm.Session 
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
    
 
-
 @router.delete("/meal_plans/{id}", response_model=_schemas.ReadMealPlan)
 async def delete_meal_plan(id:int, db: _orm.Session = Depends(get_db)):
     try:
@@ -86,12 +85,12 @@ async def delete_meal_plan(id:int, db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
        
 def get_filters(
-    
+
     search_key: Annotated[str | None, Query(title="Search Key")] = None,
     visible_for: Annotated[_model.VisibleForEnum | None, Query(title="visible for Enum")] = None,
-    status: Annotated[str | None, Query(title="status")] = None,
+    status: Annotated[str | None, Query(title="Status")] = None,
     sort_order: Annotated[str,Query(title="Sorting Order")] = 'desc',
-    food_nutrients: Annotated[str, Query(description="Food/Nutrients")] = None,
+    food_nutrients: Annotated[str, Query(description="Food/Category")] = None,
     limit: Annotated[int, Query(description="Pagination Limit")] = None,
     offset: Annotated[int, Query(description="Pagination offset")] = None
 ):
@@ -104,12 +103,12 @@ def get_filters(
         limit=limit,
         offset = offset
     )
-   
+    
 @router.get("/meal_plans", response_model=List[_schemas.ShowMealPlan])
 async def get_all_meal_plans(
     request:Request,
     org_id: Annotated[int, Query(title="Organization id")],
-    filters: Annotated[_schemas.MealPlanFilterParams, Depends(get_filters)] = None,
+    filters: Annotated[_schemas.MealPlanFilterParams, Depends(get_filters)],
         db: _orm.Session = Depends(get_db)):
     try:
         meal_plans = _service.get_meal_plans_by_org_id(org_id,db,params=filters)
@@ -120,4 +119,3 @@ async def get_all_meal_plans(
     except DataError as e:
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
-   

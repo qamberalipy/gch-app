@@ -12,7 +12,11 @@ from fastapi import (
     status,
 )
 from fastapi.responses import JSONResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2PasswordBearer
+from fastapi.security import (
+    HTTPAuthorizationCredentials,
+    HTTPBearer,
+    OAuth2PasswordBearer,
+)
 from fastapi_sqlalchemy import DBSessionMiddleware
 import jwt
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -35,37 +39,28 @@ from app.Shared.helpers import verify_jwt
 load_dotenv(".env")
 JWT_SECRET = os.getenv("JWT_SECRET", "")
 JWT_EXPIRY = os.getenv("JWT_EXPIRY", "")
-ROOT_PATH = '/fastapi'
+ROOT_PATH = "/fastapi"
 
 bearer_scheme = HTTPBearer()
 
-async def authorization(request: Request, credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)]):
-    authorization = credentials.credentials
-    myroutes = ("/workout")
-    if not request.url.path.startswith(myroutes) and not request.url.path.startswith(ROOT_PATH+myroutes):
-        return
 
-    if not authorization or not authorization.startswith("Bearer"):
-        return JSONResponse(
-            status_code=401, content={"detail": "Invalid or missing access token"}
-        )
+async def authorization(
+    request: Request,
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
+):
 
-    token = authorization.split("Bearer ")[1]
-    token_expection = JSONResponse(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        content={"detail": "Token Expired or Invalid"},
+    token = credentials.credentials
+    token_expection = HTTPException(
+        status_code=HTTP_401_UNAUTHORIZED,
+        detail="Token Expired or Invalid",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
     except:
-        return token_expection
-
+        raise token_expection
     if (time.time() - payload["token_time"]) > int(JWT_EXPIRY):
-        return token_expection
-    if payload["user_type"] != "user":
-        return token_expection
-
+        raise token_expection
     request.state.user = payload
 
 
@@ -96,7 +91,6 @@ app.include_router(root_router)
 
 AUTH_BASE_URL = os.environ.get("AUTH_BASE_URL")
 # logging.basicConfig(level=logging.INFO)
-
 
 
 if __name__ == "__main__":

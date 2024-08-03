@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Annotated, List, Optional
 from fastapi import Header,FastAPI, APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.exc import IntegrityError, DataError
 import app.Client.schema as _schemas
@@ -30,9 +30,6 @@ def get_db():
 @router.post("/member", response_model=_schemas.ClientRead, tags=["Member Router"])
 async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depends(get_db)):
     try:
-        
-        
-        
         db_client = await _services.get_client_by_email(client.email, db)
         if db_client:
             raise HTTPException(status_code=400, detail="Email already registered")
@@ -40,7 +37,7 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
         client_data = client.dict()
         organization_id = client_data.pop('org_id')
         status = client_data.pop('status')
-        coach_id = client_data.pop('coach_id', None)
+        coach_ids = client_data.pop('coach_id', [])
         membership_id = client_data.pop('membership_plan_id')
         prolongation_period=client_data.pop('prolongation_period')
         auto_renew_days=client_data.pop('auto_renew_days')
@@ -56,10 +53,8 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
             _schemas.CreateClientMembership(client_id=new_client.id, membership_plan_id=membership_id,prolongation_period=prolongation_period,auto_renew_days=auto_renew_days,inv_days_cycle=inv_days_cycle), db
         )
 
-        if coach_id is not None:
-            await _services.create_client_coach(
-                _schemas.CreateClientCoach(client_id=new_client.id, coach_id=coach_id), db
-            )
+        if coach_ids is not None:
+            await _services.create_client_coach(new_client.id, coach_ids, db)
 
         return new_client
 
@@ -75,80 +70,18 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
 
 
 
-@router.post("/app/member/signup", response_model=_schemas.ClientLoginResponse, tags=["App Router"])
-async def register_mobileclient(client: _schemas.ClientCreateApp,db: _orm.Session = Depends(get_db)):
-    try:
-        db_client = await _services.get_client_by_email(client.email, db)
-        if db_client:
-            if db_client.is_deleted:
-                updated_client = await _services.update_client(db_client.id, client, db)
-                token = _helpers.create_token(updated_client, "User")
-                return {
-                    "is_registered": True,
-                    "client": updated_client,   
-                    "access_token": token
-                }
-            else:
-                raise HTTPException(status_code=400, detail="Email already registered")
-
-        client_data = client.dict()
-        organization_id = client_data.pop('org_id', 0)
-        status = client_data.pop('status', 'pending')
-        coach_id = client_data.pop('coach_id', None)
-        membership_id = client_data.pop('membership_plan_id', 0)
-
-        client_data['own_member_id'] = _services.generate_own_member_id()
-
-        new_client = await _services.create_client_for_app(_schemas.RegisterClientApp(**client_data), db)
-
-        await _services.create_client_organization(
-            _schemas.CreateClientOrganization(client_id=new_client.id, org_id=organization_id, client_status=status), db
-        )
-
-        await _services.create_client_membership(
-            _schemas.CreateClientMembership(client_id=new_client.id, membership_plan_id=membership_id), db
-        )
-
-        if coach_id is not None:
-            await _services.create_client_coach(
-                _schemas.CreateClientCoach(client_id=new_client.id, coach_id=coach_id), db
-            )
-        
-        token = _helpers.create_token(new_client, "User")
-        return {
-            "is_registered": True,
-            "client": new_client,
-            "access_token": token
-        }
-
-    except IntegrityError as e:
-        db.rollback()
-        logger.error(f"IntegrityError: {e}")
-        raise HTTPException(status_code=400, detail="Duplicate entry or integrity constraint violation")
-        
-    except DataError as e:
-        db.rollback()
-        logger.error(f"DataError: {e}")
-        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
-
-    except Exception as e:
-        db.rollback()
-        logger.error(f"An unexpected error occurred: {e}")
-        raise HTTPException(status_code=500, detail="An unexpected error occurred")
     
     
 @router.put("/member", response_model=_schemas.ClientRead, tags=["Member Router"])
 async def update_client(client: _schemas.ClientUpdate, db: _orm.Session = Depends(get_db)):
     try:
-        
-        
         # Update client details
         updated_client = await _services.update_client(client.id, client, db)
         
         if client.membership_id is not None:
             await _services.update_client_membership(client.id, client.membership_id, db)
 
-        if client.coach_id is not None:
+        if client.coach_id:
             await _services.update_client_coach(client.id, client.coach_id, db)
         
         return updated_client
@@ -182,19 +115,6 @@ async def delete_client(id:int, db: _orm.Session = Depends(get_db)):
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code = 400, detail="Data error occurred, check your input")
 
-    
-
-
-@router.post("/app/member/login", response_model=_schemas.ClientLoginResponse,  tags=["App Router"])
-async def login_client(client_data: _schemas.ClientLogin, db: _orm.Session = Depends(get_db)):
-    try:
-        print(client_data)
-        result = await _services.login_client(client_data.email_address, client_data.wallet_address, db)
-        print(result)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
-
 @router.get("/member/{id}", response_model=_schemas.ClientByID, tags=["Member Router"])
 async def get_client_by_id(id: int, db:  _orm.Session = Depends(get_db)):
     try:    
@@ -210,29 +130,44 @@ async def get_client_by_id(id: int, db:  _orm.Session = Depends(get_db)):
     except DataError as e:
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
-    
+
+
+def get_filters(
+
+    search_key: Annotated[str | None, Query(title="Search Key")] = None,
+    member_name: Annotated[str, Query(description="Member First/Last Name")] = None,
+    status: Annotated[str | None, Query(title="status")] = None,
+    coach_assigned: Annotated[int, Query(description="Coach ID")] = None,
+    membership_plan: Annotated[int, Query(description="Membership ID")] = None,
+    sort_order: Annotated[str,Query(title="Sorting Order")] = 'desc',
+    limit: Annotated[int, Query(description="Pagination Limit")] = None,
+    offset: Annotated[int, Query(description="Pagination offset")] = None
+):
+    return _schemas.ClientFilterParams(
+        search_key=search_key,
+        member_name=member_name,
+        status=status,
+        coach_assigned=coach_assigned,
+        membership_plan=membership_plan,
+        sort_order = sort_order,
+        limit=limit,
+        offset = offset
+    )
+
 @router.get("/member", response_model=List[_schemas.ClientFilterRead], tags=["Member Router"])
-async def get_client(org_id: int,request: Request,db: _orm.Session = Depends(get_db)):
-    try:    
-        
-        params = {
-            "org_id": org_id,
-            "search_key": request.query_params.get("search_key"),
-            "client_name": request.query_params.get("client_name"),
-            "status": request.query_params.get("status"),
-            "coach_assigned": request.query_params.get("coach_assigned"),
-            "membership_plan": request.query_params.get("membership_plan"),
-            "sort_order": request.query_params.get("sort_order", "desc"),
-            "limit": request.query_params.get("limit", 10),
-            "offset": request.query_params.get("offset", 0)
-        }
-        clients = _services.get_filtered_clients(db=db, params=_schemas.ClientFilterParams(**params))
-        
+async def get_client( 
+    org_id: Annotated[int, Query(title="Organization id")],
+    filters: Annotated[_schemas.ClientFilterParams, Depends(get_filters)] = None,
+    db: _orm.Session = Depends(get_db)):
+
+    try:
+        clients = _services.get_filtered_clients(db=db,org_id=org_id,params=filters)
+
         if clients:
             return clients
         else:
             raise HTTPException(status_code=404, detail="No clients found")
-    
+
     except IntegrityError as e:
         logger.error(f"IntegrityError: {e}")
         raise HTTPException(status_code=400, detail="Integrity error occurred")

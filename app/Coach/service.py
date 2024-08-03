@@ -1,5 +1,6 @@
 from datetime import date
-from typing import List
+
+from typing import Annotated,Any, List
 import jwt
 from sqlalchemy import String, asc, cast, desc, func, literal_column, or_
 import sqlalchemy.orm as _orm
@@ -74,24 +75,26 @@ def create_appcoach(coach: _schemas.CoachAppBase,db: _orm.Session):
     print("db_coach",db_coach)
     return db_coach
 
-async def login_coach(email_address: str, wallet_address: str, db: _orm.Session = _fastapi.Depends(get_db)) -> dict:
-    coach = get_coach_by_email(email_address, db)
-    
+async def login_coach(
+    org_id: int,
+    email_address: str,
+    wallet_address: str,
+    db: _orm.Session = _fastapi.Depends(get_db),
+) -> dict:
+    coach = await get_coach_by_email(email_address, db)
+
     if not coach:
         return {"is_registered": False}
-    print("MYCLIENT: ",coach)
-    coach.wallet_address = wallet_address
+    print("MYCLIENT: ", coach)
+    setattr(coach, wallet_address, wallet_address)
     db.commit()
     db.refresh(coach)
-    
-    token = _helpers.create_token(coach, "User")
-    
-    return {"is_registered": True,
-            "coach":coach,
-            "access_token":token
-            }        
 
-def get_coach_by_email(email_address: str, db: _orm.Session = _fastapi.Depends(get_db)) -> _models.Coach:
+    token = _helpers.create_token(dict(id=coach.id, org_id=org_id), "Coach")
+
+    return {"is_registered": True, "coach": coach, "access_token": token}
+
+async def get_coach_by_email(email_address: str, db: _orm.Session = _fastapi.Depends(get_db)) -> _models.Coach:
     return db.query(_models.Coach).filter(models.Coach.email == email_address).first()
 
 
@@ -162,8 +165,8 @@ def create_client_coach_mappings(coach_id: int, member_ids: List[int], db: _orm.
         db.add(db_client_coach)
     db.commit()
 
-def create_coach(coach: _schemas.CoachCreate, db: _orm.Session):
-    coach_db = get_coach_by_email(coach.email, db)
+async def create_coach(coach: _schemas.CoachCreate, db: _orm.Session):
+    coach_db = await get_coach_by_email(coach.email, db)
     if coach_db:
             raise _fastapi.HTTPException(status_code=400, detail="Email already registered")
         
@@ -206,6 +209,7 @@ def update_bank_detail(coach: _schemas.CoachUpdate, db: _orm.Session, db_coach):
     return db_bank_detail
 
 def update_coach_record(coach: _schemas.CoachUpdate, db: _orm.Session, db_coach):
+    coach.is_deleted = False
     for field, value in coach.dict(exclude_unset=True).items():
         if hasattr(db_coach, field):
             setattr(db_coach, field, value)
@@ -257,10 +261,10 @@ def update_coach_organization(coach_id: int, org_id: int, coach_status: str, upd
     return db_coach_org
 
 
-def update_coach(coach: _schemas.CoachUpdate, db: _orm.Session):
+async def update_coach(coach_id:int , coach: _schemas.CoachUpdate,Type:str,db: _orm.Session):
+    print("hello ",coach_id, coach)
     db_coach = db.query(_models.Coach).filter(
-        _models.Coach.id == coach.id,
-        _models.Coach.is_deleted == False
+        _models.Coach.id == coach_id
     ).first()
     
     if not db_coach:
@@ -274,13 +278,14 @@ def update_coach(coach: _schemas.CoachUpdate, db: _orm.Session):
         update_client_coach_mappings(db_coach.id, coach.member_ids, db)
     
     db_coach_org = update_coach_organization(
-        coach_id=coach.id,
+        coach_id=coach_id,
         org_id=coach.org_id,
         coach_status=coach.coach_status,
         updated_by=coach.updated_by,
         db=db
     )
-    
+    if Type=="app":
+        return db_coach
     return coach
 
 
@@ -471,3 +476,21 @@ async def get_total_coaches(org_id: int, db: _orm.Session = _fastapi.Depends(get
     ).scalar()
     
     return total_coaches
+
+
+def get_filters(
+
+    search_key: Annotated[str, _fastapi.Query(title="Search Key")] = None,
+    status: Annotated[str , _fastapi.Query(title="Equipment")] = None,
+    sort_order: Annotated[str,_fastapi.Query(title="Primary Muscle")]=None,
+    limit: Annotated[int, _fastapi.Query(description="Pagination Limit")] = None,
+    offset: Annotated[int, _fastapi.Query(description="Pagination offset")] = None):
+    
+    return _schemas.CoachFilterParams(
+        search_key=search_key,
+        sort_order=sort_order,
+        status=status,
+        limit=limit,
+        offset = offset
+    )
+

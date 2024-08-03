@@ -31,72 +31,11 @@ def get_db():
     finally:
         db.close()
 
-# @router.post("/register/admin")
-# async def register_user(user: _schemas.UserCreate, db: _orm.Session = Depends(get_db)):
-#     print("Here 1", user.email, user.password, user.first_name)
-#     db_user = await _services.get_user_by_email(user.email, db)
-#     print(f"User: {db_user}")
-#     print("Here 2")
-#     if db_user:
-#         raise HTTPException(status_code=400, detail="Email already registered")
-    
-#     organization_details = _schemas.OrganizationCreate(org_name=user.org_name)
-#     organization = await _services.create_organization(organization_details, db)
 
-#     user_data = user.dict()
-#     user_data['org_id'] = organization.id
-#     user_data.pop('org_name')
-
-#     user_register = _schemas.UserRegister(**user_data, created_at=datetime.datetime.utcnow())
-#     new_user = await _services.create_user(user_register, db)
-    
-#     return new_user
-
-
-# @router.post("/login")
-# async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_db)):
-    
-#     if user.email in lockout_expiry and datetime.datetime.now() < lockout_expiry[user.email]:
-#         raise HTTPException(status_code=403, detail="Account locked. Try again later.")
-
-#     authenticated_user = await _services.authenticate_user(user.email, user.password, db)
-#     if not authenticated_user:
-#         login_attempts[user.email] = login_attempts.get(user.email, 0) + 1
-
-#         if login_attempts[user.email] >= MAX_ATTEMPTS:
-#             # Lock the account if maximum attempts are reached
-#             lockout_expiry[user.email] = datetime.now() + LOCKOUT_TIME
-#             raise HTTPException(status_code=403, detail="Account locked. Try again later.")
-
-#         raise HTTPException(status_code=401, detail="Invalid email or password")
-
-#     login_attempts[user.email] = 0
-#     # token = await _services.create_token(authenticated_user)
-#     token = _helpers.create_token(authenticated_user, "User")
-#     user_data = await _services.get_alluser_data(email=user.email, db=db)
-#     return {
-#         "user": user_data,
-#         "token": token
-#     }
-
-
-# @router.post("/test_token")
-# async def test_token(
-#         token: str,
-#         db: _orm.Session = Depends(get_db)
-#     ):
-#     print("Token 1: ", token)
-#     payload = _helpers.verify_jwt(token, "User")
-#     return payload
-
-# @router.post("/refresh_token", tags=["Auth"])
-# async def refresh_token(refresh_token: str = Header(None, alias="refresh_token")):
-#     return _helpers.refresh_jwt(refresh_token)
 
 
 @router.get("/staff/list",response_model=List[_schemas.getStaff],tags=["Staff APIs"])
 async def get_staff_list(org_id:int, db: _orm.Session= Depends(get_db)):
-    
     
     filtered_users =  db.query(_models.User.org_id,_models.User.id,_models.User.first_name).filter(_models.User.org_id == org_id, _models.User.is_deleted == False).all()
     return filtered_users
@@ -113,8 +52,6 @@ async def get_privileges(org_id:int, db: _orm.Session= Depends(get_db)):
 @router.post("/staff", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
 async def register_staff(staff: _schemas.CreateStaff, db: _orm.Session = Depends(get_db)):
     try:
-        
-        
         
         db_staff = await _services.get_user_by_email(staff.email, db)
         if db_staff:
@@ -137,8 +74,6 @@ async def register_staff(staff: _schemas.CreateStaff, db: _orm.Session = Depends
 @router.get("/staff/{id}", response_model=_schemas.GetStaffResponse, tags=["Staff APIs"])
 async def get_staff_by_id(id: int, db: _orm.Session = Depends(get_db)):
     try:
-        
-        
         print("Fetching staff with ID:", id)
         staff_list = await _services.get_one_staff(staff_id=id, db=db)
         print("Staff list:", staff_list)
@@ -174,7 +109,6 @@ async def get_all_staff(org_id: int, db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
    
 
-
 @router.put("/staff", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
 async def update_staff(staff_update: _schemas.UpdateStaff, db: _orm.Session = Depends(get_db)):
     try:
@@ -193,8 +127,6 @@ async def update_staff(staff_update: _schemas.UpdateStaff, db: _orm.Session = De
 async def delete_staff(id:int, db: _orm.Session = Depends(get_db)):
     try:
         
-        
-        
         return await _services.delete_staff(id, db)
     except IntegrityError as e:
         logger.error(f"IntegrityError: {e}")
@@ -208,20 +140,11 @@ async def delete_staff(id:int, db: _orm.Session = Depends(get_db)):
 @router.get("/staff", response_model=List[_schemas.GetStaffResponse], tags=["Staff APIs"])
 async def get_staff(
     org_id: int,
-    request: Request,
+    filters: Annotated[_schemas.StaffFilterParams, Depends(_services.get_filters)] = None,
     db: _orm.Session = Depends(get_db)):
     try:
         
-        params = {
-            "org_id": org_id,
-            "search_key": request.query_params.get("search_key"),
-            "staff_name": request.query_params.get("staff_name"),
-            "role_name": request.query_params.get("role_name"),
-            "sort_order": request.query_params.get("sort_order", "desc"),
-            "limit": request.query_params.get("limit", 10),
-            "offset": request.query_params.get("offset", 0)
-        }
-        staff = _services.get_filtered_staff(db=db, params=_schemas.StaffFilterParams(**params))
+        staff = _services.get_filtered_staff(db=db, params=filters)
         return staff
     
     except IntegrityError as e:
@@ -275,7 +198,7 @@ async def edit_role(role: _schemas.RoleUpdate, db: _orm.Session = Depends(get_db
 
 
 
-@router.get("/role")#, response_model=List[_schemas.RoleRead], tags=["Roles and Permissions"])
+@router.get("/role", tags=["Roles and Permissions"])#, response_model=List[_schemas.RoleRead], tags=["Roles and Permissions"])
 async def get_roles(org_id: Optional[int] = None, role_id: Optional[int] = None, db: _orm.Session = Depends(get_db)):
     try:
         
@@ -287,7 +210,7 @@ async def get_roles(org_id: Optional[int] = None, role_id: Optional[int] = None,
             print("In org")
             roles = await _services.get_all_roles(org_id, db)
         elif role_id:
-            print("In role")
+            print("In role hello")
             roles = await _services.test_get_role(role_id, db)
         return roles
     except IntegrityError as e:

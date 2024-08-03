@@ -181,10 +181,11 @@ def get_membership_plan_by_id(membership_plan_id: int, db: _orm.Session):
 
 def get_membership_plans_by_org_id(
     db: _orm.Session,
+    org_id:int,
     parameters: _schemas.MembershipFilterParams
 ):
     filters = ["mp.org_id = :org_id", "mp.is_deleted = False"]
-    params = {"org_id": parameters.org_id}
+    params = {"org_id": org_id}
 
     if parameters.group_id is not None:
         filters.append("mp.group_id = :group_id")

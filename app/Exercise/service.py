@@ -1,3 +1,4 @@
+from typing import Annotated
 from sqlalchemy import and_, desc, func, or_
 import sqlalchemy.orm as _orm
 import fastapi as _fastapi
@@ -20,6 +21,9 @@ def get_db():
 
 async def get_muscle(db: _orm.Session = _fastapi.Depends(get_db)):
     return db.query(*_models.Muscle.__table__.columns)
+
+async def get_category(db: _orm.Session = _fastapi.Depends(get_db)):
+    return db.query(*_models.ExerciseCategory.__table__.columns)
 
 async def create_exercise(exercise: _schemas.ExerciseCreate, db: _orm.Session):
 
@@ -176,14 +180,13 @@ def create_exercise_secondary_muscle(exercise_id,secondary_muscle_ids,db: _orm.S
     return db_exercise_secondary_muscle
 
     
-async def get_exercise(org_id:int,db: _orm.Session = _fastapi.Depends(get_db)):
+async def get_exercise(org_id:int,params: _schemas.ExerciseFilterParams,db: _orm.Session = _fastapi.Depends(get_db)):
 
     Exercise = aliased(_models.Exercise)
     PrimaryMuscle = aliased(_models.Muscle)
     SecondaryMuscle = aliased(_models.Muscle)
     PrimaryJoint = aliased(_models.PrimaryJoint)
     Equipment = aliased(_models.Equipment)
-
 
     equipment_query = db.query(
         _models.ExerciseEquipment.exercise_id,
@@ -194,6 +197,8 @@ async def get_exercise(org_id:int,db: _orm.Session = _fastapi.Depends(get_db)):
         Equipment, _models.ExerciseEquipment.equipment_id == Equipment.id
     ).group_by(_models.ExerciseEquipment.exercise_id).subquery()
     
+    if params.equipment:
+        equipment_query = equipment_query.filter(_models.Equipment.id.in_(params.equipment))
 
     primary_muscle_query = db.query(
         _models.ExercisePrimaryMuscle.exercise_id,
@@ -228,7 +233,6 @@ async def get_exercise(org_id:int,db: _orm.Session = _fastapi.Depends(get_db)):
     Exercise.exercise_name,
     Exercise.visible_for,
     Exercise.org_id,
-    Exercise.category_id,
     Exercise.exercise_type,
     Exercise.difficulty,
     Exercise.sets,
@@ -246,21 +250,35 @@ async def get_exercise(org_id:int,db: _orm.Session = _fastapi.Depends(get_db)):
     Exercise.image_url_female,
     Exercise.image_url_male,
     Exercise.id,
+    _models.ExerciseCategory.category_name,
     equipment_query.c.equipments,
     primary_muscle_query.c.primary_muscles,
     secondary_muscle_query.c.secondary_muscles,
     primary_joint_query.c.primary_joints
     ).select_from(Exercise).join(
     equipment_query, Exercise.id == equipment_query.c.exercise_id
-    ).join(
+    ).join(_models.ExerciseCategory,Exercise.category_id == _models.ExerciseCategory.id).join(
     primary_muscle_query, Exercise.id == primary_muscle_query.c.exercise_id
     ).join(
     secondary_muscle_query, Exercise.id == secondary_muscle_query.c.exercise_id
     ).join(
     primary_joint_query, Exercise.id == primary_joint_query.c.exercise_id).filter(
-    Exercise.is_deleted == False and Exercise.org_id==org_id).all()
-    print("this is query",query)
-    return query
+    Exercise.is_deleted == False and Exercise.org_id==org_id)
+
+    if params.search_key!='' and params.search_key is not None:
+        search_pattern = f"%{params.search_key}%"
+        query = query.filter(or_(
+            _models.Exercise.exercise_name.ilike(search_pattern)))
+
+    if params.category!=0:
+        query = query.filter(_models.ExerciseCategory.id == params.category)
+
+    if params.primary_muscle:
+        query = query.filter(_models.Muscle.id.in_(params.primary_muscle))
+
+    query = query.offset(params.offset).limit(params.limit)
+
+    return query.all()
 
 
 def delete_exercise_data(exercise_id:int,equipment_ids:list[int]=None,primary_muscle_ids:list[int]=None,
@@ -364,13 +382,14 @@ async def get_exercise_by_id(id:int,db: _orm.Session = _fastapi.Depends(get_db))
     Exercise.image_url_female,
     Exercise.image_url_male,
     Exercise.id,
+    _models.ExerciseCategory.category_name,
     equipment_query.c.equipments,
     primary_muscle_query.c.primary_muscles,
     secondary_muscle_query.c.secondary_muscles,
     primary_joint_query.c.primary_joints
     ).select_from(Exercise).join(
     equipment_query, Exercise.id == equipment_query.c.exercise_id
-    ).join(
+    ).join(_models.ExerciseCategory,Exercise.category_id == _models.ExerciseCategory.id).join(
     primary_muscle_query, Exercise.id == primary_muscle_query.c.exercise_id
     ).join(
     secondary_muscle_query, Exercise.id == secondary_muscle_query.c.exercise_id
@@ -378,7 +397,6 @@ async def get_exercise_by_id(id:int,db: _orm.Session = _fastapi.Depends(get_db))
     primary_joint_query, Exercise.id == primary_joint_query.c.exercise_id).filter(
     Exercise.is_deleted == False).first()
 
-    print("this is queyr",query)
 
     return query
 
@@ -388,3 +406,21 @@ async def get_equipments(db: _orm.Session = _fastapi.Depends(get_db)):
 
 async def get_primary_joints(db: _orm.Session = _fastapi.Depends(get_db)):
     return db.query(*_models.PrimaryJoint.__table__.columns)
+
+def get_filters(
+
+    search_key: Annotated[str, _fastapi.Query(title="Search Key")] = None,
+    category: Annotated[int , _fastapi.Query(title="Category")] = None,
+    equipment: Annotated[list[int] , _fastapi.Query(title="Equipment")] = None,
+    primary_muscle: Annotated[list[int],_fastapi.Query(title="Primary Muscle")]=None,
+    limit: Annotated[int, _fastapi.Query(description="Pagination Limit")] = None,
+    offset: Annotated[int, _fastapi.Query(description="Pagination offset")] = None
+):
+    return _schemas.ExerciseFilterParams(
+        search_key=search_key,
+        category=category,
+        equipment=equipment,
+        primary_muscle=primary_muscle,
+        limit=limit,
+        offset = offset
+    )

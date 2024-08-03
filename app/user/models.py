@@ -42,8 +42,11 @@ class User(_database.Base):
     is_deleted = _sql.Column(_sql.Boolean, default=False)
     
     def verify_password(self, password: bytes):
-        print("In Verify Password", password, self.password.encode('utf-8'))
-        return _bcrypt.checkpw(password.encode('utf-8'), self.password.encode('utf-8'))
+        if self.password is not None:
+            print("In Verify Password", password, self.password.encode('utf-8'))
+            return _bcrypt.checkpw(password.encode('utf-8'), self.password.encode('utf-8'))
+        else:
+            False
 
 class Country(_database.Base):
     __tablename__ = "country"
@@ -75,37 +78,92 @@ class UserRole(_database.Base):
     updated_by = _sql.Column(_sql.Integer)
     is_deleted=_sql.Column(_sql.Boolean)
 
+# class Role(_database.Base):
+#     __tablename__ = "role"
+#     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
+#     name = _sql.Column(_sql.String(50))
+#     org_id = _sql.Column(_sql.Integer)
+#     status = _sql.Column(_sql.Boolean)
+#     is_deleted=_sql.Column(_sql.Boolean)
+
+
+# class Resource(_database.Base):
+#     __tablename__ = "resource"
+#     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
+#     name=_sql.Column(_sql.String(50))
+#     code=_sql.Column(_sql.String(50))
+#     parent = _sql.Column(_sql.String(50))
+#     is_parent = _sql.Column(_sql.Boolean)
+#     is_root = _sql.Column(_sql.Boolean)
+#     link = _sql.Column(_sql.String(50))
+#     icon = _sql.Column(_sql.String(50))
+#     created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
+#     updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
+#     created_by = _sql.Column(_sql.Integer)
+#     updated_by = _sql.Column(_sql.Integer)
+#     is_deleted=_sql.Column(_sql.Boolean)
+
+#     # self join of parent with code
+#     rel_parent = _orm.relationship(
+#         "Resource",
+#         lazy="select",
+#         primaryjoin="foreign(Resource.parent)==Resource.code",
+#         remote_side=[code],
+#         back_populates="children"
+#     )
+#     children = _orm.relationship(
+#         "Resource",
+#         lazy="select",
+#         primaryjoin="Resource.code==foreign(Resource.parent)",
+#         remote_side=[parent],
+#         back_populates="rel_parent"
+#     )
+    
+
+# class Permission(_database.Base):
+#     __tablename__ = 'permission'
+#     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
+#     role_id= _sql.Column(_sql.Integer)
+#     resource_id= _sql.Column(_sql.Integer)
+#     access_type = _sql.Column(_sql.String(50))
+#     created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
+#     updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
+#     created_by = _sql.Column(_sql.Integer)
+#     updated_by = _sql.Column(_sql.Integer)
+#     is_deleted=_sql.Column(_sql.Boolean)
+
 class Role(_database.Base):
     __tablename__ = "role"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     name = _sql.Column(_sql.String(50))
     org_id = _sql.Column(_sql.Integer)
     status = _sql.Column(_sql.Boolean)
-    is_deleted=_sql.Column(_sql.Boolean)
+    is_deleted = _sql.Column(_sql.Boolean)
+    
+    # permissions = _orm.relationship(
+    #     "Permission",
+    #     back_populates="role",
+    #     primaryjoin="Permission.role_id==foreign(Role.id)",
+    #     lazy="select"
+    # )
 
 
 class Resource(_database.Base):
     __tablename__ = "resource"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
-    name=_sql.Column(_sql.String(50))
-    code=_sql.Column(_sql.String(50))
+    name = _sql.Column(_sql.String(50))
+    code = _sql.Column(_sql.String(50))
     parent = _sql.Column(_sql.String(50))
-    is_root = _sql.Column(_sql.Boolean)
     is_parent = _sql.Column(_sql.Boolean)
+    is_root = _sql.Column(_sql.Boolean)
     link = _sql.Column(_sql.String(50))
     icon = _sql.Column(_sql.String(50))
     created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
     updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
     created_by = _sql.Column(_sql.Integer)
     updated_by = _sql.Column(_sql.Integer)
-    is_deleted=_sql.Column(_sql.Boolean)
+    is_deleted = _sql.Column(_sql.Boolean)
 
-    # resources = _orm.relationship(
-    #     "Permission",
-    #     lazy="noload",
-    #     primaryjoin="Resource.id==foreign(Permission.resource_id)",
-    #     back_populates="resource"
-    # )
     # self join of parent with code
     rel_parent = _orm.relationship(
         "Resource",
@@ -122,25 +180,40 @@ class Resource(_database.Base):
         back_populates="rel_parent"
     )
 
+    # permissions = _orm.relationship(
+    #     "Permission",
+    #     back_populates="resource",
+    #     primaryjoin="Resource.id==foreign(Permission.resource_id)",
+    #     lazy="select"
+    # )
+
+
 class Permission(_database.Base):
     __tablename__ = 'permission'
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
-    role_id= _sql.Column(_sql.Integer)
-    resource_id= _sql.Column(_sql.Integer)
+    role_id = _sql.Column(_sql.Integer)
+    resource_id = _sql.Column(_sql.Integer)
     access_type = _sql.Column(_sql.String(50))
     created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
     updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
     created_by = _sql.Column(_sql.Integer)
     updated_by = _sql.Column(_sql.Integer)
-    is_deleted=_sql.Column(_sql.Boolean)
+    is_deleted = _sql.Column(_sql.Boolean)
 
+    # role = _orm.relationship(
+    #     "Role",
+    #     primaryjoin="Permission.role_id==foreign(Role.id)",
+    #     back_populates="permissions",
+    #     lazy="select"
+    # )
     # resource = _orm.relationship(
     #     "Resource",
-    #     lazy="noload",
-    #     primaryjoin="Permission.resource_id==foreign(Resource.id)",
-    #     back_populates="resources"
+    #     primaryjoin="Resource.id==foreign(Permission.resource_id)",
+    #     back_populates="permissions"
     # )
 
+
+    
 class Bank_detail(_database.Base):
     __tablename__ = 'bank_detail'
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)

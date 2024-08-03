@@ -1,4 +1,4 @@
-from typing import List
+from typing import Annotated, List
 from fastapi import Header,FastAPI, APIRouter, Depends, HTTPException, Request, status
 # from sqlalchemy import Tuple
 from sqlalchemy.exc import IntegrityError, DataError
@@ -27,32 +27,16 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/app/coach/signup", response_model=_schemas.CoachRead ,tags=["App Router"])
-def create_mobilecoach(coach: _schemas.CoachAppBase, db: _orm.Session = Depends(get_db)):
-    
-    return _services.create_appcoach(coach,db)
-
-
-@router.post("/app/coach/login", response_model=_schemas.CoachLoginResponse,  tags=["App Router"])
-async def login_coach(coach_data: _schemas.CoachLogin, db: _orm.Session = Depends(get_db)):
-    try:
-        print(coach_data)
-        result = await _services.login_coach(coach_data.email_address, coach_data.wallet_address, db)
-        print(result)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
-    
-
 @router.post("/coach", response_model=_schemas.CoachRead ,tags=["Coach API"])
 def create_coach(coach: _schemas.CoachCreate, db: _orm.Session = Depends(get_db)):
     
     return _services.create_coach(coach,db)
 
 @router.put("/coach", response_model=_schemas.CoachUpdate , tags=["Coach API"])
-def update_coach(coach: _schemas.CoachUpdate, db: _orm.Session = Depends(get_db)):
+async def update_coach(coach: _schemas.CoachUpdate, db: _orm.Session = Depends(get_db)):
     
-    db_coach = _services.update_coach(coach,db)
+    
+    db_coach = await _services.update_coach(coach.id,coach,"web",db)
     if db_coach is None:
         raise HTTPException(status_code=404, detail="Coach not found")
     return db_coach
@@ -76,25 +60,14 @@ def get_coach_by_id(id: int, db: _orm.Session = Depends(get_db)):
 
 
 @router.get("/coach", response_model=List[_schemas.CoachReadSchema], tags=["Coach API"])
-def get_coaches_by_org_id(org_id: int,request: Request,db: _orm.Session = Depends(get_db)):
+def get_coaches_by_org_id(org_id: int,filters: Annotated[_schemas.CoachFilterParams, Depends(_services.get_filters)] = None,db: _orm.Session = Depends(get_db)):
     
-   
-    print("MY LIST ",Request)
-    params = {
-        "org_id": org_id,
-        "search_key": request.query_params.get("search_key"),
-        "status": request.query_params.get("status"),
-        "sort_order": request.query_params.get("sort_order", "desc"),
-        "limit": request.query_params.get("limit", 10),
-        "offset": request.query_params.get("offset", 0)
-    }
-    print(params)
-    coaches = _services.get_all_coaches_by_org_id(db,params=_schemas.CoachFilterParams(**params))
+    coaches = _services.get_all_coaches_by_org_id(db,params=filters)
     return coaches
 
 
+@router.get("/coach/count/{org_id}", response_model=_schemas.CoachCount, tags=["Coach API"])
 
-@router.get("/coach/count", response_model=_schemas.CoachCount, tags=["Coach API"])
 async def get_total_coaches(org_id: int, db: _orm.Session = Depends(get_db)):
     try:
         

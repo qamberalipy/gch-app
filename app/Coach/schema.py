@@ -39,11 +39,12 @@ class CoachCreate(CoachBase):
 
 class CoachUpdate(CoachBase):
     id: int
+    is_deleted:Optional[bool] = False
     updated_by: Optional[int] = None
-    member_ids: Optional[List[int]] = None
+    member_ids: Optional[List[int]] = []
 
 class CoachRead(CoachBase):
-    id: int
+    id:int
     created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
 
@@ -71,8 +72,20 @@ class CoachAppBase(pydantic.BaseModel):
     address_1: Optional[str] = None
     address_2: Optional[str] = None
     coach_since: Optional[datetime.date] = None
+    bank_name: Optional[str] = None
+    iban_no: Optional[str] = None
+    is_deleted: Optional[bool] = False
+    acc_holder_name: Optional[str] = None
+    swift_code: Optional[str] = None
+    updated_by:Optional[int]=0
+    member_ids: Optional[List[int]] = None
+    coach_status: Optional[str] = "pending"
+    check_in: Optional[datetime.datetime] = None
+    last_online: Optional[datetime.datetime] = None
+    coach_since: Optional[datetime.datetime] = None
 
 class CoachLogin(pydantic.BaseModel):
+    org_id: int
     email_address: str
     wallet_address: str
 
@@ -85,7 +98,6 @@ class CoachCount(pydantic.BaseModel):
     total_coaches: int
     
 class CoachFilterParams(pydantic.BaseModel):
-    org_id: int
     search_key: Optional[str] = None
     sort_order: Optional[str] = None
     status: Optional[str] = None
