@@ -48,11 +48,12 @@ async def authorization(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
 ):
+
     authorization = credentials.credentials
 
     if not authorization or not authorization.startswith("Bearer"):
-        return JSONResponse(
-            status_code=401, content={"detail": "Invalid or missing access token"}
+        raise HTTPException(
+            status_code=401, detail="Invalid or missing access token"
         )
 
     token = authorization.split("Bearer ")[1]
