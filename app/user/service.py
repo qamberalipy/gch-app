@@ -1,4 +1,5 @@
 from datetime import date,datetime
+from typing import List, Dict, Any
 from typing import Annotated, List
 import jwt
 from sqlalchemy import asc, desc, func, or_
@@ -303,58 +304,75 @@ async def create_role(role: _schemas.RoleCreate, db: _orm.Session = _fastapi.Dep
 
 
 async def get_all_roles(org_id: int, db: _orm.Session):
-    return db.query(*_models.Role.__table__.columns,_models.Resource.name.label("resource_name"), _models.Role.name.label("role_name"), _models.Role.id.label("role_id"))\
+    return db.query(_models.Role.name.label("role_name"), _models.Role.id.label("role_id"))\
         .filter(_models.Role.is_deleted == False, _models.Role.org_id == org_id).all()
 
-async def temp_get_role(role_id: int, db: _orm.Session):
-    role = db.query(_models.Role).filter(_models.Role.id == role_id, _models.Role.is_deleted == False).first()
-    if role is None:
-        raise _fastapi.HTTPException(status_code=404, detail="Role not found")
-    
-    permissions = db.query(_models.Resource.name.label("resource_name"), _models.Permission.access_type, _models.Role.org_id, 
-        _models.Role.status, _models.Permission.id.label("permission_id"), _models.Role.id.label("role_id"), _models.Resource.code, 
-        _models.Resource.link, _models.Resource.icon, _models.Resource.is_parent, _models.Resource.parent)\
-        .join(_models.Permission, _models.Resource.id == _models.Permission.resource_id)\
-        .join(_models.Role, _models.Permission.role_id == _models.Role.id)\
-        .filter(_models.Permission.role_id == role_id, _models.Permission.is_deleted == False).all()
+    data = [{"role_name": role_name, "role_id": role_id} for role_name, role_id in data]
+    return data
 
-    return permissions
+# async def test_get_role(role_id: int, db: _orm.Session):
+#     role = db.query(_models.Role).filter(_models.Role.id == role_id, _models.Role.is_deleted == False).first()
+#     if role is None:
+#         raise _fastapi.HTTPException(status_code=404, detail="Role not found")
+#     print("Hello")
+#     permissions = db.query(
+#         _models.Resource,
+#     ).options(
+#         _orm.joinedload(_models.Resource.children),
+#     ).filter(
+#         # _models.Resource.is_parent == True,
+#         # _models.Permission.role_id == role_id,
+#         _models.Permission.is_deleted == False,
+#     ).all()
+#     print(permissions)
+#     permissions = [p for p in permissions if p.is_root]
+#     # permission_pydantic = pydantic.parse_obj_as(List[_schemas.RoleRead], permissions)
+#     return permissions
 
-
-from collections import defaultdict
 
 async def test_get_role(role_id: int, db: _orm.Session):
-    role = db.query(_models.Role).filter(_models.Role.id == role_id, _models.Role.is_deleted == False).first()
+    role = db.query(_models.Role).filter(
+        _models.Role.id == role_id,
+        _models.Role.is_deleted == False
+    ).first()
+
     if role is None:
         raise _fastapi.HTTPException(status_code=404, detail="Role not found")
-  
-    # permissions = db.query(
-    #     _models.Resource.name.label("resource_name"),
-    #     _models.Permission.access_type,
-    #     _models.Role.org_id,
-    #     _models.Role.status,
-    #     _models.Permission.id.label("permission_id"),
-    #     _models.Role.id.label("role_id"),
-    #     _models.Resource.code,
-    #     _models.Resource.link,
-    #     _models.Resource.icon,
-    #     _models.Resource.is_parent,
-    #     _models.Resource.parent
-    # ).join(
-    #     _models.Permission, _models.Resource.id == _models.Permission.resource_id
-    # ).join(
-    #     _models.Role, _models.Permission.role_id == _models.Role.id
-    # ).filter(
-    #     _models.Permission.role_id == role_id,
-    #     _models.Permission.is_deleted == False
-    # ).options(
-    #     _orm.joinedload(_models.Resource.children)
-    # )
-    permissions = db.query(_models.Resource).options(_orm.joinedload(_models.Resource.children)).all()
-    print(permissions)
 
+    resources = db.query(
+        _models.Resource
+    ).options(
+        _orm.joinedload(_models.Resource.children)
+    ).all()
 
-    return permissions
+    permissions = db.query(
+        _models.Permission
+    ).filter(
+        _models.Permission.role_id == role_id,
+        _models.Permission.is_deleted == False
+    ).all()
+    
+    permission_dict = {permission.resource_id: permission.access_type for permission in permissions}
+
+    def process_resource(resource) -> Dict[str, Any]:
+        return {
+            "id": resource.id,
+            "name": resource.name,
+            "code": resource.code,
+            "parent": resource.parent,
+            "is_parent": resource.is_parent,
+            "is_root": resource.is_root,
+            "link": resource.link,
+            "icon": resource.icon,
+            "access_type": permission_dict.get(resource.id),
+            "children": [process_resource(child) for child in resource.children] #  if not child.is_parent
+        }
+
+    # Filter root resources and build the response
+    root_resources = [resource for resource in resources if resource.is_root]
+    result = [process_resource(resource) for resource in root_resources]
+
+    return result
 
 
 async def get_role(role_id: int, db: _orm.Session):
@@ -506,7 +524,11 @@ async def delete_role(role_id: int, db: _orm.Session):
     return {"detail": "Role deleted successfully"}
 
 async def get_all_resources(db: _orm.Session):
-    return db.query(_models.Resource).filter(_models.Resource.is_deleted == False).all()
+    data = db.query(_models.Resource).filter(_models.Resource.is_deleted == False).options(
+        _orm.joinedload(_models.Resource.children)
+    ).order_by(_models.Resource.id).all()
+    data = [d for d in data if d.is_root]
+    return data
 
 async def get_Total_count_staff(org_id: int, db: _orm.Session = _fastapi.Depends(get_db)) -> int:
     total_staffs = db.query(func.count(models.User.id)).filter(
