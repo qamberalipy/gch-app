@@ -32,6 +32,17 @@ class WorkoutLevel(PyEnum):
     advanced = "Advanced"
     expert = "Expert"
 
+class VisibleFor(PyEnum):
+    only_myself = 'Only Myself'
+    staff_of_my_club = 'Staff of My Club'
+    members_of_my_club = 'Members of My Club'
+    everyone_in_my_club = 'Everyone in My Club'
+
+class UserType(PyEnum):
+    staff = 'Staff'
+    member = 'Member'
+    coach = 'Coach'
+
 
 class Workout(_database.Base):
     __tablename__ = "workout"
@@ -40,10 +51,13 @@ class Workout(_database.Base):
     org_id = Column(Integer)
     workout_name = Column(String, nullable=False)
     description = Column(String, nullable=True)
+    visible_for = Column(Enum(VisibleFor), nullable=False)
     goals = Column(Enum(WorkoutGoal), nullable=False)
     level = Column(Enum(WorkoutLevel), nullable=False)
     notes = Column(String, nullable=True)
     weeks = Column(Integer, nullable=False)
+    create_user_type = Column(Enum(UserType), nullable=False)
+    update_user_type = Column(Enum(UserType))
     created_by = Column(Integer)
     updated_by = Column(Integer)
     created_at = Column(DateTime, default=datetime.now)
@@ -66,6 +80,8 @@ class WorkoutDay(_database.Base):
     day_name = Column(String, nullable=False)
     week = Column(Integer, nullable=False)
     day = Column(Integer, nullable=False)
+    create_user_type = Column(Enum(UserType), nullable=False)
+    update_user_type = Column(Enum(UserType))
     created_by = Column(Integer)
     updated_by = Column(Integer)
     created_at = Column(DateTime, default=datetime.now)
@@ -100,6 +116,8 @@ class WorkoutDayExercise(_database.Base):
     intensity_type = Column(Enum(ExerciseIntensity), default=ExerciseIntensity.max)
     percentage_of_1rm = Column(Float, nullable=True)
     notes = Column(String, nullable=True)
+    create_user_type = Column(Enum(UserType), nullable=False)
+    update_user_type = Column(Enum(UserType))
     created_by = Column(Integer)
     updated_by = Column(Integer)
     created_at = Column(DateTime, default=datetime.now)
