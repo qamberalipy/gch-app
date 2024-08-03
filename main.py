@@ -49,14 +49,7 @@ async def authorization(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
 ):
 
-    authorization = credentials.credentials
-
-    if not authorization or not authorization.startswith("Bearer"):
-        raise HTTPException(
-            status_code=401, detail="Invalid or missing access token"
-        )
-
-    token = authorization.split("Bearer ")[1]
+    token = credentials.credentials
     token_expection = HTTPException(
         status_code=HTTP_401_UNAUTHORIZED,
         detail="Token Expired or Invalid",
@@ -66,11 +59,8 @@ async def authorization(
         payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
     except:
         raise token_expection
-
-
     if (time.time() - payload["token_time"]) > int(JWT_EXPIRY):
         raise token_expection
-
     request.state.user = payload
 
 
