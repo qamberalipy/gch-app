@@ -61,6 +61,7 @@ class Workout(_database.Base, HouseKeeping):
     level: Mapped[WorkoutLevel] = mapped_column(Enum(WorkoutLevel), nullable=False)
     notes: Mapped[str] = mapped_column(String, nullable=True)
     weeks: Mapped[int] = mapped_column(Integer, nullable=False)
+    img_url: Mapped[str] = mapped_column(String, nullable=True)
 
     days = relationship(
         "WorkoutDay",

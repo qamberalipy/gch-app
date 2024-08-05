@@ -1,8 +1,9 @@
 from datetime import datetime
-from typing import Annotated, List
+from typing import Annotated, List, Literal
 from typing_extensions import Optional
 from pydantic import AfterValidator, BaseModel, Field, validator
 
+from ..Exercise.schema import ExerciseBase
 from .models import ExerciseIntensity, ExerciseType, VisibleFor, WorkoutGoal, WorkoutLevel
 
 
@@ -31,6 +32,7 @@ class WorkoutDayExerciseBase(MyBaseModel):
 
 class WorkoutDayExerciseRead(WorkoutDayExerciseBase):
     id: int
+    exercise: Optional[ExerciseBase] = None
     created_at: datetime
     updated_at: Optional[datetime]
     created_by: int
@@ -75,6 +77,8 @@ class WorkoutUpdate(MyBaseModel):
     notes: Optional[str] = None
     weeks: Optional[int] = None
 
+
+columns = list(WorkoutRead.model_fields.keys())
 class WorkoutFilter(MyBaseModel):
     workout_name: Optional[str] = None
     goals: Optional[WorkoutGoal] = None
@@ -83,6 +87,8 @@ class WorkoutFilter(MyBaseModel):
     include_days: Optional[bool] = False
     include_days_and_exercises: Optional[bool] = False
     created_by_user: Optional[bool] = None
+    sort_column: Optional[Literal[*tuple(columns)]] = None
+    sort_dir: Optional[Literal["asc", "desc"]] = "asc"
 
 class WorkoutDayCreate(WorkoutDayBase):
     pass
