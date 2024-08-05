@@ -204,6 +204,8 @@ async def get_roles(org_id: Optional[int] = None, role_id: Optional[int] = None,
         
         if not org_id and not role_id:
             raise HTTPException(status_code=400, detail="Provide either org_id or role_id")
+        if org_id and role_id:
+            raise HTTPException(status_code=400, detail="Provide either org_id or role_id, not both")
         if org_id:
             print("In org")
             roles = await _services.get_all_roles(org_id, db)
