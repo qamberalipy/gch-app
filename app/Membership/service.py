@@ -321,6 +321,11 @@ def get_facility_by_org_id(org_id : int , params : _schemas.FacilityFilterParams
         facilities_query = facilities_query.filter(or_(
             _models.Facility.name.ilike(params.search_key)
         ))
+        
+    if params.status is not None:
+        facilities_query = facilities_query.filter(_models.Facility.status == params.status)
+
+    
     return facilities_query.all()
 
 def get_facility_by_id(facility_id: int,db: _orm.Session):

@@ -20,6 +20,7 @@ import bcrypt as _bcrypt
 from . import models, schema
 import logging
 from app.Exercise.service import extract_columns
+from collections import defaultdict
 
 # Load environment variables
 
@@ -311,31 +312,28 @@ async def create_role(role: _schemas.RoleCreate, db: _orm.Session = _fastapi.Dep
 
 
 async def get_all_roles(org_id: int, db: _orm.Session):
-    return db.query(_models.Role.name.label("role_name"), _models.Role.id.label("role_id"))\
+    data = db.query(_models.Role.name, _models.Role.id, _models.Role.status)\
         .filter(_models.Role.is_deleted == False, _models.Role.org_id == org_id).all()
+    data = [{"id": role.id, "name": role.name, "status": role.status} for role in data]
 
-    data = [{"role_name": role_name, "role_id": role_id} for role_name, role_id in data]
     return data
 
-# async def test_get_role(role_id: int, db: _orm.Session):
-#     role = db.query(_models.Role).filter(_models.Role.id == role_id, _models.Role.is_deleted == False).first()
-#     if role is None:
-#         raise _fastapi.HTTPException(status_code=404, detail="Role not found")
-#     print("Hello")
-#     permissions = db.query(
-#         _models.Resource,
-#     ).options(
-#         _orm.joinedload(_models.Resource.children),
-#     ).filter(
-#         # _models.Resource.is_parent == True,
-#         # _models.Permission.role_id == role_id,
-#         _models.Permission.is_deleted == False,
-#     ).all()
-#     print(permissions)
-#     permissions = [p for p in permissions if p.is_root]
-#     # permission_pydantic = pydantic.parse_obj_as(List[_schemas.RoleRead], permissions)
-#     return permissions
+async def temp_get_role(role_id: int, db: _orm.Session):
+    role = db.query(_models.Role).filter(_models.Role.id == role_id, _models.Role.is_deleted == False).first()
+    if role is None:
+        raise _fastapi.HTTPException(status_code=404, detail="Role not found")
+    
+    permissions = db.query(_models.Resource.name.label("resource_name"), _models.Permission.access_type, _models.Role.org_id, 
+        _models.Role.status, _models.Permission.id.label("permission_id"), _models.Role.id.label("role_id"), _models.Resource.code, 
+        _models.Resource.link, _models.Resource.icon, _models.Resource.is_parent, _models.Resource.parent)\
+        .join(_models.Permission, _models.Resource.id == _models.Permission.resource_id)\
+        .join(_models.Role, _models.Permission.role_id == _models.Role.id)\
+        .filter(_models.Permission.role_id == role_id, _models.Permission.is_deleted == False).all()
 
+    return permissions
+
+
+from collections import defaultdict
 
 async def test_get_role(role_id: int, db: _orm.Session):
     role = db.query(_models.Role).filter(
