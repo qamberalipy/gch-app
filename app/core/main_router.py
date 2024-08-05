@@ -174,6 +174,7 @@ async def register_mobileclient(client: ClientCreateApp,db: _orm.Session = Depen
 async def login_client(client_data: ClientLogin, db: _orm.Session = Depends(get_db)):
     try:
       result = await _client_service.login_client(client_data.org_id,client_data.email_address, client_data.wallet_address, db)
+      print("result",result)
       return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")

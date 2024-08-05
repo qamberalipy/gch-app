@@ -4,7 +4,7 @@ import string
 from typing import List
 import jwt
 from pydantic import ValidationError
-from sqlalchemy import asc, desc, func, or_
+from sqlalchemy import asc, case, desc, func, or_
 import sqlalchemy.orm as _orm
 from sqlalchemy.sql import and_
 import email_validator as _email_check
@@ -277,50 +277,162 @@ async def get_total_clients(
     return total_clients
 
 
+# def get_filtered_clients(
+#     db: _orm.Session,
+#     org_id:int,
+#     params: _schemas.ClientFilterParams
+
+# ) -> List[_schemas.ClientFilterRead]:
+#     # Create a base query with the necessary joins
+    
+#     query = db.query(
+#         _models.Client.id,
+#         _models.Client.own_member_id,
+#         _models.Client.first_name,
+#         _models.Client.last_name,
+#         _models.Client.phone,
+#         _models.Client.mobile_number,
+#         _models.Client.check_in,
+#         _models.Client.last_online,
+#         _models.Client.client_since,
+#         func.coalesce(
+#             _models.Client.first_name,
+#             db.query(_models.Client.first_name).filter(_models.Client.id == _models.Client.business_id)
+#         ).label("business_name"),
+#         _coach_models.Coach.first_name.label("coach_name")
+#     ).join(
+#         _models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id
+#     ).join(
+#         _models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id
+#     ).join(
+#         _models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id
+#     ).join(
+#         _coach_models.Coach, _models.ClientCoach.coach_id == _coach_models.Coach.id
+#     ).filter(
+#         _models.ClientOrganization.org_id == org_id,
+#         _models.ClientOrganization.is_deleted == False,
+#         _models.Client.is_deleted==False,
+#         _coach_models.Coach.is_deleted == False
+#     )
+
+#     sort_order = (
+#         desc(_models.Client.created_at)
+#         if params.sort_order == "desc"
+#         else asc(_models.Client.created_at)
+#     )
+
+#     # Apply filters conditionally
+
+#     if params.member_name:
+#         query = query.filter(or_(
+#             _models.Client.first_name.ilike(f"%{params.member_name}%"),
+#             _models.Client.last_name.ilike(f"%{params.member_name}%")
+#         ))
+
+#     if params.status:
+#         query = query.filter(
+#             _models.ClientOrganization.client_status.ilike(f"%{params.status}%")
+#         )
+
+#     if params.coach_assigned:
+#         query = query.filter(_models.ClientCoach.coach_id == params.coach_assigned)
+
+#     if params.membership_plan:
+#         query = query.filter(
+#             _models.ClientMembership.membership_plan_id == params.membership_plan
+#         )
+
+#     if params.search_key:
+#         search_pattern = f"%{params.search_key}%"
+#         query = query.filter(
+#             or_(
+#                 _models.Client.wallet_address.ilike(search_pattern),
+#                 _models.Client.profile_img.ilike(search_pattern),
+#                 _models.Client.own_member_id.ilike(search_pattern),
+#                 _models.Client.first_name.ilike(search_pattern),
+#                 _models.Client.last_name.ilike(search_pattern),
+#                 _models.Client.gender.ilike(search_pattern),
+#                 _models.Client.email.ilike(search_pattern),
+#                 _models.Client.phone.ilike(search_pattern),
+#                 _models.Client.mobile_number.ilike(search_pattern),
+#                 _models.Client.notes.ilike(search_pattern),
+#                 _models.Client.language.ilike(search_pattern),
+#                 _models.Client.city.ilike(search_pattern),
+#                 _models.Client.zipcode.ilike(search_pattern),
+#                 _models.Client.address_1.ilike(search_pattern),
+#                 _models.Client.address_2.ilike(search_pattern),
+#             )
+#         )
+
+#     # Add order by created_at and limit/offset for pagination
+#     query = query.order_by(sort_order).offset(params.offset).limit(params.limit)
+#     clients = query.all()
+#     print(clients)
+#     return [
+#         _schemas.ClientFilterRead(
+#             id=client.id,
+#             own_member_id=client.own_member_id,
+#             first_name=client.first_name,
+#             last_name=client.last_name,
+#             phone=client.phone,
+#             mobile_number=client.mobile_number,
+#             check_in=client.check_in,
+#             last_online=client.last_online,
+#             client_since=client.client_since,
+#             business_name=client.business_name,
+#             coach_name=client.coach_name,
+#         )
+#         for client in clients
+#     ]
+
+
 def get_filtered_clients(
     db: _orm.Session,
-    org_id:int,
+    org_id: int,
     params: _schemas.ClientFilterParams
-
 ) -> List[_schemas.ClientFilterRead]:
-    # Create a base query with the necessary joins
+    BusinessClient = _orm.aliased(_models.Client)  # Alias for self-join
+
     query = db.query(
-        _models.Client.id,
-        _models.Client.own_member_id,
-        _models.Client.first_name,
-        _models.Client.last_name,
-        _models.Client.phone,
-        _models.Client.mobile_number,
-        _models.Client.check_in,
-        _models.Client.last_online,
-        _models.Client.client_since,
-        func.coalesce(
-            _models.Client.first_name,
-            db.query(_models.Client.first_name).filter(_models.Client.id == _models.Client.business_id)
-        ).label("business_name"),
-        _coach_models.Coach.first_name.label("coach_name")
-    ).join(
-        _models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id
+        *_models.Client.__table__.columns,
+        _models.ClientOrganization.org_id,
+        _models.ClientMembership.membership_plan_id,
+        func.array_agg(
+            func.json_build_object(
+                'id', func.coalesce(_models.ClientCoach.coach_id, 0),
+                'name', func.concat(
+                    func.coalesce(_coach_models.Coach.first_name, ""),
+                    ' ',
+                    func.coalesce(_coach_models.Coach.last_name, "")
+                )
+            )
+        ).label('coaches'),
+        func.coalesce(BusinessClient.first_name + ' ' + BusinessClient.last_name, _models.Client.first_name + ' ' + _models.Client.last_name).label('business_name')
+    ).outerjoin(
+        BusinessClient, _models.Client.business_id == BusinessClient.id
     ).join(
         _models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id
     ).join(
-        _models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id
+        _coach_models.Coach, _coach_models.Coach.id == _models.ClientCoach.coach_id
     ).join(
-        _coach_models.Coach, _models.ClientCoach.coach_id == _coach_models.Coach.id
+        _models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id
+    ).join(
+        _models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id
     ).filter(
-        _models.ClientOrganization.org_id == org_id,
-        _models.ClientOrganization.is_deleted == False,
-        _models.Client.is_deleted==False,
-        _coach_models.Coach.is_deleted == False
+        _models.Client.is_deleted == False,
+        _models.ClientOrganization.org_id == org_id
+    ).group_by(
+        _models.Client.id,
+        _models.ClientOrganization.org_id,
+        _models.ClientMembership.membership_plan_id,
+        BusinessClient.id  # Group by BusinessClient.id to include in select
     )
-
+    total_counts = db.query(func.count()).select_from(query.subquery()).scalar()
     sort_order = (
         desc(_models.Client.created_at)
         if params.sort_order == "desc"
         else asc(_models.Client.created_at)
     )
-
-    # Apply filters conditionally
 
     if params.member_name:
         query = query.filter(or_(
@@ -362,143 +474,57 @@ def get_filtered_clients(
                 _models.Client.address_2.ilike(search_pattern),
             )
         )
-
-    # Add order by created_at and limit/offset for pagination
+    filtered_counts = db.query(func.count()).select_from(query.subquery()).scalar()
     query = query.order_by(sort_order).offset(params.offset).limit(params.limit)
-    clients = query.all()
-    print(clients)
-    return [
-        _schemas.ClientFilterRead(
-            id=client.id,
-            own_member_id=client.own_member_id,
-            first_name=client.first_name,
-            last_name=client.last_name,
-            phone=client.phone,
-            mobile_number=client.mobile_number,
-            check_in=client.check_in,
-            last_online=client.last_online,
-            client_since=client.client_since,
-            business_name=client.business_name,
-            coach_name=client.coach_name,
-        )
-        for client in clients
-    ]
+    db_clients = query.all()
 
+    clients = []
+    for coach in db_clients:
+        clients.append(_schemas.ClientFilterRead(**coach._asdict()))
 
+    if clients:
+        return {"data":clients,"total_counts":total_counts,"filtered_counts": filtered_counts}
+    else:
+        return None
+  
+    
 async def get_client_byid(db: _orm.Session, client_id: int) -> _schemas.ClientByID:
-    query = (
-        db.query(
-            _models.Client.id,
-            _models.Client.wallet_address,
-            _models.Client.profile_img,
-            _models.Client.own_member_id,
-            _models.Client.first_name,
-            _models.Client.last_name,
-            _models.Client.gender,
-            _models.Client.dob,
-            _models.Client.email,
-            _models.Client.phone,
-            _models.Client.mobile_number,
-            _models.Client.notes,
-            _models.Client.source_id,
-            _models.Client.language,
-            _models.Client.is_business,
-            _models.Client.business_id,
-            _models.Client.country_id,
-            _models.Client.city,
-            _models.Client.zipcode,
-            _models.Client.address_1,
-            _models.Client.address_2,
-            _models.Client.height,
-            _models.Client.weight,
-            _models.Client.bmi,
-            _models.Client.circumference_waist_navel,
-            _models.Client.fat_percentage,
-            _models.Client.muscle_percentage,
-            _models.Client.activated_on,
-            _models.Client.check_in,
-            _models.Client.last_online,
-            _models.Client.client_since,
-            _models.Client.created_at,
-            _models.Client.updated_at,
-            _models.Client.created_by,
-            _models.Client.updated_by,
-            _models.Client.is_deleted,
+    query = db.query(
+            *_models.Client.__table__.columns,
             _models.ClientOrganization.org_id,
             _models.ClientMembership.membership_plan_id,
-        )
-        .join(_models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id)
-        .join(_models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id)
-        .join(_models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id)
-        .filter(_models.Client.id == client_id,
-                _models.Client.is_deleted == False
+            func.array_agg(
+            func.json_build_object(
+                'id', func.coalesce(_models.ClientCoach.coach_id, 0),
+                'name', func.concat(
+                    func.coalesce(_coach_models.Coach.first_name, ""), 
+                    ' ', 
+                    func.coalesce(_coach_models.Coach.last_name, "")
+                )
             )
-    )
-
-    result = query.first()
-    if not result:
-        return None
-
-    business_name = None
-    if result.is_business and result.business_id:
-        business_client = (
-            db.query(_models.Client)
-            .filter(_models.Client.id == result.business_id)
-            .first()
+        ).label('coaches')
+        ).join(
+            _models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id
+        ).join(
+            _coach_models.Coach, _coach_models.Coach.id == _models.ClientCoach.coach_id
+        ).join(
+            _models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id
+        ).join(
+            _models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id
+        ).filter(
+            _models.Client.id == client_id,
+            _models.Client.is_deleted == False
+        ).group_by(
+            _models.Client.id,
+            _models.ClientOrganization.org_id,
+            _models.ClientMembership.membership_plan_id
         )
-        if business_client:
-            business_name = business_client.first_name
+    
 
-    coaches = db.query(
-    _models.ClientCoach.coach_id,
-        func.concat(_coach_models.Coach.first_name, ' ', _coach_models.Coach.last_name).label("coach_name")
-    ).join(
-        _coach_models.Coach, _coach_models.Coach.id == _models.ClientCoach.coach_id
-    ).filter(
-        _models.ClientCoach.client_id == client_id
-    ).all()
+    db_client=query.first()
 
-    coach_list = [{"coach_id": coach.coach_id, "coach_name": coach.coach_name} for coach in coaches]
-
-    return _schemas.ClientByID(
-        id=result.id,
-        wallet_address=result.wallet_address,
-        profile_img=result.profile_img,
-        own_member_id=result.own_member_id,
-        first_name=result.first_name,
-        last_name=result.last_name,
-        gender=result.gender,
-        dob=result.dob,
-        email=result.email,
-        phone=result.phone,
-        mobile_number=result.mobile_number,
-        notes=result.notes,
-        source_id=result.source_id,
-        language=result.language,
-        is_business=result.is_business,
-        business_id=result.business_id,
-        country_id=result.country_id,
-        city=result.city,
-        zipcode=result.zipcode,
-        address_1=result.address_1,
-        address_2=result.address_2,
-        height=result.height,
-        weight=result.weight,
-        bmi=result.bmi,
-        circumference_waist_navel=result.circumference_waist_navel,
-        fat_percentage=result.fat_percentage,
-        muscle_percentage=result.muscle_percentage,
-        activated_on=result.activated_on,
-        check_in=result.check_in,
-        last_online=result.last_online,
-        client_since=result.client_since,
-        created_at=result.created_at,
-        updated_at=result.updated_at,
-        created_by=result.created_by,
-        updated_by=result.updated_by,
-        is_deleted=result.is_deleted,
-        business_name=business_name,
-        coach_id=coach_list,
-        org_id=result.org_id,
-        membership_plan_id=result.membership_plan_id
-    )
+    if db_client:
+        return _schemas.ClientByID(**db_client._asdict())
+    else:
+        return None
+    

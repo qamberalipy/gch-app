@@ -99,7 +99,7 @@ class RegisterClient(ClientBase):
 
 class ClientRead(ClientBase):
     id: int
-    coach_id: List[int]
+    coach_id: Optional[List[int]]=[]
     
     class Config:
         from_attributes=True
@@ -148,7 +148,7 @@ class ClientByID(pydantic.BaseModel):
     updated_by: Optional[int] = None
     is_deleted: bool
     business_name: Optional[str] = None
-    coach_id: Optional[List[Dict[str, Any]]] = []
+    coaches: Optional[List[Dict]] = []
     org_id: Optional[int] = None
     membership_plan_id: Optional[int] = None
 
@@ -225,7 +225,7 @@ class ClientFilterRead(pydantic.BaseModel):
     last_online: Optional[datetime.datetime]
     client_since: datetime.date
     business_name: Optional[str]
-    coach_name: Optional[str]
+    coaches: Optional[List[Dict]] = []
 
     class Config:
         from_attributes=True
