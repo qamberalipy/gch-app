@@ -154,7 +154,7 @@ def get_filters(
         offset = offset
     )
 
-@router.get("/member", response_model=List[_schemas.ClientFilterRead], tags=["Member Router"])
+@router.get("/member",tags=["Member Router"])
 async def get_client( 
     org_id: Annotated[int, Query(title="Organization id")],
     filters: Annotated[_schemas.ClientFilterParams, Depends(get_filters)] = None,

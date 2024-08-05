@@ -91,7 +91,7 @@ class CoachLogin(pydantic.BaseModel):
 
 class CoachLoginResponse(pydantic.BaseModel):
     is_registered: bool
-    coach: Optional[CoachRead] = None
+    coach: Optional[CoachRead] = []
     access_token: Optional[Dict[str, str]] = None
     
 class CoachCount(pydantic.BaseModel):
