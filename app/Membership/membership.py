@@ -132,12 +132,14 @@ def get_filters(
 
     search_key: Annotated[str | None, Query(title="Search Key")] = None,
     sort_order: Annotated[str,Query(title="Sorting Order")] = 'desc',
+    status : Annotated[str | None, Query(title="Status")] = None,
     limit: Annotated[int, Query(description="Pagination Limit")] = None,
     offset: Annotated[int, Query(description="Pagination offset")] = None
 ):
     return _schemas.FacilityFilterParams(
         search_key=search_key,
         sort_order=sort_order,
+        status = status,
         limit=limit,
         offset = offset
     )

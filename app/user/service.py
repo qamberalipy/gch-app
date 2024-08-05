@@ -20,6 +20,7 @@ import bcrypt as _bcrypt
 from . import models, schema
 import logging
 from app.Exercise.service import extract_columns
+from collections import defaultdict
 
 # Load environment variables
 
@@ -311,9 +312,9 @@ async def create_role(role: _schemas.RoleCreate, db: _orm.Session = _fastapi.Dep
 
 
 async def get_all_roles(org_id: int, db: _orm.Session):
-    data = db.query(_models.Role.name, _models.Role.id)\
+    data = db.query(_models.Role.name, _models.Role.id, _models.Role.status)\
         .filter(_models.Role.is_deleted == False, _models.Role.org_id == org_id).all()
-    data = [{"id": role.id, "name": role.name} for role in data]
+    data = [{"id": role.id, "name": role.name, "status": role.status} for role in data]
     return data
 
 async def temp_get_role(role_id: int, db: _orm.Session):

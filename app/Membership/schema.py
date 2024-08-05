@@ -77,6 +77,7 @@ class FacilityRead(FacilityBase):
 class FacilityFilterParams(pydantic.BaseModel):
     search_key: Optional[str] = None
     sort_order: Optional[str] = 'desc'
+    status: Optional[bool] = True
     limit:Optional[int] = None
     offset:Optional[int] = None
         
