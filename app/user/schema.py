@@ -176,6 +176,7 @@ class StaffFilterParams(pydantic.BaseModel):
     search_key: Optional[str] = None
     staff_name: Optional[str] = None
     role_name: Optional[str] = None
+    sort_key:Optional[str]=None
     sort_order: Optional[str] = "asc"
     limit: Optional[int] = 10
     offset: Optional[int] = 0

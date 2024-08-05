@@ -142,3 +142,9 @@ async def get_lead_by_id(lead_id:int,db: _orm.Session = Depends(get_db)):
     except DataError as e:
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
+
+@router.delete("/lead/{id}")
+async def delete_lead(id:int, db: _orm.Session = Depends(get_db)):
+    db_lead = await _services.delete_lead(id,db)
+    return db_lead       

@@ -447,9 +447,12 @@ def create_group(group: _schemas.GroupCreate,db: _orm.Session):
     db.refresh(db_group)
     return db_group
 
-def get_group_by_id(id:int,db: _orm.Session):
-    
-    return db.query(_models.Membership_group).filter(_models.Membership_group.id == id, _models.Membership_group.is_deleted == False).first()
+def get_group_by_id(id:int,db: _orm.Session=Depends(get_db)):
+    db_group=db.query(_models.Membership_group).filter(_models.Membership_group.id == id, _models.Membership_group.is_deleted == False).first()
+    if not db_group:
+        raise _fastapi.HTTPException(status_code=404, detail="Membership group not found")
+
+    return db_group
 
 
 def get_all_groups_by_org_id(db: _orm.Session, params: _schemas.StandardParams):
@@ -482,3 +485,10 @@ def update_group(group:_schemas.GroupUpdate,db:_orm.Session):
     return db_group    
     
     
+async def delete_group(id:int,db:_orm.Session=Depends(get_db)):
+    db_group=db.query(_models.Membership_group).filter(_models.Membership_group.id == id).first()
+    
+    if db_group:
+        db_group.is_deleted=True
+        db_group.updated_at = datetime.datetime.now()
+        db.commit()

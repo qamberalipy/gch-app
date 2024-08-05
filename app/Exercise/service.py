@@ -1,5 +1,5 @@
-from typing import Annotated
-from sqlalchemy import and_, desc, func, or_
+from typing import Annotated, Optional
+from sqlalchemy import and_, asc, desc, func, inspect, or_, select
 import sqlalchemy.orm as _orm
 import fastapi as _fastapi
 import fastapi.security as _security
@@ -178,108 +178,7 @@ def create_exercise_secondary_muscle(exercise_id,secondary_muscle_ids,db: _orm.S
     )for secondary_muscle_id in secondary_muscle_ids]    
     
     return db_exercise_secondary_muscle
-
-    
-async def get_exercise(org_id:int,params: _schemas.ExerciseFilterParams,db: _orm.Session = _fastapi.Depends(get_db)):
-
-    Exercise = aliased(_models.Exercise)
-    PrimaryMuscle = aliased(_models.Muscle)
-    SecondaryMuscle = aliased(_models.Muscle)
-    PrimaryJoint = aliased(_models.PrimaryJoint)
-    Equipment = aliased(_models.Equipment)
-
-    equipment_query = db.query(
-        _models.ExerciseEquipment.exercise_id,
-        func.json_agg(
-            func.json_build_object('id',Equipment.id, 'name',Equipment.equipment_name)
-        ).label('equipments')
-    ).join(
-        Equipment, _models.ExerciseEquipment.equipment_id == Equipment.id
-    ).group_by(_models.ExerciseEquipment.exercise_id).subquery()
-    
-    if params.equipment:
-        equipment_query = equipment_query.filter(_models.Equipment.id.in_(params.equipment))
-
-    primary_muscle_query = db.query(
-        _models.ExercisePrimaryMuscle.exercise_id,
-        func.json_agg(
-            func.json_build_object('id', func.coalesce(PrimaryMuscle.id,0), 'name', func.coalesce(PrimaryMuscle.muscle_name,""))
-        ).label('primary_muscles')
-    ).join(
-        PrimaryMuscle, _models.ExercisePrimaryMuscle.muscle_id == PrimaryMuscle.id
-    ).group_by(_models.ExercisePrimaryMuscle.exercise_id).subquery()
-
-
-    secondary_muscle_query = db.query(
-       _models.ExerciseSecondaryMuscle.exercise_id,
-        func.json_agg(
-            func.json_build_object('id', func.coalesce(SecondaryMuscle.id,0), 'name', func.coalesce(SecondaryMuscle.muscle_name,""))
-        ).label('secondary_muscles')
-    ).join(
-        SecondaryMuscle, _models.ExerciseSecondaryMuscle.muscle_id == SecondaryMuscle.id
-    ).group_by( _models.ExerciseSecondaryMuscle.exercise_id).subquery()
-
-
-    primary_joint_query = db.query(
-         _models.ExercisePrimaryJoint.exercise_id,
-        func.json_agg(
-            func.json_build_object('id', func.coalesce(PrimaryJoint.id,0), 'name', func.coalesce(PrimaryJoint.joint_name,""))
-        ).label('primary_joints')
-    ).join(
-        PrimaryJoint, _models.ExercisePrimaryJoint.primary_joint_id == PrimaryJoint.id
-    ).group_by(_models.ExercisePrimaryJoint.exercise_id).subquery()
-
-    query = db.query(
-    Exercise.exercise_name,
-    Exercise.visible_for,
-    Exercise.org_id,
-    Exercise.exercise_type,
-    Exercise.difficulty,
-    Exercise.sets,
-    Exercise.seconds_per_set,
-    Exercise.repetitions_per_set,
-    Exercise.rest_between_set,
-    Exercise.distance,
-    Exercise.speed,
-    Exercise.met_id,
-    Exercise.gif_url,
-    Exercise.video_url_male,
-    Exercise.video_url_female,
-    Exercise.thumbnail_male,
-    Exercise.thumbnail_female,
-    Exercise.image_url_female,
-    Exercise.image_url_male,
-    Exercise.id,
-    _models.ExerciseCategory.category_name,
-    equipment_query.c.equipments,
-    primary_muscle_query.c.primary_muscles,
-    secondary_muscle_query.c.secondary_muscles,
-    primary_joint_query.c.primary_joints
-    ).select_from(Exercise).join(
-    equipment_query, Exercise.id == equipment_query.c.exercise_id
-    ).join(_models.ExerciseCategory,Exercise.category_id == _models.ExerciseCategory.id).join(
-    primary_muscle_query, Exercise.id == primary_muscle_query.c.exercise_id
-    ).join(
-    secondary_muscle_query, Exercise.id == secondary_muscle_query.c.exercise_id
-    ).join(
-    primary_joint_query, Exercise.id == primary_joint_query.c.exercise_id).filter(
-    Exercise.is_deleted == False and Exercise.org_id==org_id)
-
-    if params.search_key!='' and params.search_key is not None:
-        search_pattern = f"%{params.search_key}%"
-        query = query.filter(or_(
-            _models.Exercise.exercise_name.ilike(search_pattern)))
-
-    if params.category!=0:
-        query = query.filter(_models.ExerciseCategory.id == params.category)
-
-    if params.primary_muscle:
-        query = query.filter(_models.Muscle.id.in_(params.primary_muscle))
-
-    query = query.offset(params.offset).limit(params.limit)
-
-    return query.all()
-
+ 
 
 def delete_exercise_data(exercise_id:int,equipment_ids:list[int]=None,primary_muscle_ids:list[int]=None,
 secondary_muscle_ids:list[int]=None,primary_joint_ids:list[int]=None,db: _orm.Session = _fastapi.Depends(get_db)):
@@ -309,47 +208,97 @@ secondary_muscle_ids:list[int]=None,primary_joint_ids:list[int]=None,db: _orm.Se
        ).delete(synchronize_session=False)    
 
 
-async def get_exercise_by_id(id:int,db: _orm.Session = _fastapi.Depends(get_db)):
+async def get_equipments(db: _orm.Session = _fastapi.Depends(get_db)):
+    return db.query(*_models.Equipment.__table__.columns)
 
-    Exercise = aliased(_models.Exercise)
+async def get_primary_joints(db: _orm.Session = _fastapi.Depends(get_db)):
+    return db.query(*_models.PrimaryJoint.__table__.columns)
+
+def get_filters(
+
+    search_key: Annotated[str, _fastapi.Query(title="Search Key")] = None,
+    category: Annotated[int , _fastapi.Query(title="Category")] = None,
+    equipment: Annotated[list[int] , _fastapi.Query(title="Equipment")] = None,
+    primary_muscle: Annotated[list[int],_fastapi.Query(title="Primary Muscle")]=None,
+    sort_key:Annotated[str, _fastapi.Query(title="Sort Key")] = None,
+    sort_order:Annotated[str, _fastapi.Query(title="Sort Order")] = 'asc',
+    limit: Annotated[int, _fastapi.Query(description="Pagination Limit")] = None,
+    offset: Annotated[int, _fastapi.Query(description="Pagination offset")] = None
+):
+    return _schemas.ExerciseFilterParams(
+        search_key=search_key,
+        category=category,
+        equipment=equipment,
+        primary_muscle=primary_muscle,
+        sort_key=sort_key,
+        sort_order=sort_order,
+        limit=limit,
+        offset = offset
+    )
+
+async def delete_exercise(id:int,db: _orm.Session = _fastapi.Depends(get_db)):
+    db_exercise=db.query(_models.Exercise).filter(and_(_models.Exercise.id==id,_models.Exercise.is_deleted==False)).first()
+
+    if db_exercise:
+        db_exercise.is_deleted = True
+        db.commit()    
+    else :
+        raise _fastapi.HTTPException(status_code=404, detail="Exercise not found")
+
+    return {"detail": "Exercise deleted successfully"}
+
+def extract_columns(query):
+    columns = []
+    if hasattr(query.statement, 'columns'):
+        columns = [col.name for col in query.statement.columns]
+    return columns
+
+
+async def get_exercise(params:Optional[_schemas.ExerciseFilterParams]=None,org_id:Optional[int]=None,id:Optional[int]=None,db: _orm.Session = _fastapi.Depends(get_db)):
+    
     PrimaryMuscle = aliased(_models.Muscle)
     SecondaryMuscle = aliased(_models.Muscle)
     PrimaryJoint = aliased(_models.PrimaryJoint)
     Equipment = aliased(_models.Equipment)
+    Exercise=aliased(_models.Exercise)
 
-    check_exercise=db.query(_models.Exercise).filter(_models.Exercise.id==id)
-    if not check_exercise:
-        raise _fastapi.HTTPException(status_code=404, detail="Exercise not found")
-
-    equipment_query = db.query(
-        _models.ExerciseEquipment.exercise_id,
-        func.json_agg(
-            func.json_build_object('id', func.coalesce(Equipment.id,0), 'name', func.coalesce(Equipment.equipment_name,""))
-        ).label('equipments')
-    ).join(
-        Equipment,and_(_models.ExerciseEquipment.equipment_id == Equipment.id,_models.ExerciseEquipment.exercise_id==id)
-    ).group_by(_models.ExerciseEquipment.exercise_id).subquery()
+    if id:
+        check_exercise=db.query(Exercise).filter(Exercise.id == id).first()
+        if not check_exercise:
+            raise _fastapi.HTTPException(status_code=400, detail="Exercise Not Found")  
     
+    if org_id:
+        check_organization=db.query(Exercise.org_id).filter(Exercise.org_id == org_id).first()
+        if not check_organization:
+            raise _fastapi.HTTPException(status_code=400, detail="Organization Not Found")
 
+ 
+    equipment_query = db.query(
+    _models.ExerciseEquipment.exercise_id,
+    func.json_agg(
+        func.json_build_object('id',Equipment.id, 'name',Equipment.equipment_name)
+    ).label('equipments')
+    ).join(
+        Equipment, _models.ExerciseEquipment.equipment_id == Equipment.id
+    ).group_by(_models.ExerciseEquipment.exercise_id)    
+ 
     primary_muscle_query = db.query(
         _models.ExercisePrimaryMuscle.exercise_id,
         func.json_agg(
             func.json_build_object('id', func.coalesce(PrimaryMuscle.id,0), 'name', func.coalesce(PrimaryMuscle.muscle_name,""))
         ).label('primary_muscles')
     ).join(
-        PrimaryMuscle, and_(_models.ExercisePrimaryMuscle.muscle_id == PrimaryMuscle.id, _models.ExercisePrimaryMuscle.exercise_id==id)
-    ).group_by(_models.ExercisePrimaryMuscle.exercise_id).subquery()
-
-
+        PrimaryMuscle, _models.ExercisePrimaryMuscle.muscle_id == PrimaryMuscle.id
+    ).group_by(_models.ExercisePrimaryMuscle.exercise_id)
+         
     secondary_muscle_query = db.query(
        _models.ExerciseSecondaryMuscle.exercise_id,
         func.json_agg(
             func.json_build_object('id', func.coalesce(SecondaryMuscle.id,0), 'name', func.coalesce(SecondaryMuscle.muscle_name,""))
         ).label('secondary_muscles')
     ).join(
-        SecondaryMuscle,and_(_models.ExerciseSecondaryMuscle.muscle_id == SecondaryMuscle.id,_models.ExerciseSecondaryMuscle.exercise_id==id)
-    ).group_by( _models.ExerciseSecondaryMuscle.exercise_id).subquery() 
-
+        SecondaryMuscle, _models.ExerciseSecondaryMuscle.muscle_id == SecondaryMuscle.id
+    ).group_by( _models.ExerciseSecondaryMuscle.exercise_id).subquery()
 
     primary_joint_query = db.query(
          _models.ExercisePrimaryJoint.exercise_id,
@@ -357,14 +306,24 @@ async def get_exercise_by_id(id:int,db: _orm.Session = _fastapi.Depends(get_db))
             func.json_build_object('id', func.coalesce(PrimaryJoint.id,0), 'name', func.coalesce(PrimaryJoint.joint_name,""))
         ).label('primary_joints')
     ).join(
-        PrimaryJoint,and_(_models.ExercisePrimaryJoint.primary_joint_id == PrimaryJoint.id,_models.ExercisePrimaryJoint.exercise_id==id)
+        PrimaryJoint, _models.ExercisePrimaryJoint.primary_joint_id == PrimaryJoint.id
     ).group_by(_models.ExercisePrimaryJoint.exercise_id).subquery()
+    
+    if params:
+        if params.equipment:
+            equipment_query = equipment_query.filter(_models.ExerciseEquipment.equipment_id.in_(params.equipment))
+
+        if params.primary_muscle:
+            primary_muscle_query = primary_muscle_query.filter(_models.ExercisePrimaryMuscle.muscle_id.in_(params.primary_muscle))
+
+    equipment_query=equipment_query.subquery()
+    primary_muscle_query=primary_muscle_query.subquery()
 
     query = db.query(
+
     Exercise.exercise_name,
     Exercise.visible_for,
     Exercise.org_id,
-    Exercise.category_id,
     Exercise.exercise_type,
     Exercise.difficulty,
     Exercise.sets,
@@ -395,32 +354,37 @@ async def get_exercise_by_id(id:int,db: _orm.Session = _fastapi.Depends(get_db))
     secondary_muscle_query, Exercise.id == secondary_muscle_query.c.exercise_id
     ).join(
     primary_joint_query, Exercise.id == primary_joint_query.c.exercise_id).filter(
-    Exercise.is_deleted == False).first()
+    Exercise.is_deleted == False)
+    
+    if params:
+        if params.search_key:
+            search_pattern = f"%{params.search_key}%"
+            query = query.filter(or_(
+                _models.Exercise.exercise_name.ilike(search_pattern)))
+
+        if params.category:
+            query = query.filter(_models.ExerciseCategory.id == params.category)
+
+        if params.sort_key in extract_columns(query):       
+            sort_order = desc(params.sort_key) if params.sort_order == "desc" else asc(params.sort_key)
+            query=query.order_by(sort_order)
+
+        elif params.sort_key is not None:
+            raise _fastapi.HTTPException(status_code=400, detail="Sorting column not found.")
+    
+        query = query.offset(params.offset).limit(params.limit)
+
+    if id:
+        query=query.filter(Exercise.id == id)
+        return query.first()
+    else:
+        query=query.filter(Exercise.org_id == org_id)
+        return query.all()
 
 
-    return query
 
 
-async def get_equipments(db: _orm.Session = _fastapi.Depends(get_db)):
-    return db.query(*_models.Equipment.__table__.columns)
 
-async def get_primary_joints(db: _orm.Session = _fastapi.Depends(get_db)):
-    return db.query(*_models.PrimaryJoint.__table__.columns)
 
-def get_filters(
 
-    search_key: Annotated[str, _fastapi.Query(title="Search Key")] = None,
-    category: Annotated[int , _fastapi.Query(title="Category")] = None,
-    equipment: Annotated[list[int] , _fastapi.Query(title="Equipment")] = None,
-    primary_muscle: Annotated[list[int],_fastapi.Query(title="Primary Muscle")]=None,
-    limit: Annotated[int, _fastapi.Query(description="Pagination Limit")] = None,
-    offset: Annotated[int, _fastapi.Query(description="Pagination offset")] = None
-):
-    return _schemas.ExerciseFilterParams(
-        search_key=search_key,
-        category=category,
-        equipment=equipment,
-        primary_muscle=primary_muscle,
-        limit=limit,
-        offset = offset
-    )
+

@@ -149,8 +149,7 @@ class MET(_database.Base):
     __tablename__ = 'met'
 
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
-    met_value = _sql.Column(_sql.Float, nullable=False)
-    met_description = _sql.Column(_sql.String, nullable=False)
+    met_value = _sql.Column(_sql.String, nullable=False)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
     created_at = _sql.Column(_sql.DateTime, default=datetime.now)

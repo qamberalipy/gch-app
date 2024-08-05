@@ -19,6 +19,7 @@ import os
 import bcrypt as _bcrypt
 from . import models, schema
 import logging
+from app.Exercise.service import extract_columns
 
 # Load environment variables
 
@@ -222,20 +223,18 @@ async def delete_staff(staff_id: int, db: _orm.Session):
 
 def get_filtered_staff(
     db: _orm.Session,
+    org_id,
     params: _schemas.StaffFilterParams
 ) -> List[_schemas.StaffFilterRead]:
-    
-    sort_order = desc(_models.User.created_at) if params.sort_order == "desc" else asc(_models.User.created_at)
     
     query = db.query(
         *models.User.__table__.columns,_models.Role.name.label("role_name")    
     ).join(
         _models.Role, _models.User.role_id == _models.Role.id
     ).filter(
-        _models.User.org_id == params.org_id,
+        _models.User.org_id == org_id,
         _models.User.is_deleted == False
-    ).order_by(
-        desc(_models.User.created_at))
+    )
 
     if params.staff_name:
         query = query.filter(or_(
@@ -261,6 +260,14 @@ def get_filtered_staff(
             _models.User.address_1.ilike(search_pattern),
             _models.User.address_2.ilike(search_pattern)
         ))
+
+    if params.sort_key in extract_columns(query):       
+        sort_order = desc(params.sort_key) if params.sort_order == "desc" else asc(params.sort_key)
+        query=query.order_by(sort_order)
+
+    elif params.sort_key is not None:
+            raise _fastapi.HTTPException(status_code=400, detail="Sorting column not found.")
+        
 
     staff = query.all()
 
@@ -537,18 +544,19 @@ async def get_Total_count_staff(org_id: int, db: _orm.Session = _fastapi.Depends
     print(total_staffs)
     return total_staffs
 
-
 def get_filters(
 
     search_key: Annotated[str, _fastapi.Query(title="Search Key")] = None,
     staff_name: Annotated[str , _fastapi.Query(title="Staff Name")] = None,
     role_name: Annotated[str,_fastapi.Query(title="Role Name")]=None,
+    sort_key: Annotated[str,_fastapi.Query(title="Sort Key")]=None,
     sort_order: Annotated[str,_fastapi.Query(title="Sort Order")]=None,
     limit: Annotated[int, _fastapi.Query(description="Pagination Limit")] = None,
     offset: Annotated[int, _fastapi.Query(description="Pagination offset")] = None):
     
     return _schemas.StaffFilterParams(
         search_key=search_key,
+        sort_key=sort_key,
         sort_order=sort_order,
         staff_name=staff_name,
         role_name=role_name,

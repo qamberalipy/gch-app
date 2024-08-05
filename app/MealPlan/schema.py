@@ -61,6 +61,7 @@ class MealPlanFilterParams(BaseModel):
     assign_to : Optional[str] = None
     food_nutrients : Optional[str] = None
     search_key: Optional[str] = None
+    sort_key:Optional[str] = None
     sort_order: Optional[str] = None
     status: Optional[str] = None
     limit:Optional[int] = None

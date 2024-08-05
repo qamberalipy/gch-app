@@ -366,5 +366,9 @@ def update_group(group:_schemas.GroupUpdate,db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Integrity error occurred")
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
-    
+
+@router.delete("/group/{id}",tags=["Group API"])
+async def delete_group(id:int, db: _orm.Session = Depends(get_db)):
+    db_group = await _services.delete_group(id,db)
+    return db_group   
 

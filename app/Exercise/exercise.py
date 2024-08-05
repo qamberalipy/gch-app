@@ -99,13 +99,13 @@ async def create_exercise(exercise: _schemas.ExerciseCreate, db: _orm.Session = 
 @router.get("/exercise", response_model=List[_schemas.ExerciseRead])
 async def get_exercise(org_id:int,filters: Annotated[_schemas.ExerciseFilterParams, Depends(_services.get_filters)] = None,db: _orm.Session = Depends(get_db)):
     
-        exercises = await _services.get_exercise(org_id,params=filters,db=db)
+        exercises = await _services.get_exercise(org_id=org_id,params=filters,db=db)
         return exercises   
 
 @router.get("/exercise/{id}", response_model=_schemas.ExerciseRead,summary="Get Exercise By ID")
 async def get_exercise(id:int,db: _orm.Session = Depends(get_db)):
     
-    exercises = await _services.get_exercise_by_id(id,db)
+    exercises = await _services.get_exercise(id=id,db=db)
     return exercises   
 
 @router.put("/exercise",response_model=_schemas.ExerciseUpdate)
@@ -114,3 +114,7 @@ async def update_exercise(data:_schemas.ExerciseUpdate,db: _orm.Session = Depend
     return exercises
 
 
+@router.delete("/exercise/{id}")
+async def delete_coach(id:int, db: _orm.Session = Depends(get_db)):
+    db_exercise = await _services.delete_exercise(id,db)
+    return db_exercise

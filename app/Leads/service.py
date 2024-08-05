@@ -42,7 +42,14 @@ def get_db():
         db.close()
 
 async def get_lead_by_id(id: int, db: _orm.Session = _fastapi.Depends(get_db)):
-    return db.query(_models.Leads).filter(_models.Leads.id == id).first()
+
+    db_lead=db.query(_models.Leads).filter(_models.Leads.id == id).first()
+    
+    if not db_lead:
+        raise _fastapi.HTTPException(status_code=404, detail="Lead not found")
+
+    return db_lead
+
 
 async def get_lead_by_email(email_address: str, db: _orm.Session = _fastapi.Depends(get_db)):
     return db.query(_models.Leads).filter(_models.Leads.email == email_address).first()
@@ -149,4 +156,16 @@ async def get_leads(db: _orm.Session,params):
     leads = query.all()
     return leads
     
+
+async def delete_lead(id:int, db: _orm.Session = _fastapi.Depends(get_db)):
+    db_lead=db.query(_models.Leads).filter(_models.Lead.id == id).first()
+
+    if db_lead:
+        db_lead.is_deleted=True
+        db_lead.updated_at=datetime.datetime.now()
+
+    else :
+        raise _fastapi.HTTPException(status_code=404, detail="Exercise not found")
+    
+    return {"detail":"Lead deleted successfully"}
 

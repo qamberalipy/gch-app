@@ -33,11 +33,12 @@ class Category(pydantic.BaseModel):
     category_name:str
 
 class ExerciseFilterParams(pydantic.BaseModel):
-    category : Optional[int] = None
-    equipment : Optional[List[int]] = None
-    primary_muscle: Optional[List[int]] = None
     search_key: Optional[str] = None
-    sort_order: Optional[str] = None
+    category : Optional[int] = None
+    equipment : Optional[List[int]] = []
+    primary_muscle: Optional[List[int]] = []
+    sort_key: Optional[str] = None
+    sort_order: Optional[str] = 'asc'
     limit:Optional[int] = None
     offset:Optional[int] = None
 

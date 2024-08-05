@@ -144,7 +144,7 @@ async def get_staff(
     db: _orm.Session = Depends(get_db)):
     try:
         
-        staff = _services.get_filtered_staff(db=db, params=filters)
+        staff = _services.get_filtered_staff(db=db,org_id=org_id,params=filters)
         return staff
     
     except IntegrityError as e:
