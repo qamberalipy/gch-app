@@ -226,6 +226,7 @@ class RoleRead(pydantic.BaseModel):
     resource_id: Optional[int] = None
     access_type: Optional[str] = None
     is_parent: Optional[bool] = None
+    is_root: Optional[bool] = None
     parent: Optional[str] = None
     code: Optional[str] = None
     link: Optional[str] = None
@@ -268,8 +269,12 @@ class ResourceRead(pydantic.BaseModel):
     code: Optional[str] = None
     parent: Optional[str] = None
     is_parent: Optional[bool] = None
+    is_root: Optional[bool] = None
     link: Optional[str] = None
     icon: Optional[str] = None
+    children: Optional[List['ResourceRead']] = []
 
     class Config:
         from_attributes = True
+
+ResourceRead.update_forward_refs()
