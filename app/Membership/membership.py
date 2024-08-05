@@ -128,21 +128,28 @@ def delete_facility(id:int, db: _orm.Session = Depends(get_db)):
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
+def get_filters(
+
+    search_key: Annotated[str | None, Query(title="Search Key")] = None,
+    sort_order: Annotated[str,Query(title="Sorting Order")] = 'desc',
+    limit: Annotated[int, Query(description="Pagination Limit")] = None,
+    offset: Annotated[int, Query(description="Pagination offset")] = None
+):
+    return _schemas.FacilityFilterParams(
+        search_key=search_key,
+        sort_order=sort_order,
+        limit=limit,
+        offset = offset
+    )
 
 @router.get("/facilities", response_model=List[_schemas.FacilityRead], tags=["Facility APIs"])
-def get_facilitys_by_org_id(org_id: int,request: Request, db: _orm.Session = Depends(get_db)):
+def get_facilitys_by_org_id(
+    org_id: int,
+    request: Request,
+    filters: Annotated[_schemas.FacilityFilterParams, Depends(get_filters)], 
+    db: _orm.Session = Depends(get_db)):
     try:    
-        params = {
-        "org_id": org_id,
-        "search_key": request.query_params.get("search_key"),
-        "sort_order": request.query_params.get("sort_order", "desc"),
-        "limit": request.query_params.get("limit", 10),
-        "offset": request.query_params.get("offset", 0)
-        }
-        print(params)
-        get_facility = _services.get_facility_by_org_id(
-            db,_schemas.StandardParams(**params)
-        )
+        get_facility = _services.get_facility_by_org_id(org_id, filters, db)
         return get_facility
     except IntegrityError as e:
         raise HTTPException(status_code=400, detail="Integrity error occurred")
