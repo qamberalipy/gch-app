@@ -108,7 +108,15 @@ class IncomeCategoryRead(IncomeCategoryBase):
     updated_by: Optional[int] = None
 
     class Config:
-        from_attributes = True      
+        from_attributes = True
+
+class IncomeCategoryFilterParams(pydantic.BaseModel):
+    search_key: Optional[str] = None
+    sort_order: Optional[str] = 'desc'
+    sort_key : Optional[str] = None
+    status: Optional[bool] = True
+    limit: Optional[int] = None
+    offset: Optional[int] = None
         
 class SaleTaxBase(pydantic.BaseModel):
     name: Optional[str] = None

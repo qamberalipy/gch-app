@@ -338,18 +338,22 @@ def create_income_category(income_category: _schemas.IncomeCategoryCreate, db: _
     db.refresh(db_income_category)
     return db_income_category
 
-def get_all_income_categories_by_org_id(db: _orm.Session, params: _schemas.StandardParams):
+def get_all_income_categories_by_org_id(org_id : int, params : _schemas.IncomeCategoryFilterParams, db: _orm.Session):
     sort_order = desc(_models.Income_category.created_at) if params.sort_order == "desc" else asc(_models.Income_category.created_at)
     
     income_categories_query = db.query(_models.Income_category)\
-        .filter(_models.Income_category.org_id == params.org_id, _models.Income_category.is_deleted == False)\
+        .filter(_models.Income_category.org_id == org_id, _models.Income_category.is_deleted == False)\
         .order_by(sort_order)\
         .offset(params.offset)\
         .limit(params.limit)
     if params.search_key:
         income_categories_query = income_categories_query.filter(or_(
             _models.Income_category.name.ilike(f"%{params.search_key}%")
-        ))  
+        ))
+         
+    if params.status is not None:
+        income_categories_query = income_categories_query.filter(_models.Income_category.status == params.status)
+ 
     return income_categories_query.all()
 
 def get_income_category_by_id(income_category_id: int, db: _orm.Session):

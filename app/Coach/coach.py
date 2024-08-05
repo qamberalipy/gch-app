@@ -62,7 +62,7 @@ def get_coach_by_id(id: int, db: _orm.Session = Depends(get_db)):
 @router.get("/coach", response_model=List[_schemas.CoachReadSchema], tags=["Coach API"])
 def get_coaches_by_org_id(org_id: int,filters: Annotated[_schemas.CoachFilterParams, Depends(_services.get_filters)] = None,db: _orm.Session = Depends(get_db)):
     
-    coaches = _services.get_all_coaches_by_org_id(db,params=filters)
+    coaches = _services.get_all_coaches_by_org_id(org_id, db, params=filters)
     return coaches
 
 

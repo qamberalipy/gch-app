@@ -353,14 +353,72 @@ def get_coach_by_id(coach_id: int, db: _orm.Session):
     else:
         return None
     
-def get_all_coaches_by_org_id(db: _orm.Session,params: _schemas.CoachFilterParams):
+# def get_all_coaches_by_org_id(org_id: int, db: _orm.Session, params: _schemas.CoachFilterParams):
+#     sort_order = desc(_models.Coach.created_at) if params.sort_order == "desc" else asc(_models.Coach.created_at)
+#     CoachOrg = aliased(_models.CoachOrganization)
+#     BankDetail = aliased(_usermodels.Bank_detail)
+#     ClientCoach = aliased(_client_models.ClientCoach)
     
+#     query = db.query(
+#         *_models.Coach.__table__.columns,
+#         CoachOrg.coach_status,
+#         CoachOrg.org_id,
+#         BankDetail.bank_name,
+#         BankDetail.iban_no,
+#         BankDetail.acc_holder_name,
+#         BankDetail.swift_code,
+#         func.array_agg(func.coalesce(ClientCoach.client_id,0)).label('member_ids').label('member_ids')
+#     ).join(
+#         CoachOrg, _models.Coach.id == CoachOrg.coach_id
+#     ).join(
+#         BankDetail, _models.Coach.bank_detail_id == BankDetail.id
+#     ).join(
+#         ClientCoach, ClientCoach.coach_id == _models.Coach.id
+#     ).filter(
+#         _models.Coach.is_deleted == False,
+#         CoachOrg.org_id == org_id
+#     ).order_by(sort_order).group_by(
+#         _models.Coach.id,
+#         CoachOrg.coach_status,
+#         CoachOrg.org_id,
+#         BankDetail.bank_name,
+#         BankDetail.iban_no,
+#         BankDetail.acc_holder_name,
+#         BankDetail.swift_code)
+    
+#     if params.search_key:
+#         query = query.filter(or_(
+#             _models.Coach.first_name.ilike(params.search_key),
+#             _models.Coach.last_name.ilike(params.search_key),
+#             _models.Coach.email.ilike(params.search_key),
+#             _models.Coach.mobile_number.ilike(params.search_key),
+#             _models.Coach.own_coach_id.ilike(params.search_key),
+#             _models.Coach.gender.ilike(params.search_key),
+#             _models.Coach.phone.ilike(params.search_key)
+#         ))
+        
+#     if params.status is not None:
+#         query = query.filter(CoachOrg.coach_status == params.status)
+
+#     query = query.offset(params.offset).limit(params.limit)
+#     db_coaches = query.all()
+
+#     coaches = []
+#     for coach in db_coaches:
+#         coaches.append(_schemas.CoachReadSchema(**coach._asdict()))
+
+#     if coaches:
+#         return coaches
+#     else:
+#         return None
+    
+def get_all_coaches_by_org_id(org_id: int, db: _orm.Session, params: _schemas.CoachFilterParams):
     sort_order = desc(_models.Coach.created_at) if params.sort_order == "desc" else asc(_models.Coach.created_at)
-    
+
     CoachOrg = aliased(_models.CoachOrganization)
     BankDetail = aliased(_usermodels.Bank_detail)
     ClientCoach = aliased(_client_models.ClientCoach)
-    
+
     query = db.query(
         *_models.Coach.__table__.columns,
         CoachOrg.coach_status,
@@ -369,15 +427,16 @@ def get_all_coaches_by_org_id(db: _orm.Session,params: _schemas.CoachFilterParam
         BankDetail.iban_no,
         BankDetail.acc_holder_name,
         BankDetail.swift_code,
-        func.array_agg(func.coalesce(ClientCoach.client_id,0)).label('member_ids').label('member_ids')
+        func.array_agg(func.coalesce(ClientCoach.client_id, 0)).label('member_ids')
     ).join(
-        CoachOrg, _models.Coach.id == CoachOrg.coach_id and CoachOrg.org_id==params.org_id
+        CoachOrg, _models.Coach.id == CoachOrg.coach_id
     ).join(
         BankDetail, _models.Coach.bank_detail_id == BankDetail.id
     ).join(
         ClientCoach, ClientCoach.coach_id == _models.Coach.id
     ).filter(
-        _models.Coach.is_deleted == False
+        _models.Coach.is_deleted == False,
+        CoachOrg.org_id == org_id
     ).order_by(sort_order).group_by(
         _models.Coach.id,
         CoachOrg.coach_status,
@@ -385,85 +444,29 @@ def get_all_coaches_by_org_id(db: _orm.Session,params: _schemas.CoachFilterParam
         BankDetail.bank_name,
         BankDetail.iban_no,
         BankDetail.acc_holder_name,
-        BankDetail.swift_code)
+        BankDetail.swift_code
+    )
+
+    if params.search_key:
+        query = query.filter(or_(
+            _models.Coach.first_name.ilike(f"%{params.search_key}%"),
+            _models.Coach.last_name.ilike(f"%{params.search_key}%"),
+            _models.Coach.own_coach_id.ilike(f"%{params.search_key}%"),
+            _models.Coach.email.ilike(f"%{params.search_key}%"),
+            _models.Coach.mobile_number.ilike(f"%{params.search_key}%"),
+            _models.Coach.own_coach_id.ilike(f"%{params.search_key}%"),
+            _models.Coach.gender.ilike(f"%{params.search_key}%"),
+            _models.Coach.phone.ilike(f"%{params.search_key}%")
+        ))
+
+    if params.status is not None:
+        query = query.filter(CoachOrg.coach_status == params.status)
 
     query = query.offset(params.offset).limit(params.limit)
     db_coaches = query.all()
 
-    coaches = []
-    for coach in db_coaches:
-        coaches.append(_schemas.CoachReadSchema(**coach._asdict()))
-
-    if coaches:
-        return coaches
-    else:
-        return None
-    
-
-# def get_all_coaches_by_org_id(db: _orm.Session,params: _schemas.CoachFilterParams):
-#     # Start with the base query
-#     query = db.query(
-#         _models.Coach.id, 
-#         _models.Coach.wallet_address, 
-#         _models.CoachOrganization.coach_status,
-#         _models.Coach.own_coach_id,
-#         _models.Coach.profile_img,
-#         _models.Coach.first_name,
-#         _models.Coach.last_name,
-#         _models.Coach.dob,
-#         _models.Coach.gender,
-#         _models.Coach.email,
-#         _models.Coach.password,
-#         _models.Coach.phone,
-#         _models.Coach.mobile_number,
-#         _models.Coach.notes,
-#         _models.Coach.source_id,
-#         _models.Coach.country_id,
-#         _models.Coach.city,
-#         _models.Coach.zipcode,
-#         _models.Coach.address_1,
-#         _models.Coach.address_2,
-#         _models.Coach.check_in,
-#         _models.Coach.last_online,
-#         _models.Coach.coach_since,
-#         _usermodels.Bank_detail.bank_name,
-#         _usermodels.Bank_detail.iban_no,
-#         _usermodels.Bank_detail.acc_holder_name,
-#         _usermodels.Bank_detail.swift_code,
-#         _models.Coach.created_at,
-#         _models.Coach.updated_at
-#     ).join(
-#         _models.CoachOrganization, _models.Coach.id == _models.CoachOrganization.coach_id
-#     ).join(
-#         _usermodels.Bank_detail, _models.Coach.bank_detail_id == _usermodels.Bank_detail.id
-#     ).filter(
-#         _models.CoachOrganization.org_id == params.org_id,
-#         _models.Coach.is_deleted == False
-#     )
-    
-#     if params.search_key:
-#         query = query.filter(
-#             or_(
-#                 _models.Coach.first_name.ilike(f"%{params.search_key}%"),
-#                 _models.Coach.last_name.ilike(f"%{params.search_key}%")
-#             )
-#         )
-#     if params.status:
-        
-        
-#         query = query.filter(_models.CoachOrganization.coach_status.ilike(f"%{params.status}%"))
-    
-#     if params.sort_by:
-#         if params.sort_by.lower() == 'asc':
-#             query = query.order_by(asc(_models.Coach.created_at))
-#         elif params.sort_by.lower() == 'desc':
-#             query = query.order_by(desc(_models.Coach.created_at))
-    
-    
-#     query = query.order_by(_models.Coach.created_at).offset(params.offset).limit(params.limit)
-#     db_coaches = query.all()
-#     print(db_coaches)
-#     return db_coaches
+    coaches = [_schemas.CoachReadSchema(**coach._asdict()) for coach in db_coaches]
+    return coaches
 
 async def get_total_coaches(org_id: int, db: _orm.Session = _fastapi.Depends(get_db)) -> int:
     total_coaches = db.query(func.count(models.Coach.id)).join(
@@ -476,7 +479,6 @@ async def get_total_coaches(org_id: int, db: _orm.Session = _fastapi.Depends(get
     ).scalar()
     
     return total_coaches
-
 
 def get_filters(
 
