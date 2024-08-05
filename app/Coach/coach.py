@@ -19,7 +19,6 @@ logger = logging.getLogger("uvicorn.error")
 logger.setLevel(logging.DEBUG)
 # logger.addHandler(logging.StreamHandler())
 
-
 def get_db():
     db = _database.SessionLocal()
     try:
@@ -29,13 +28,10 @@ def get_db():
 
 @router.post("/coach", response_model=_schemas.CoachRead ,tags=["Coach API"])
 def create_coach(coach: _schemas.CoachCreate, db: _orm.Session = Depends(get_db)):
-    
     return _services.create_coach(coach,db)
 
 @router.put("/coach", response_model=_schemas.CoachUpdate , tags=["Coach API"])
 async def update_coach(coach: _schemas.CoachUpdate, db: _orm.Session = Depends(get_db)):
-    
-    
     db_coach = await _services.update_coach(coach.id,coach,"web",db)
     if db_coach is None:
         raise HTTPException(status_code=404, detail="Coach not found")
@@ -43,7 +39,6 @@ async def update_coach(coach: _schemas.CoachUpdate, db: _orm.Session = Depends(g
 
 @router.delete("/coach/{id}", response_model=_schemas.CoachRead, tags=["Coach API"])
 def delete_coach(id:int, db: _orm.Session = Depends(get_db)):
-    
     db_coach = _services.delete_coach(id,db)
     if db_coach is None:
         raise HTTPException(status_code=404, detail="Coach not found")
@@ -51,27 +46,21 @@ def delete_coach(id:int, db: _orm.Session = Depends(get_db)):
 
 @router.get("/coach/{id}", response_model=_schemas.CoachReadSchema, tags=["Coach API"])
 def get_coach_by_id(id: int, db: _orm.Session = Depends(get_db)):
-    
-
     db_coach = _services.get_coach_by_id(id, db)
     if db_coach is None:
         raise HTTPException(status_code=404, detail="Coach not found")
     return db_coach
 
 
-@router.get("/coach", response_model=List[_schemas.CoachReadSchema], tags=["Coach API"])
+@router.get("/coach", tags=["Coach API"])
 def get_coaches_by_org_id(org_id: int,filters: Annotated[_schemas.CoachFilterParams, Depends(_services.get_filters)] = None,db: _orm.Session = Depends(get_db)):
-    
     coaches = _services.get_all_coaches_by_org_id(org_id, db, params=filters)
     return coaches
 
 
 @router.get("/coach/count/{org_id}", response_model=_schemas.CoachCount, tags=["Coach API"])
-
 async def get_total_coaches(org_id: int, db: _orm.Session = Depends(get_db)):
     try:
-        
-        
         total_coaches = await _services.get_total_coaches(org_id, db)
         return {"total_coaches": total_coaches}
     except Exception as e:

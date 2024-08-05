@@ -447,6 +447,8 @@ def get_all_coaches_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Co
         BankDetail.swift_code
     )
 
+    total_counts = db.query(func.count()).select_from(query.subquery()).scalar()
+    
     if params.search_key:
         query = query.filter(or_(
             _models.Coach.first_name.ilike(f"%{params.search_key}%"),
@@ -462,11 +464,13 @@ def get_all_coaches_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Co
     if params.status is not None:
         query = query.filter(CoachOrg.coach_status == params.status)
 
+    filtered_counts = db.query(func.count()).select_from(query.subquery()).scalar()
+    
     query = query.offset(params.offset).limit(params.limit)
     db_coaches = query.all()
-
+    
     coaches = [_schemas.CoachReadSchema(**coach._asdict()) for coach in db_coaches]
-    return coaches
+    return {"data":coaches,"total_counts":total_counts,"filtered_counts": filtered_counts}
 
 async def get_total_coaches(org_id: int, db: _orm.Session = _fastapi.Depends(get_db)) -> int:
     total_coaches = db.query(func.count(models.Coach.id)).join(
@@ -474,10 +478,7 @@ async def get_total_coaches(org_id: int, db: _orm.Session = _fastapi.Depends(get
         _models.CoachOrganization.coach_id == models.Coach.id
     ).filter(
         _models.CoachOrganization.org_id == org_id,
-
-        
     ).scalar()
-    
     return total_coaches
 
 def get_filters(
