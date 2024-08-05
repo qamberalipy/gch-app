@@ -309,17 +309,17 @@ def delete_facility( facility_id: int,db: _orm.Session):
     db.commit()
     return db_facility
 
-def get_facility_by_org_id(db: _orm.Session, params: _schemas.StandardParams):
+def get_facility_by_org_id(org_id : int , params : _schemas.FacilityFilterParams, db: _orm.Session):
     sort_order = desc(_models.Facility.created_at) if params.sort_order == "desc" else asc(_models.Facility.created_at)
     
     facilities_query = db.query(_models.Facility)\
-        .filter(_models.Facility.org_id == params.org_id, _models.Facility.is_deleted == False)\
+        .filter(_models.Facility.org_id == org_id, _models.Facility.is_deleted == False)\
         .order_by(sort_order)\
         .offset(params.offset)\
         .limit(params.limit)
     if params.search_key:
         facilities_query = facilities_query.filter(or_(
-            _models.Facility.name.ilike(f"%{params.search_key}%")
+            _models.Facility.name.ilike(params.search_key)
         ))
     return facilities_query.all()
 

@@ -74,6 +74,12 @@ class FacilityRead(FacilityBase):
     class Config:
         from_attributes = True
         
+class FacilityFilterParams(pydantic.BaseModel):
+    search_key: Optional[str] = None
+    sort_order: Optional[str] = 'desc'
+    limit:Optional[int] = None
+    offset:Optional[int] = None
+        
 class IncomeCategoryBase(pydantic.BaseModel):
     name: Optional[str] = None
     position: Optional[int] = None
