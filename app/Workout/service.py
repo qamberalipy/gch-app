@@ -341,6 +341,11 @@ async def get_all_workout_day(
         query = query.offset(pagination_options.offset)
     if pagination_options.limit:
         query = query.limit(pagination_options.limit)
+    if params.sort_column:
+        if params.sort_column not in _extract_columns(query):
+            raise HTTPException(status_code=400, detail=f"Sort order must in {_extract_columns(query)}")
+        sort_order = desc(params.sort_column) if params.sort_dir == "desc" else asc(params.sort_column)
+        query = query.order_by(sort_order)
     return [
         WorkoutDayRead.model_validate(item).model_dump(exclude=exclude_by_default)
         for item in query.all()

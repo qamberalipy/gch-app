@@ -14,6 +14,7 @@ from .service import (
     get_all_workout_day_exercise,
     get_workout,
     get_workout_day,
+    get_workout_day_,
     get_workout_day_exercise,
     save_workout,
     save_workout_day,
@@ -79,7 +80,7 @@ async def verify_create_workout_day_exercise(
     workout_day_exercise: WorkoutDayExerciseCreate,
     db: Annotated[Session, Depends(get_db)],
 ):
-    workout_day = await get_workout_day(db, workout_day_exercise.workout_day_id)
+    workout_day = await get_workout_day_(db, workout_day_exercise.workout_day_id)
     if not workout_day:
         raise HTTPException(status_code=404, detail="Workout Day not found")
     exercise = await _exercise_service.get_exercise_by_id(
@@ -90,16 +91,18 @@ async def verify_create_workout_day_exercise(
 
 
 async def verify_create_workout_day(
-    workout_day: WorkoutDayCreate, db: Annotated[Session, Depends(get_db)]
+    workout_day: WorkoutDayCreate,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[dict, Depends(get_user)],
 ):
-    workout = await get_workout(db, workout_day.workout_id)
+    workout = await get_workout(db, user["org_id"], workout_day.workout_id)
     if not workout:
         raise HTTPException(status_code=404, detail="Workout not found")
 
     params = WorkoutDayFilter(
         workout_id=workout_day.workout_id, week=workout_day.week, day=workout_day.day
     )
-    existing_workout_day = await get_all_workout_day(db, params=params)
+    existing_workout_day = await get_all_workout_day(db, params, PaginationOptions())
 
     if existing_workout_day:
         raise HTTPException(
@@ -180,7 +183,9 @@ async def verify_workout(
     return workout_model
 
 
-columns = list(WorkoutRead.model_fields.keys())
+workout_columns = list(WorkoutRead.model_fields.keys())
+
+
 def get_filters(
     goals: Annotated[WorkoutGoal | None, Query(title="Workout Goal")] = None,
     level: Annotated[WorkoutLevel | None, Query(title="Workout Level")] = None,
@@ -195,10 +200,13 @@ def get_filters(
         bool, Query(description="To include that workout's days and exercises")
     ] = False,
     _sort_column: Annotated[
-        Literal[*tuple(columns)] | None, Query(description="The column to sort")
+        Literal[*tuple(workout_columns)] | None, Query(description="The column to sort")
     ] = None,
     _sort_dir: Annotated[
-        Literal["asc", "desc"], Query(description="The direction to sort the column in like [asc]ending and [desc]ending")
+        Literal["asc", "desc"],
+        Query(
+            description="The direction to sort the column in like [asc]ending and [desc]ending"
+        ),
     ] = "asc",
 ):
     return WorkoutFilter(
@@ -246,12 +254,10 @@ def get_filters(
 async def save_exercise(
     workout_day_exercise: WorkoutDayExerciseCreate,
     db: Annotated[Session, Depends(get_db)],
-    user: Annotated[_client_schema.ClientRead, Depends(get_user)],
+    user: Annotated[dict, Depends(get_user)],
 ):
     try:
-        return await save_workout_day_exercise(
-            db, workout_day_exercise, user_id=user.id
-        )
+        return await save_workout_day_exercise(db, workout_day_exercise, user)
     except DataError:
         db.rollback()
         raise HTTPException(
@@ -358,6 +364,9 @@ async def get_all_day(
 #     return workout
 
 
+workout_day_columns = list(WorkoutDayRead.model_fields.keys())
+
+
 @router.get("/{workout_id}/day", dependencies=[Depends(get_read_permission)])
 async def get_day_by_workout_id(
     workout_id: Annotated[int, Path(description="Id of the workout")],
@@ -369,10 +378,25 @@ async def get_day_by_workout_id(
             description="Whether the days should include the exercises associated with that day"
         ),
     ] = False,
+    _sort_column: Annotated[
+        Literal[*tuple(workout_day_columns)] | None,
+        Query(description="The column to sort"),
+    ] = None,
+    _sort_dir: Annotated[
+        Literal["asc", "desc"],
+        Query(
+            description="The direction to sort the column in like [asc]ending and [desc]ending"
+        ),
+    ] = "asc",
 ):
     return await get_all_workout_day(
         db,
-        WorkoutDayFilter(workout_id=workout_id, include_exercises=_include_exercises),
+        WorkoutDayFilter(
+            workout_id=workout_id,
+            include_exercises=_include_exercises,
+            sort_column=_sort_column,
+            sort_dir=_sort_dir,
+        ),
         pagination_options,
     )
 
@@ -384,10 +408,10 @@ async def get_day_by_workout_id(
 async def save_day(
     workout_day: WorkoutDayCreate,
     db: Annotated[Session, Depends(get_db)],
-    user: Annotated[_client_schema.ClientRead, Depends(get_user)],
+    user: Annotated[dict, Depends(get_user)],
 ):
     try:
-        return await save_workout_day(db, workout_day, user_id=user.id)
+        return await save_workout_day(db, workout_day, user)
     except DataError:
         db.rollback()
         raise HTTPException(
