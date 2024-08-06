@@ -270,7 +270,7 @@ def get_filtered_staff(org_id: int, params: _schemas.StaffFilterParams,db:_orm.S
     query=query.offset(params.offset).limit(params.limit)
     
     staff = query.all()
-    staff_data = [_schemas.GetStaffResponse.model_construct(user) for user in staff]
+    staff_data = [_schemas.GetStaffResponse.from_orm(user) for user in staff]
 
     return {'data': staff_data, 'total_counts': total_counts, 'filtered_counts': filtered_counts}
 
