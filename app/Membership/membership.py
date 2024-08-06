@@ -158,6 +158,8 @@ def get_facilitys_by_org_id(
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
+    
+    
 @router.get("/facilities/{id}", response_model=_schemas.FacilityRead, tags=["Facility APIs"])
 def get_facility_by_id(id: int, db: _orm.Session = Depends(get_db)):
     try:    
@@ -280,8 +282,6 @@ def get_all_sale_taxes(org_id: int, request: Request, db: _orm.Session = Depends
         raise HTTPException(status_code=400, detail="Integrity error occurred")
     except DataError:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
-
-
        
 
 @router.get("/sale_taxes/{id}", response_model=_schemas.SaleTaxRead, tags=["Sale_tax APIs"])
@@ -366,6 +366,65 @@ def get_group(org_id: int, request: Request, db: _orm.Session = Depends(get_db))
         raise HTTPException(status_code=400, detail="Integrity error occurred")
     except DataError:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
+
+@router.get("/income_category/list/{org_id}", response_model=List[_schemas.data_list_income_category],tags=["Income Category APIs"])
+async def get_categories(org_id,db: _orm.Session = Depends(get_db)):
+    try:
+            
+        categories = _services.get_income_category(org_id,db=db)
+        return categories
+    
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
+@router.get("/membership_plan/list/{org_id}", response_model=List[_schemas.data_list],tags=["Membership Plans"])
+async def get_membership_plan(org_id,db: _orm.Session = Depends(get_db)):
+    try:
+            
+        membership_plan = _services.get_membership_plan(org_id,db=db)
+        return membership_plan
+    
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+    
+
+@router.get("/facility/list/{org_id}", response_model=List[_schemas.data_list],tags=["Facility APIs"])
+async def get_categories(org_id,db: _orm.Session = Depends(get_db)):
+    try:
+            
+        facilities = _services.get_facility(org_id,db=db)
+        return facilities
+    
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
+
+@router.get("/sales_tax/list/{org_id}", response_model=List[_schemas.data_list_saletax],tags=["Sale_tax APIs"])
+async def get_categories(org_id,db: _orm.Session = Depends(get_db)):
+    try:
+            
+        salestax = _services.get_salestax(org_id,db=db)
+        return salestax
+    
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")        
 
 
 @router.put("/group",response_model=_schemas.GroupRead, tags=["Group API"])

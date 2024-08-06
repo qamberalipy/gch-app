@@ -32,6 +32,10 @@ class Category(pydantic.BaseModel):
     id:int 
     category_name:str
 
+class Met(pydantic.BaseModel):
+    id:int 
+    met_value:str
+
 class ExerciseFilterParams(pydantic.BaseModel):
     search_key: Optional[str] = None
     category : Optional[int] = None

@@ -39,6 +39,20 @@ async def get_muscle(db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")        
     
 
+@router.get("/exercise/met", response_model=List[_schemas.Met])
+async def get_met(db: _orm.Session = Depends(get_db)):
+    try:  
+        met = await _services.get_met(db)
+        return met
+    
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+
+
 @router.get("/exercise/equipments", response_model=List[_schemas.Equipments],summary="Get Equipments")
 async def get_muscle(db: _orm.Session = Depends(get_db)):
     try:

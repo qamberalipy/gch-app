@@ -1,9 +1,10 @@
 from datetime import datetime
-from typing import Annotated, List
+from typing import Annotated, List, Literal
 from typing_extensions import Optional
 from pydantic import AfterValidator, BaseModel, Field, validator
 
-from .models import ExerciseIntensity, ExerciseType, WorkoutGoal, WorkoutLevel
+from ..Exercise.schema import ExerciseBase
+from .models import ExerciseIntensity, ExerciseType, VisibleFor, WorkoutGoal, WorkoutLevel
 
 
 class MyBaseModel(BaseModel):
@@ -31,6 +32,7 @@ class WorkoutDayExerciseBase(MyBaseModel):
 
 class WorkoutDayExerciseRead(WorkoutDayExerciseBase):
     id: int
+    exercise: Optional[ExerciseBase] = None
     created_at: datetime
     updated_at: Optional[datetime]
     created_by: int
@@ -49,6 +51,7 @@ class WorkoutDayRead(WorkoutDayBase):
 class WorkoutBase(MyBaseModel):
     workout_name: str
     description: Optional[str] = None
+    visible_for: VisibleFor
     goals: WorkoutGoal
     level: WorkoutLevel
     notes: Optional[str] = None
@@ -62,7 +65,7 @@ def check_empty(v):
 
 class WorkoutRead(WorkoutBase):
     id: int
-    days: Annotated[None | List[WorkoutDayRead], AfterValidator(check_empty)]
+    days: Annotated[None | List[WorkoutDayRead], AfterValidator(check_empty)] = None
 
 
 class WorkoutUpdate(MyBaseModel):
@@ -70,9 +73,11 @@ class WorkoutUpdate(MyBaseModel):
     description: Optional[str] = None
     goals: Optional[WorkoutGoal] = None
     level: Optional[WorkoutLevel] = None
+    visible_for: Optional[VisibleFor] = None
     notes: Optional[str] = None
     weeks: Optional[int] = None
 
+columns = list(WorkoutRead.model_fields.keys())
 class WorkoutFilter(MyBaseModel):
     workout_name: Optional[str] = None
     goals: Optional[WorkoutGoal] = None
@@ -80,6 +85,10 @@ class WorkoutFilter(MyBaseModel):
     search: Optional[str] = None
     include_days: Optional[bool] = False
     include_days_and_exercises: Optional[bool] = False
+    created_by_user: Optional[bool] = None
+    sort_column: Optional[Literal[*tuple(columns)]] = None
+    sort_dir: Optional[Literal["asc", "desc"]] = "asc"
+    results_per_goal: Optional[int] = 3
 
 class WorkoutDayCreate(WorkoutDayBase):
     pass
@@ -92,9 +101,12 @@ class WorkoutDayOptionalBase(MyBaseModel):
 class WorkoutDayUpdate(WorkoutDayOptionalBase):
     pass
 
+columns = list(WorkoutDayRead.model_fields.keys())
 class WorkoutDayFilter(WorkoutDayOptionalBase):
     workout_id: Optional[int] = None
     include_exercises: Optional[bool] = None
+    sort_column: Optional[Literal[*tuple(columns)]] = None
+    sort_dir: Optional[Literal["asc", "desc"]] = "asc"
 
 
 class WorkoutDayExerciseCreate(WorkoutDayExerciseBase):

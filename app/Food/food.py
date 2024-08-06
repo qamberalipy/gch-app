@@ -1,6 +1,6 @@
 import json
-from typing import List, Optional
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, Header, Request, status
+from typing import Annotated, List, Optional
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, Header, Query, Request, status
 from sqlalchemy.exc import IntegrityError, DataError
 import app.Food.schema as _schemas
 import sqlalchemy.orm as _orm
@@ -37,14 +37,42 @@ async def create_food(food: _schemas.FoodCreate, db: _orm.Session = Depends(get_
     except DataError as e:
         raise HTTPException(status_code=400, detail="Invalid data")
 
-@router.get("/food", response_model=List[_schemas.FoodRead])
-async def get_all_foods(db: _orm.Session = Depends(get_db)):
+def get_filters(
+
+    search_key: Annotated[str | None, Query(title="Search Key")] = None,
+    category: Annotated[str | None, Query(title="Category (Enum)")] = None,
+    total_nutrition: Annotated[int, Query(title="Total Nutrition")] = None,
+    total_fat: Annotated[int, Query(title="Total Fat")] = None,
+    sort_order: Annotated[str,Query(title="Sorting Order")] = 'desc',
+    limit: Annotated[int, Query(description="Pagination Limit")] = None,
+    offset: Annotated[int, Query(description="Pagination offset")] = None
+):
+    return _schemas.FoodFilterParams(
+        search_key=search_key,
+        category=category,
+        total_nutrition=total_nutrition,
+        total_fat=total_fat,
+        sort_order=sort_order,
+        limit=limit,
+        offset = offset
+    )
+
+@router.get("/food")
+async def get_all_foods(org_id:int, filters: Annotated[_schemas.FoodFilterParams, Depends(get_filters)] = None, db: _orm.Session = Depends(get_db)):
     try:
         
-        return await _services.get_all_foods(db)
+        return await _services.get_food_by_org_id(db=db,org_id=org_id,params=filters)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@router.get("/food/list/{org_id}",response_model=List[_schemas.FoodListResponse])
+async def get_all_food_list(org_id:int, db: _orm.Session = Depends(get_db)):
+    try:
+        
+        return await _services.get_all_foods(db=db,org_id=org_id)
+    
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/food/{id}", response_model=_schemas.FoodRead)
 async def get_food_by_id(id: int, db: _orm.Session = Depends(get_db)):

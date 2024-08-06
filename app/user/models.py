@@ -5,7 +5,12 @@ import sqlalchemy.orm as _orm
 import app.core.db.session as _database
 import bcrypt as _bcrypt
 import sqlalchemy.ext.declarative as _declarative
+from enum import Enum as PyEnum
 
+class Status(str,PyEnum):
+    active='active'
+    inactive='inactive'
+    pending='pending'    
     
 class User(_database.Base):
     __tablename__ = "staff"
@@ -23,7 +28,7 @@ class User(_database.Base):
     activated_on = _sql.Column(_sql.Date)
     last_checkin = _sql.Column(_sql.DateTime)
     last_online = _sql.Column(_sql.DateTime)
-    status = _sql.Column(_sql.String(20))
+    status = _sql.Column(_sql.Enum(Status))
     phone = _sql.Column(_sql.String(15))  # Assuming phone number should not include landline
     mobile_number = _sql.Column(_sql.String(15))
     notes = _sql.Column(_sql.String)
