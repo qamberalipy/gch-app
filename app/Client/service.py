@@ -411,9 +411,9 @@ def get_filtered_clients(
         func.coalesce(BusinessClient.first_name + ' ' + BusinessClient.last_name, _models.Client.first_name + ' ' + _models.Client.last_name).label('business_name')
     ).outerjoin(
         BusinessClient, _models.Client.business_id == BusinessClient.id
-    ).join(
+    ).outerjoin(
         _models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id
-    ).join(
+    ).outerjoin(
         _coach_models.Coach, _coach_models.Coach.id == _models.ClientCoach.coach_id
     ).join(
         _models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id
@@ -509,9 +509,9 @@ async def get_client_byid(db: _orm.Session, client_id: int) -> _schemas.ClientBy
                 )
             )
         ).label('coaches')
-        ).join(
+        ).outerjoin(
             _models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id
-        ).join(
+        ).outerjoin(
             _coach_models.Coach, _coach_models.Coach.id == _models.ClientCoach.coach_id
         ).join(
             _models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id
