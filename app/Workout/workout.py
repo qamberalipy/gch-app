@@ -9,9 +9,10 @@ from .service import (
     delete_workout,
     delete_workout_day,
     delete_workout_day_exercise,
-    get_all_workout,
     get_all_workout_day,
     get_all_workout_day_exercise,
+    get_all_workout_mobile_view,
+    get_all_workout_table_view,
     get_workout,
     get_workout_day,
     get_workout_day_,
@@ -208,6 +209,12 @@ def get_filters(
             description="The direction to sort the column in like [asc]ending and [desc]ending"
         ),
     ] = "asc",
+    _results_per_goal: Annotated[
+        int,
+        Query(
+            description="The direction to sort the column in like [asc]ending and [desc]ending"
+        ),
+    ] = 3,
 ):
     return WorkoutFilter(
         goals=goals,
@@ -217,6 +224,7 @@ def get_filters(
         include_days_and_exercises=_include_days_and_exercises,
         sort_column=_sort_column,
         sort_dir=_sort_dir,
+        results_per_goal=_results_per_goal,
     )
 
 
@@ -469,8 +477,17 @@ async def get_all(
     filters: Annotated[WorkoutFilter, Depends(get_filters)],
     pagination_options: Annotated[PaginationOptions, Depends(get_pagination_options)],
     user: Annotated[dict, Depends(get_user)],
+    _view: Annotated[
+        Literal["table", "mobile"],
+        Query(
+            description="Returns data in tabular (table view) or goals wise form (mobile view) note: pagination and sorting wont work in mobile view"
+        ),
+    ],
 ):
-    return await get_all_workout(db, user, filters, pagination_options)
+    if _view == "table":
+        return await get_all_workout_table_view(db, user, filters, pagination_options)
+    else:
+        return await get_all_workout_mobile_view(db, user, filters, pagination_options)
 
 
 @router.get("/{workout_id}", dependencies=[Depends(get_read_permission)])

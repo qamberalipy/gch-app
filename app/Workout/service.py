@@ -178,6 +178,11 @@ async def get_workout_filter(
         raise HTTPException(status_code=404, detail="Workout not found")
     return WorkoutRead.model_validate(workout).model_dump(exclude=exclude_by_default)
 
+    workout = query.first()
+    if not workout:
+        raise HTTPException(status_code=404, detail="Workout not found")
+    return WorkoutRead.model_validate(workout).model_dump(exclude=exclude_by_default)
+
 
 def _workout_get_count_before_pagination(
     db: Session, user: dict, params: WorkoutFilter
@@ -222,7 +227,52 @@ def _extract_columns(query):
         columns = [col.name for col in query.statement.columns]
     return columns
 
-async def get_all_workout(
+def _workout_get_count_before_pagination(
+    db: Session, user: dict, params: WorkoutFilter
+):
+    id, user_type, org_id = user["id"], user["user_type"], user["org_id"]
+    query = db.query(func.count("*")).filter(
+        Workout.is_deleted == False, Workout.org_id == org_id
+    )
+    if user_type == "member" or user_type == "coach":
+        query = query.filter(
+            or_(
+                Workout.visible_for == "everyone_in_my_club",
+                Workout.visible_for == "members_of_my_club",
+                and_(
+                    Workout.visible_for == "only_myself",
+                    (Workout.created_by == id)
+                    & (Workout.create_user_type == user_type),
+                ).self_group(),
+            ).self_group()
+        )
+    if params.goals:
+        query = query.filter(Workout.goals == params.goals)
+    if params.level:
+        query = query.filter(Workout.level == params.level)
+    if params.search:
+        query = query.filter(Workout.workout_name.ilike(f"%{params.search}%"))
+    if params.include_days:
+        query = query.options(joinedload(Workout.days))
+    if params.include_days_and_exercises:
+        query = query.options(joinedload(Workout.days))
+    if params.created_by_user:
+        query = query.filter(
+            Workout.create_user_type == user_type, Workout.created_by == id
+        )
+    if params.include_days_and_exercises:
+        query = query.options(joinedload(Workout.days).joinedload(WorkoutDay.exercises))
+    return query.scalar()
+
+
+def _extract_columns(query):
+    columns = []
+    if hasattr(query.statement, "columns"):
+        columns = [col.name for col in query.statement.columns]
+    return columns
+
+
+async def get_all_workout_table_view(
     db: Session,
     user: dict,
     params: WorkoutFilter,
@@ -275,8 +325,14 @@ async def get_all_workout(
         query = query.limit(pagination_options.limit)
     if params.sort_column:
         if params.sort_column not in _extract_columns(query):
-            raise HTTPException(status_code=400, detail=f"Sort order must in {_extract_columns(query)}")
-        sort_order = desc(params.sort_column) if params.sort_dir == "desc" else asc(params.sort_column)
+            raise HTTPException(
+                status_code=400, detail=f"Sort order must in {_extract_columns(query)}"
+            )
+        sort_order = (
+            desc(params.sort_column)
+            if params.sort_dir == "desc"
+            else asc(params.sort_column)
+        )
         query = query.order_by(sort_order)
 
     items = query.all()
@@ -288,6 +344,71 @@ async def get_all_workout(
             for item in items
         ],
     }
+
+
+def _group_by(arr: List[dict], key: str):
+    groups = {}
+    for a in arr:
+        if a[key] not in groups:
+            groups[a[key]] = []
+        groups[a[key]].append(a)
+    return [{"group": key, "data": group} for key, group in groups.items()]
+
+
+async def get_all_workout_mobile_view(
+    db: Session,
+    user: dict,
+    params: WorkoutFilter,
+    pagination_options: PaginationOptions,
+):
+    id, user_type, org_id = user["id"], user["user_type"], user["org_id"]
+    exclude_by_default = {"days"}
+
+    GROUP_COLUMN = "goals"
+    query = db.query(
+        Workout,
+        func.row_number()
+        .over(partition_by=getattr(Workout, GROUP_COLUMN), order_by=Workout.id)
+        .label("row_num"),
+    ).filter(Workout.is_deleted == False, Workout.org_id == org_id)
+    #if user_type == "member" or user_type == "coach":
+    #    query = query.filter(
+    #        or_(
+    #            Workout.visible_for == "everyone_in_my_club",
+    #            Workout.visible_for == "members_of_my_club",
+    #            and_(
+    #                Workout.visible_for == "only_myself",
+    #                (Workout.created_by == id)
+    #                & (Workout.create_user_type == user_type),
+    #            ).self_group(),
+    #        ).self_group()
+    #    )
+    # if params.goals:
+    #     query = query.filter(Workout.goals == params.goals)
+    # if params.level:
+    #     query = query.filter(Workout.level == params.level)
+    # if params.search:
+    #     query = query.filter(Workout.workout_name.ilike(f"%{params.search}%"))
+    # if params.include_days:
+    #     query = query.options(joinedload(Workout.days))
+    #     exclude_by_default.remove("days")
+    # if params.include_days_and_exercises:
+    #     query = query.options(joinedload(Workout.days))
+    #     exclude_by_default = {"days": {"__all__": {"exercises"}}}
+    # if params.created_by_user:
+    #     query = query.filter(
+    #         Workout.create_user_type == user_type, Workout.created_by == id
+    #     )
+    # if params.include_days_and_exercises:
+    #     query = query.options(joinedload(Workout.days).joinedload(WorkoutDay.exercises))
+    #     exclude_by_default = {}
+    query = query.subquery()
+    query_final = db.query(query).filter(query.c.row_num <= 3)
+    items = [
+        WorkoutRead.model_validate(item).model_dump(exclude=exclude_by_default)
+        for item in query_final.all()
+    ]
+    return _group_by(items, GROUP_COLUMN)
 
 
 async def get_workout_day_(db: Session, workout_day_id: int):
@@ -343,8 +464,14 @@ async def get_all_workout_day(
         query = query.limit(pagination_options.limit)
     if params.sort_column:
         if params.sort_column not in _extract_columns(query):
-            raise HTTPException(status_code=400, detail=f"Sort order must in {_extract_columns(query)}")
-        sort_order = desc(params.sort_column) if params.sort_dir == "desc" else asc(params.sort_column)
+            raise HTTPException(
+                status_code=400, detail=f"Sort order must in {_extract_columns(query)}"
+            )
+        sort_order = (
+            desc(params.sort_column)
+            if params.sort_dir == "desc"
+            else asc(params.sort_column)
+        )
         query = query.order_by(sort_order)
     return [
         WorkoutDayRead.model_validate(item).model_dump(exclude=exclude_by_default)

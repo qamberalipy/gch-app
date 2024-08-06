@@ -65,7 +65,7 @@ def check_empty(v):
 
 class WorkoutRead(WorkoutBase):
     id: int
-    days: Annotated[None | List[WorkoutDayRead], AfterValidator(check_empty)]
+    days: Annotated[None | List[WorkoutDayRead], AfterValidator(check_empty)] = None
 
 
 class WorkoutUpdate(MyBaseModel):
@@ -76,7 +76,6 @@ class WorkoutUpdate(MyBaseModel):
     visible_for: Optional[VisibleFor] = None
     notes: Optional[str] = None
     weeks: Optional[int] = None
-
 
 columns = list(WorkoutRead.model_fields.keys())
 class WorkoutFilter(MyBaseModel):
@@ -89,6 +88,7 @@ class WorkoutFilter(MyBaseModel):
     created_by_user: Optional[bool] = None
     sort_column: Optional[Literal[*tuple(columns)]] = None
     sort_dir: Optional[Literal["asc", "desc"]] = "asc"
+    results_per_goal: Optional[int] = 3
 
 class WorkoutDayCreate(WorkoutDayBase):
     pass

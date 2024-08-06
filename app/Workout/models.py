@@ -107,6 +107,10 @@ class WorkoutDayExercise(_database.Base, HouseKeeping):
     rest_between_set: Mapped[List[int]] = mapped_column(ARRAY(Integer), nullable=True)
     intensity_type: Mapped[ExerciseIntensity] = mapped_column(Enum(ExerciseIntensity), default=ExerciseIntensity.max)
     percentage_of_1rm: Mapped[float] = mapped_column(Float, nullable=True)
+    distance: Mapped[float] = mapped_column(Float, nullable=True)
+    speed: Mapped[float] = mapped_column(Float, nullable=True)
+    met_id: Mapped[int] = mapped_column(Integer, nullable=True)  
+    met_value: Mapped[float] = mapped_column(Float, nullable=False)
     notes: Mapped[str] = mapped_column(String, nullable=True)
 
     workout_day = relationship(
