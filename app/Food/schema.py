@@ -3,7 +3,7 @@ import pydantic
 import datetime
 from datetime import date
 from typing import Optional
-
+from enum import Enum as PyEnum
 
 class FoodBase(pydantic.BaseModel):
     org_id: int
@@ -118,15 +118,34 @@ class FoodUpdate(pydantic.BaseModel):
         from_attribute = True
 
 
+class CategoryEnum(str, PyEnum):
+    baked_products = "Baked Products"
+    beverages = "Beverages"
+    cheese_eggs = "Cheese Milk and Eggs Products"
+    cooked_meals = "Cooked Meals"
+    fish_products = "Fish Products"
+    fruits_vegs = "Fruits and Vegetables"
+    herbs_spices = "Herbs and Spices"
+    meat_products = "Meat Products"
+    nuts_seeds_snacks = "Nuts Seeds and Snacks"
+    pasta_cereals = "Pasta and Breakfast Cereals"
+    restaurant_meals = "Restaurant Meals"
+    soups_sauces = "Soups, Sauces, fats and oil"
+    sweets_candy = "Sweets and Candy"
+    other = "Other"
+
 class FoodFilterParams(pydantic.BaseModel):
     search_key: Optional[str] = None
+    category: Optional[str] = None
+    total_nutrition: Optional[int] = None
+    total_fat: Optional[int] = None
     sort_order: Optional[str] = None
-    status: Optional[str] = None
-    limit:Optional[int] = None
-    offset:Optional[int] = None
+    limit: Optional[int] = None
+    offset: Optional[int] = None
 
-    class Config:
-        extra = "forbid"
+class FoodListResponse(pydantic.BaseModel):
+    id: Optional[int] = 0
+    name: Optional[str] = None
 
 class FoodCreateResponse(pydantic.BaseModel):
     id: int
