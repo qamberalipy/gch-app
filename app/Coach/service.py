@@ -81,7 +81,7 @@ async def login_coach(
     wallet_address: str,
     db: _orm.Session = _fastapi.Depends(get_db),
 ) -> dict:
-    coach = await get_coach_by_email(email_address, db)
+    coach = await get_coach_by_email(org_id, email_address, db)
 
     if not coach:
         return {"is_registered": False}
@@ -94,8 +94,22 @@ async def login_coach(
 
     return {"is_registered": True, "coach": coach, "access_token": token}
 
-async def get_coach_by_email(email_address: str, db: _orm.Session = _fastapi.Depends(get_db)) -> _models.Coach:
-    return db.query(_models.Coach).filter(models.Coach.email == email_address).first()
+async def get_coach_by_email(
+    org_id: int, email_address: str, db: _orm.Session = _fastapi.Depends(get_db)
+) -> _models.Coach:
+
+    query = db.query(_models.Coach)
+    if org_id != 0:
+        query = query.join(
+            _models.CoachOrganization,
+            _models.Coach.id == _models.CoachOrganization.coach_id,
+        ).filter(
+            _models.CoachOrganization.org_id == org_id,
+        )
+    query = query.filter(
+        models.Coach.email == email_address,
+    )
+    return query.first()
 
 
 def create_bank_detail(coach: _schemas.CoachCreate, db: _orm.Session):
