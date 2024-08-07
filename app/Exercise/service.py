@@ -323,7 +323,6 @@ async def get_exercise(params:Optional[_schemas.ExerciseFilterParams]=None,org_i
     primary_muscle_query=primary_muscle_query.subquery()
 
     query = db.query(
-
     Exercise.exercise_name,
     Exercise.visible_for,
     Exercise.org_id,

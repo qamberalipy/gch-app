@@ -1,7 +1,7 @@
 import pydantic
 import datetime
 from typing import Dict, List, Optional
-
+from app.Coach.models import CoachStatus
 from sqlalchemy import JSON
 
 
@@ -12,7 +12,7 @@ class CoachList(pydantic.BaseModel):
 class CoachBase(pydantic.BaseModel):
     wallet_address: Optional[str] = None 
     org_id: Optional[int] = None
-    coach_status: Optional[str] = "pending"
+    coach_status: Optional[CoachStatus]="active"
     own_coach_id: Optional[str] = None
     profile_img: Optional[str] = None
     first_name: Optional[str] = None
@@ -84,13 +84,12 @@ class CoachAppBase(pydantic.BaseModel):
     swift_code: Optional[str] = None
     updated_by:Optional[int]=0
     member_ids: Optional[List[int]] = None
-    coach_status: Optional[str] = "pending"
+    coach_status: Optional[CoachStatus] = None
     check_in: Optional[datetime.datetime] = None
     last_online: Optional[datetime.datetime] = None
     coach_since: Optional[datetime.datetime] = None
 
 class CoachLogin(pydantic.BaseModel):
-    org_id: int
     email_address: str
     wallet_address: str
 
@@ -106,7 +105,7 @@ class CoachFilterParams(pydantic.BaseModel):
     search_key: Optional[str] = None
     sort_order: Optional[str] = None
     sort_key: Optional[str] =None
-    status: Optional[str] = None
+    status: Optional[CoachStatus] = None
     limit:Optional[int] = None
     offset:Optional[int] = None
     
@@ -131,7 +130,7 @@ class CoachReadSchema(pydantic.BaseModel):
     check_in: Optional[datetime.datetime] = None
     last_online: Optional[datetime.datetime] = None
     coach_since: Optional[datetime.datetime] = None
-    coach_status: Optional[str] = None
+    coach_status: Optional[CoachStatus] = None
     org_id: Optional[int] = None
     bank_name: Optional[str] = None
     iban_no: Optional[str] = None

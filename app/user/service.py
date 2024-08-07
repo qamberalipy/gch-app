@@ -21,6 +21,7 @@ from . import models, schema
 import logging
 from app.Exercise.service import extract_columns
 from collections import defaultdict
+from app.user.models import StaffStatus
 
 # Load environment variables
 
@@ -69,6 +70,49 @@ async def get_user_by_email(email: str, db: _orm.Session):
     print("Email: ", email)
     return db.query(_models.User).filter(_models.User.email == email).first()
 
+async def create_organization(org: _schemas.OrganizationCreate, db: _orm.Session) -> models.Organization:
+    db_org = models.Organization(**org.dict())
+    db.add(db_org)
+    db.commit()
+    db.refresh(db_org)
+    return db_org
+
+async def get_organization(org_id: int, db: _orm.Session) -> models.Organization:
+    return db.query(models.Organization).filter(models.Organization.id == org_id, models.Organization.is_deleted == False).first()
+
+async def update_organization(org_id: int, org: _schemas.OrganizationUpdate, db: _orm.Session) -> models.Organization:
+    db_org = db.query(models.Organization).filter(models.Organization.id == org_id, models.Organization.is_deleted == False).first()
+    if not db_org:
+        return None
+    for key, value in org.dict(exclude_unset=True).items():
+        setattr(db_org, key, value)
+    db.commit()
+    db.refresh(db_org)
+    return db_org
+
+async def delete_organization(org_id: int, db: _orm.Session):
+    db_org = db.query(models.Organization).filter(models.Organization.id == org_id, models.Organization.is_deleted == False).first()
+    if not db_org:
+        return None
+    db_org.is_deleted = True
+    db.commit()
+    return db_org
+
+async def get_opening_hours(org_id: int, db: _orm.Session) -> _models.Organization:
+    return db.query(_models.Organization).filter(_models.Organization.id == org_id).first()
+
+async def update_opening_hours(org_id: int, opening_hours_data: _schemas.OpeningHoursUpdate, db: _orm.Session):
+    organization = db.query(_models.Organization).filter(_models.Organization.id == org_id).first()
+    if organization:
+        organization.opening_hours = opening_hours_data.opening_hours
+        organization.opening_hours_notes = opening_hours_data.opening_hours_notes
+        organization.updated_at = datetime.datetime.now()
+        db.commit()
+        db.refresh(organization)
+        return organization
+    return None
+
+
 async def create_user(user: _schemas.UserRegister, db: _orm.Session):
     try:
         valid = _email_check.validate_email(user.email)
@@ -88,8 +132,8 @@ async def create_user(user: _schemas.UserRegister, db: _orm.Session):
     db.refresh(user_obj)
     return user_obj
 
-async def create_organization(organization: _schemas.OrganizationCreate, db: _orm.Session = _fastapi.Depends(get_db)):
-    org = _models.Organization(org_name=organization.org_name)
+async def create_organizationtest(organization: _schemas.OrganizationCreateTest, db: _orm.Session = _fastapi.Depends(get_db)):
+    org = _models.Organization(name=organization.name)
     db.add(org)
     db.commit()
     db.refresh(org)
@@ -126,7 +170,7 @@ async def get_user_by_email(email: str, db: _orm.Session = _fastapi.Depends(get_
 async def get_alluser_data(email: str, db: _orm.Session = _fastapi.Depends(get_db)):
     # Retrieve a user by email from the database
     result = (
-        db.query(_models.User, _models.Organization.org_name)
+        db.query(_models.User, _models.Organization.name)
         .join(_models.Organization, _models.User.org_id == _models.Organization.id)
         .filter(_models.User.email == email)
         .first()
@@ -160,7 +204,11 @@ async def create_staff(staff: _schemas.CreateStaff, db: _orm.Session = _fastapi.
     db.add(db_staff)
     db.commit()
     db.refresh(db_staff)
-    return db_staff
+    return {
+            "status_code": "201",
+            "id": db_staff.id,
+            "message": "Staff created successfully"
+        }
         
 async def authenticate_user(email: str, password: str, db: _orm.Session):
     # Authenticate a user
@@ -199,7 +247,7 @@ async def get_one_staff(staff_id: int, db: _orm.Session):
     
 
 async def update_staff(staff_id: int, staff_update: _schemas.UpdateStaff, db: _orm.Session):
-    staff = db.query(_models.User).filter(_models.User.id == staff_id).first()
+    staff = db.query(_models.User).filter(and_(_models.User.id == staff_id,_models.User.is_deleted == False)).first()
     if staff is None:
         raise _fastapi.HTTPException(status_code=404, detail="Staff not found")
     
@@ -210,17 +258,17 @@ async def update_staff(staff_id: int, staff_update: _schemas.UpdateStaff, db: _o
     staff.updated_at = datetime.now()
     db.commit()
     db.refresh(staff)
-    return staff
+    return {"status":"201","detail":"Staff updated successfully"}
 
 
 async def delete_staff(staff_id: int, db: _orm.Session):
-    staff = db.query(_models.User).filter(_models.User.id == staff_id).first()
+    staff = db.query(_models.User).filter(and_(_models.User.id == staff_id,_models.User.is_deleted == False)).first()
     if staff is None:
         raise _fastapi.HTTPException(status_code=404, detail="Staff not found")
     
     staff.is_deleted = True
     db.commit()
-    return {"detail": "Staff deleted successfully"}
+    return {"status":"201","detail":"Staff deleted successfully"}
 
 def get_filtered_staff(org_id: int, params: _schemas.StaffFilterParams,db:_orm.Session=_fastapi.Depends(get_db)):
     query = db.query(
@@ -242,6 +290,9 @@ def get_filtered_staff(org_id: int, params: _schemas.StaffFilterParams,db:_orm.S
 
     if params.role_name:
         query = query.filter(models.Role.name.ilike(f"%{params.role_name}%"))
+
+    if params.status:
+        query = query.filter(models.User.status == params.status)    
 
     if params.search_key:
         search_pattern = f"%{params.search_key}%"
@@ -548,6 +599,7 @@ def get_filters(
     staff_name: Annotated[str , _fastapi.Query(title="Staff Name")] = None,
     role_name: Annotated[str,_fastapi.Query(title="Role Name")]=None,
     sort_key: Annotated[str,_fastapi.Query(title="Sort Key")]=None,
+    status: Annotated[StaffStatus,_fastapi.Query(title="Status")]=None,
     sort_order: Annotated[str,_fastapi.Query(title="Sort Order")]=None,
     limit: Annotated[int, _fastapi.Query(description="Pagination Limit")] = None,
     offset: Annotated[int, _fastapi.Query(description="Pagination offset")] = None):
@@ -556,6 +608,7 @@ def get_filters(
         search_key=search_key,
         sort_key=sort_key,
         sort_order=sort_order,
+        status=status,
         staff_name=staff_name,
         role_name=role_name,
         limit=limit,

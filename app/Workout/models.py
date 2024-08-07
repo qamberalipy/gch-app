@@ -13,6 +13,10 @@ class ExerciseIntensity(PyEnum):
     max = "Max"
     percentage_of_1rm = "% of 1RM"
 
+class ExerciseIntensity(PyEnum):
+    max = "Max"
+    percentage_of_1rm = "% of 1RM"
+
 class WorkoutGoal(PyEnum):
     lose_weight = "Lose Weight"
     build_muscle = "Build Muscle"
@@ -125,3 +129,12 @@ class WorkoutDayExercise(_database.Base, HouseKeeping):
         lazy="noload",
         back_populates=None,
     )
+
+
+
+class MemberWorkout(_database.Base, HouseKeeping):
+    __tablename__ = "member_workout"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True, autoincrement=True)
+    member_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    workout_id: Mapped[int] = mapped_column(Integer, nullable=False)

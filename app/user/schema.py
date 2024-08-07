@@ -2,6 +2,8 @@ import pydantic
 import datetime
 from datetime import date
 from typing import Optional, List, Any
+from app.user.models import StaffStatus,RoleStatus
+from enum import Enum as PyEnum
 
 class UserBase(pydantic.BaseModel):
     first_name: str
@@ -47,8 +49,92 @@ class BankAccountCreate(pydantic.BaseModel):
     bank_account_holder_name: str
     bank_name: str
     
-class OrganizationCreate(pydantic.BaseModel):
-    org_name: str
+class OrganizationCreateTest(pydantic.BaseModel):
+    name: str
+
+class BusinessTypeEnum(str, PyEnum):
+    bootcamp = "Bootcamp"
+    community_services = "Community Services"
+    corporate_health = "Corporate Health"
+    crossfit_box = "CrossFit Box"
+    dance_studio = "Dance Studio"
+    dietitian = "Dietitian"
+    educational_institute = "Educational Institute"
+    fitness_center = "Fitness Center"
+    hospital_clinic = "Hospital or Clinic"
+    lifestyle_coach = "Lifestyle Coach"
+    martial_arts_center = "Martial Arts Center"
+    online_coach = "Online Coach"
+    personal_trainer = "Personal Trainer"
+    personal_training_studio = "Personal Training Studio"
+    physiotherapy_clinic = "Physiotherapy Clinic"
+    yoga_pilates_studio = "Yoga or Pilates Studio"
+    other = "Other" 
+
+class OrganizationBase(pydantic.BaseModel):
+    name: str
+    email: Optional[str]=None
+    profile_img:Optional[str] = None
+    business_type: Optional[BusinessTypeEnum]=None
+    description: Optional[str] = None
+    address: Optional[str] = None
+    zipcode: Optional[str] = None
+    country_id: Optional[int] = None
+    city: Optional[str] = None
+    facebook_page_url: Optional[str] = None
+    website_url: Optional[str] = None
+    timezone: Optional[str] = None
+    language: Optional[str] = None
+    company_reg_no: Optional[str] = None
+    vat_reg_no: Optional[str] = None
+    club_key: Optional[str] = None
+    api_key: Optional[str] = None
+    hide_for_nonmember: Optional[bool] = None
+    # opening_hours: Optional[dict] = None
+    # opening_hours_notes: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class OrganizationCreate(OrganizationBase):
+    pass
+
+class OrganizationUpdate(OrganizationBase):
+    id:int
+    
+    class Config:
+        from_attributes = True
+
+class OrganizationRead(OrganizationBase):
+    id: int
+    created_at: Optional[datetime.datetime]=None
+    updated_at: Optional[datetime.datetime]=None
+
+    class Config:
+        from_attributes = True
+
+class OpeningHoursBase(pydantic.BaseModel):
+
+    opening_hours: Optional[dict] = None
+    opening_hours_notes: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+    
+class OpeningHoursRead(OpeningHoursBase):
+    id: int
+    created_at: Optional[datetime.datetime]=None
+    updated_at: Optional[datetime.datetime]=None
+
+    class Config:
+        from_attributes = True
+
+class OpeningHoursUpdate(OpeningHoursBase):
+    id:int
+    
+    class Config:
+        from_attributes = True
+        
 
 class getStaff(pydantic.BaseModel):
     
@@ -101,7 +187,7 @@ class StaffBase(pydantic.BaseModel):
     zipcode: Optional[str] = None
     address_1: Optional[str] = None
     address_2: Optional[str] = None
-    status: Optional[str] = None
+    status:StaffStatus
     send_invitation: Optional[bool]=False
     
     class Config:
@@ -167,7 +253,7 @@ class UpdateStaff(pydantic.BaseModel):
     zipcode: Optional[str] = None
     address_1: Optional[str] = None
     address_2: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[StaffStatus] = None
     activated_on: Optional[datetime.date] = None
     last_online: Optional[datetime.datetime] = None
     updated_by: Optional[int] = None
@@ -181,6 +267,7 @@ class StaffFilterParams(pydantic.BaseModel):
     staff_name: Optional[str] = None
     role_name: Optional[str] = None
     sort_key:Optional[str]=None
+    status:Optional[StaffStatus]=None
     sort_order: Optional[str] = "asc"
     limit: Optional[int] = 10
     offset: Optional[int] = 0
@@ -202,7 +289,7 @@ class StaffFilterRead(pydantic.BaseModel):
 class RoleBase(pydantic.BaseModel):
     name: str
     org_id: Optional[int] = None
-    status: Optional[bool] = None
+    status: Optional[RoleStatus] = "active"
     is_deleted: Optional[bool] = False
 
     class Config:

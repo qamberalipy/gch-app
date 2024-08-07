@@ -12,6 +12,30 @@ class StaffStatus(str,PyEnum):
     inactive='inactive'
     pending='pending'    
     
+class BusinessTypeEnum(PyEnum):
+    bootcamp = "Bootcamp"
+    community_services = "Community Services"
+    corporate_health = "Corporate Health"
+    crossfit_box = "CrossFit Box"
+    dance_studio = "Dance Studio"
+    dietitian = "Dietitian"
+    educational_institute = "Educational Institute"
+    fitness_center = "Fitness Center"
+    hospital_clinic = "Hospital or Clinic"
+    lifestyle_coach = "Lifestyle Coach"
+    martial_arts_center = "Martial Arts Center"
+    online_coach = "Online Coach"
+    personal_trainer = "Personal Trainer"
+    personal_training_studio = "Personal Training Studio"
+    physiotherapy_clinic = "Physiotherapy Clinic"
+    yoga_pilates_studio = "Yoga or Pilates Studio"
+    other = "Other"
+    
+class RoleStatus(str,PyEnum):
+    active='active'
+    inactive='inactive'
+         
+   
 class User(_database.Base):
     __tablename__ = "staff"
 
@@ -66,10 +90,35 @@ class Source(_database.Base):
     source = _sql.Column(_sql.String)
     
 
+        
+
 class Organization(_database.Base):
     __tablename__ = "organization"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
-    org_name = _sql.Column(_sql.String, nullable=False)
+    name = _sql.Column(_sql.String)
+    email = _sql.Column(_sql.String)
+    profile_img = _sql.Column(_sql.String(150))  # varchar(150) in the image is likely a typo
+    business_type = _sql.Column(_sql.Enum(BusinessTypeEnum, name="businesstypeenum"))
+    description = _sql.Column(_sql.String)
+    address = _sql.Column(_sql.String(100)) 
+    zipcode = _sql.Column(_sql.String(10))
+    country_id = _sql.Column(_sql.Integer)
+    city = _sql.Column(_sql.String(20))
+    facebook_page_url=_sql.Column(_sql.String)
+    website_url=_sql.Column(_sql.String)
+    timezone = _sql.Column(_sql.String(20))
+    language =_sql.Column(_sql.String(20))
+    company_reg_no =_sql.Column(_sql.String(20))
+    vat_reg_no =_sql.Column(_sql.String(20))
+    club_key=_sql.Column(_sql.String)
+    api_key=_sql.Column(_sql.String)
+    hide_for_nonmember= _sql.Column(_sql.Boolean, default=False)
+    opening_hours=_sql.Column(_sql.JSON)
+    opening_hours_notes=_sql.Column(_sql.String)
+    created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
+    updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
+    created_by = _sql.Column(_sql.Integer)
+    updated_by = _sql.Column(_sql.Integer)
     is_deleted= _sql.Column(_sql.Boolean, default=False)
 
 class UserRole(_database.Base):
@@ -142,7 +191,7 @@ class Role(_database.Base):
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     name = _sql.Column(_sql.String(50))
     org_id = _sql.Column(_sql.Integer)
-    status = _sql.Column(_sql.Boolean)
+    status = _sql.Column(_sql.Enum(RoleStatus))
     is_deleted = _sql.Column(_sql.Boolean)
     
     # permissions = _orm.relationship(
@@ -216,7 +265,6 @@ class Permission(_database.Base):
     #     primaryjoin="Resource.id==foreign(Permission.resource_id)",
     #     back_populates="permissions"
     # )
-
 
     
 class Bank_detail(_database.Base):

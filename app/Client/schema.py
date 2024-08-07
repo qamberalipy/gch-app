@@ -2,6 +2,7 @@ import pydantic
 import datetime 
 import datetime 
 from typing import Dict, Optional, List, Any
+from app.Client.models import ClientStatus
 
 class ClientBase(pydantic.BaseModel):
     profile_img: Optional[str] = None
@@ -38,7 +39,7 @@ class ClientCreate(ClientBase):
     org_id: int
     coach_id: Optional[List[int]] = []
     membership_plan_id: int
-    status: str  # Corrected type annotation
+    status: ClientStatus="active"  # Corrected type annotation
     send_invitation: bool
     prolongation_period:Optional[int] = None
     auto_renew_days:Optional[int] = None
@@ -67,7 +68,7 @@ class ClientCreateApp(pydantic.BaseModel):
     client_since: Optional[datetime.date] = None
     org_id: Optional[int] = 0
     coach_id: Optional[int] = 0
-    status: Optional[str] = "pending"
+    status: Optional[ClientStatus] = None
     membership_plan_id: Optional[int] = 0
     is_deleted:Optional[bool]=False
 
@@ -158,7 +159,7 @@ class ClientByID(pydantic.BaseModel):
 class ClientOrganization(pydantic.BaseModel):
     client_id: int
     org_id: int
-    client_status:str
+    client_status:ClientStatus
 
 class CreateClientOrganization(ClientOrganization):
     pass
@@ -181,7 +182,6 @@ class CreateClientCoach(ClientCoach):
     pass
     
 class ClientLogin(pydantic.BaseModel):
-    org_id: int
     email_address: str
     wallet_address: str
     
@@ -234,11 +234,11 @@ class ClientFilterParams(pydantic.BaseModel):
     
     search_key: Optional[str] = None
     member_name: Optional[str] = None
-    status: Optional[str] = None
     sort_key:Optional[str]=None
     sort_order: Optional[str] = None
     coach_assigned: Optional[int] = None
     membership_plan: Optional[int] = None
+    status:Optional[ClientStatus]=None
     limit:Optional[int] = 10
     offset:Optional[int] = 0
     
@@ -278,7 +278,7 @@ class ClientUpdate(pydantic.BaseModel):
     coach_id: Optional[List[int]] = []
     membership_id: Optional[int] = None
     org_id: Optional[int] = None
-    status: Optional[str] = None
+    status: Optional[ClientStatus] = None
     is_deleted:Optional[bool]=False
 
     class Config:

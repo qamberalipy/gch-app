@@ -10,6 +10,8 @@ import pika
 import logging
 import datetime
 import app.Shared.helpers as _helpers
+from app.Membership.models import MembershipStatus
+
 router = APIRouter()
 
 logger = logging.getLogger("uvicorn.error")
@@ -64,7 +66,7 @@ def get_membership_filters(
     discount_percentage: Annotated[int, Query(description="Coach ID")] = None,
     tax_rate: Annotated[int, Query(description="Coach ID")] = None,
     total_amount: Annotated[int, Query(description="Membership ID")] = None,
-    status: Annotated[str | None, Query(title="status")] = None,
+    status: Annotated[MembershipStatus | None, Query(title="status")] = None,
     sort_order: Annotated[str,Query(title="Sorting Order")] = 'desc',
     limit: Annotated[int, Query(description="Pagination Limit")] = None,
     offset: Annotated[int, Query(description="Pagination offset")] = None
@@ -132,7 +134,7 @@ def get_filters(
 
     search_key: Annotated[str | None, Query(title="Search Key")] = None,
     sort_order: Annotated[str,Query(title="Sorting Order")] = 'desc',
-    status : Annotated[str | None, Query(title="Status")] = None,
+    status : Annotated[MembershipStatus | None, Query(title="Status")] = None,
     limit: Annotated[int, Query(description="Pagination Limit")] = None,
     offset: Annotated[int, Query(description="Pagination offset")] = None
 ):
@@ -181,9 +183,9 @@ def create_income_category(income_category: _schemas.IncomeCategoryCreate, db: _
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-def get_filters(
+def get_income_category_filters(
     search_key: Annotated[str | None, Query(title="Search Key")] = None,
-    status: Annotated[str | None, Query(title="Status")] = None,
+    status: Annotated[MembershipStatus | None, Query(title="Status")] = None,
     sort_key: Annotated[str | None, Query(title="Sort Key")] = None,
     sort_order: Annotated[str,Query(title="Sorting Order")] = 'desc',
     limit: Annotated[int, Query(description="Pagination Limit")] = None,
@@ -199,10 +201,8 @@ def get_filters(
     )
     
 @router.get("/income_category", response_model=List[_schemas.IncomeCategoryRead], tags=["Income Category APIs"])
-def get_all_income_categories(  
-    org_id: int, filters: Annotated[_schemas.IncomeCategoryFilterParams, 
-    Depends(get_filters)], 
-    request: Request, db: _orm.Session = Depends(get_db)):
+def get_all_income_categories(org_id: int, filters: Annotated[_schemas.IncomeCategoryFilterParams, Depends(get_income_category_filters)],db: _orm.Session = Depends(get_db)):
+    
     try:    
         income_categories = _services.get_all_income_categories_by_org_id(org_id, filters, db)
         return income_categories
@@ -265,17 +265,10 @@ def create_sale_tax(sale_tax: _schemas.SaleTaxCreate, db: _orm.Session = Depends
     
 
 @router.get("/sale_taxes", response_model=List[_schemas.SaleTaxRead], tags=["Sale_tax APIs"])
-def get_all_sale_taxes(org_id: int, request: Request, db: _orm.Session = Depends(get_db)):
+def get_all_sale_taxes(org_id: int,filters: Annotated[_schemas.IncomeCategoryFilterParams, Depends(get_filters)], db: _orm.Session = Depends(get_db)):
     try:    
-        params = {
-             "org_id": org_id,
-            "search_key": request.query_params.get("search_key"),
-            "sort_order": request.query_params.get("sort_order", "desc"),
-            "limit": request.query_params.get("limit", 10),
-            "offset": request.query_params.get("offset", 0)
-        }
         
-        sale_taxes = _services.get_all_sale_taxes_by_org_id(db, _schemas.StandardParams(**params))
+        sale_taxes = _services.get_all_sale_taxes_by_org_id(org_id=org_id,db=db,params=filters)
         return sale_taxes
     
     except IntegrityError:

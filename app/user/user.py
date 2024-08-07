@@ -32,6 +32,48 @@ def get_db():
     finally:
         db.close()
 
+@router.post("/organizations", response_model=_schemas.OrganizationRead, tags=["Organizations API"])
+async def create_organization(org: _schemas.OrganizationCreate, db: _orm.Session = Depends(get_db)):
+    try:
+        new_org = await _services.create_organization(org, db)
+        return new_org
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+@router.get("/organizations/{id}", response_model=_schemas.OrganizationRead, tags=["Organizations API"])
+async def get_organization(id: int, db: _orm.Session = Depends(get_db)):
+    org = await _services.get_organization(id, db)
+    if org is None:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    return org
+
+@router.put("/organizations", response_model=_schemas.OrganizationRead, tags=["Organizations API"])
+async def update_organization(org: _schemas.OrganizationUpdate, db: _orm.Session = Depends(get_db)):
+    updated_org = await _services.update_organization(org.id, org, db)
+    if updated_org is None:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    return updated_org
+
+@router.delete("/organizations/{id}", response_model=_schemas.OrganizationRead, tags=["Organizations API"])
+async def delete_organization(id: int, db: _orm.Session = Depends(get_db)):
+    deleted_org = await _services.delete_organization(id, db)
+    if deleted_org is None:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    return deleted_org
+
+@router.get("/opening_hours/{id}", response_model=_schemas.OpeningHoursRead, tags=["Organizations API"])
+async def read_opening_hours(id: int, db: _orm.Session = Depends(get_db)):
+    organization = await _services.get_opening_hours(id, db)
+    if organization:
+        return organization
+    raise HTTPException(status_code=404, detail="Organization not found")
+
+@router.put("/opening-hours", response_model=_schemas.OpeningHoursRead, tags=["Organizations API"])
+async def update_opening_hours(opening_hours_data: _schemas.OpeningHoursUpdate, db: _orm.Session = Depends(get_db)):
+    updated_organization = await _services.update_opening_hours(opening_hours_data.id, opening_hours_data, db)
+    if updated_organization:
+        return updated_organization
+    raise HTTPException(status_code=404, detail="Organization not found")
 
 @router.get("/staff/list",response_model=List[_schemas.getStaff],tags=["Staff APIs"])
 async def get_staff_list(org_id:int, db: _orm.Session= Depends(get_db)):
@@ -48,7 +90,7 @@ async def get_privileges(org_id:int, db: _orm.Session= Depends(get_db)):
     return organization_roles
 
 
-@router.post("/staff", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
+@router.post("/staff", tags=["Staff APIs"])
 async def register_staff(staff: _schemas.CreateStaff, db: _orm.Session = Depends(get_db)):
     try:
         
@@ -108,7 +150,7 @@ async def get_all_staff(org_id: int, db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
    
 
-@router.put("/staff", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
+@router.put("/staff", tags=["Staff APIs"])
 async def update_staff(staff_update: _schemas.UpdateStaff, db: _orm.Session = Depends(get_db)):
     try:
             

@@ -6,6 +6,7 @@ import bcrypt as _bcrypt
 import sqlalchemy.ext.declarative as _declarative
 from enum import Enum as PyEnum
 
+
 class ClientStatus(PyEnum):
     active='active'
     inactive='inactive'

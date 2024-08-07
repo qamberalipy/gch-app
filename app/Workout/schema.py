@@ -92,7 +92,7 @@ class WorkoutFilter(MyBaseModel):
     include_days: Optional[bool] = False
     include_days_and_exercises: Optional[bool] = False
     created_by_user: Optional[bool] = None
-    sort_column: Optional[Literal[*tuple(columns)]] = None
+    # sort_column: Optional[Literal[*tuple(columns)]] = None
     sort_dir: Optional[Literal["asc", "desc"]] = "asc"
     results_per_goal: Optional[int] = 3
     equipment_id: Optional[int] = None
@@ -108,11 +108,11 @@ class WorkoutDayOptionalBase(MyBaseModel):
 class WorkoutDayUpdate(WorkoutDayOptionalBase):
     pass
 
-columns = list(WorkoutDayRead.model_fields.keys())
+# columns = list(WorkoutDayRead.model_fields.keys())
 class WorkoutDayFilter(WorkoutDayOptionalBase):
     workout_id: Optional[int] = None
     include_exercises: Optional[bool] = None
-    sort_column: Optional[Literal[*tuple(columns)]] = None
+    # sort_column: Optional[Literal[*tuple(columns)]] = None
     sort_dir: Optional[Literal["asc", "desc"]] = "asc"
 
 

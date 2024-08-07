@@ -55,7 +55,11 @@ async def create_client(
     db.add(db_client)
     db.commit()
     db.refresh(db_client)
-    return db_client
+    return {
+            "status_code": "201",
+            "id": db_client.id,
+            "message": "Member created successfully"
+        }
 
 
 async def create_client_for_app(
@@ -112,18 +116,12 @@ async def authenticate_client(
 
 
 async def login_client(
-    org_id: int,
     email_address: str,
     wallet_address: str,
     db: _orm.Session = _fastapi.Depends(get_db),
 ) -> dict:
     client = (
         db.query(models.Client, _models.ClientOrganization)
-        .join(
-            _models.ClientOrganization,
-            and_(_models.Client.id == _models.ClientOrganization.client_id,
-            _models.ClientOrganization.org_id == org_id,)
-        )
         .filter(
             _models.Client.email == email_address, _models.Client.is_deleted == False
         )
@@ -139,7 +137,7 @@ async def login_client(
     db.refresh(client)
     
 
-    token = _helpers.create_token(dict(id=client.id, org_id=org_id), "Member")
+    token = _helpers.create_token(dict(id=client.id), "Member")
 
     return {"is_registered": True, "client": client, "access_token": token}
 
@@ -184,7 +182,7 @@ async def update_client(
     db_client.updated_at = datetime.datetime.utcnow()
     db.commit()
     db.refresh(db_client)
-    return db_client
+    return {"status":"201","detail":"Member updated successfully"}
 
 
 async def update_client_membership(
@@ -244,7 +242,7 @@ async def delete_client(client_id: int, db: _orm.Session = _fastapi.Depends(get_
     db_client.updated_at = datetime.datetime.now()
     db.commit()
     db.refresh(db_client)
-    return db_client
+    return {"status":"201","detail":"Member deleted successfully"}
 
 
 def get_list_clients(
@@ -439,17 +437,14 @@ def get_filtered_clients(
         ))
 
     if params.status:
-        query = query.filter(
-            _models.ClientOrganization.client_status.ilike(f"%{params.status}%")
-        )
-
+        query = query.filter(_models.ClientOrganization.client_status == params.status)
+    
     if params.coach_assigned:
         query = query.filter(_models.ClientCoach.coach_id == params.coach_assigned)
 
     if params.membership_plan:
         query = query.filter(
-            _models.ClientMembership.membership_plan_id == params.membership_plan
-        )
+            _models.ClientMembership.membership_plan_id == params.membership_plan)
 
     if params.search_key:
         search_pattern = f"%{params.search_key}%"

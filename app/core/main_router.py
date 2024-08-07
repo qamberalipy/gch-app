@@ -47,8 +47,8 @@ async def register_user(user: _schemas.UserCreate, db: _orm.Session = Depends(ge
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    organization_details = _schemas.OrganizationCreate(org_name=user.org_name)
-    organization = await _services.create_organization(organization_details, db)
+    organization_details = _schemas.OrganizationCreateTest(name=user.org_name)
+    organization = await _services.create_organizationtest(organization_details, db)
 
     user_data = user.dict()
     user_data['org_id'] = organization.id
@@ -110,70 +110,82 @@ async def read_sources(db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="No sources found")
     return sources
 
-@router.post("/app/member/signup", response_model=ClientLoginResponse, tags=["App Router"])
-async def register_mobileclient(client: ClientCreateApp,db: _orm.Session = Depends(get_db)):
+@router.post(
+    "/app/member/signup", response_model=ClientLoginResponse, tags=["App Router"]
+)
+async def register_mobileclient(
+    client: ClientCreateApp, db: _orm.Session = Depends(get_db)
+):
     try:
         db_client = await _client_service.get_client_by_email(client.email, db)
         if db_client:
             if db_client.is_deleted:
-                updated_client = await _client_service.update_client(db_client.id, client, db)
-                member_base=dict(id=updated_client.id, org_id=0)
+                updated_client = await _client_service.update_client(
+                    db_client.id, client, db
+                )
+                member_base = dict(id=updated_client.id)
                 token = _helpers.create_token(member_base, "Member")
                 return {
                     "is_registered": True,
                     "client": updated_client,
-                    "access_token": token
+                    "access_token": token,
                 }
             else:
                 raise HTTPException(status_code=400, detail="Email already registered")
 
         client_data = client.dict()
-        organization_id = client_data.pop('org_id', 0)
-        status = client_data.pop('status', 'pending')
-        coach_id = client_data.pop('coach_id', None)
-        membership_id = client_data.pop('membership_plan_id', 0)
+        organization_id = client_data.pop("org_id", 0)
+        status = client_data.pop("status", "pending")
+        coach_id = client_data.pop("coach_id", None)
+        membership_id = client_data.pop("membership_plan_id", 0)
 
-        client_data['own_member_id'] = _client_service.generate_own_member_id()
+        client_data["own_member_id"] = _client_service.generate_own_member_id()
 
-        new_client = await _client_service.create_client_for_app(RegisterClientApp(**client_data), db)
+        new_client = await _client_service.create_client_for_app(
+            RegisterClientApp(**client_data), db
+        )
 
         await _client_service.create_client_organization(
-            CreateClientOrganization(client_id=new_client.id, org_id=organization_id, client_status=status), db
+            CreateClientOrganization(
+                client_id=new_client.id, org_id=organization_id, client_status=status
+            ),
+            db,
         )
 
         await _client_service.create_client_membership(
-            CreateClientMembership(client_id=new_client.id, membership_plan_id=membership_id), db
+            CreateClientMembership(
+                client_id=new_client.id, membership_plan_id=membership_id
+            ),
+            db,
         )
 
         if coach_id is not None:
-            await _client_service.create_client_coach(
-                CreateClientCoach(client_id=new_client.id, coach_id=coach_id), db
-            )
-        member_base=dict(id=new_client.id, org_id=0)
+            await _client_service.create_client_coach(new_client.id, [coach_id], db)
+        member_base = dict(id=new_client.id)
         token = _helpers.create_token(member_base, "Member")
-        
-        return {
-            "is_registered": True,
-            "client": new_client,
-            "access_token": token
-        }
+
+        return {"is_registered": True, "client": new_client, "access_token": token}
 
     except IntegrityError as e:
         db.rollback()
         logger.error(f"IntegrityError: {e}")
-        raise HTTPException(status_code=400, detail="Duplicate entry or integrity constraint violation")
-        
+        raise HTTPException(
+            status_code=400, detail="Duplicate entry or integrity constraint violation"
+        )
+
     except DataError as e:
         db.rollback()
         logger.error(f"DataError: {e}")
-        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+        raise HTTPException(
+            status_code=400, detail="Data error occurred, check your input"
+        )
 
    
 
 @router.post("/app/member/login", response_model=ClientLoginResponse,  tags=["App Router"])
 async def login_client(client_data: ClientLogin, db: _orm.Session = Depends(get_db)):
     try:
-      result = await _client_service.login_client(client_data.org_id,client_data.email_address, client_data.wallet_address, db)
+      result = await _client_service.login_client(client_data.email_address, client_data.wallet_address, db)
       print("result",result)
       return result
     except Exception as e:
@@ -187,7 +199,7 @@ async def create_mobilecoach(coach: CoachAppBase, db: _orm.Session = Depends(get
         if db_coach:
             if db_coach.is_deleted:
                 updated_coach = await _coach_service.update_coach(db_coach.id,coach,"app", db)
-                coach_base=dict(id=db_coach.id, org_id=0)
+                coach_base=dict(id=db_coach.id)
                 token = _helpers.create_token(coach_base, "Coach")
                 return {
                     "is_registered": True,
@@ -199,7 +211,7 @@ async def create_mobilecoach(coach: CoachAppBase, db: _orm.Session = Depends(get
 
         new_coach=_coach_service.create_appcoach(coach,db)
         new_coach.org_id=0
-        member_base=dict(id=new_coach.id, org_id=0)
+        member_base=dict(id=new_coach.id)
         token = _helpers.create_token(member_base, "Coach")
         return {
             "is_registered": True,
@@ -222,7 +234,7 @@ async def create_mobilecoach(coach: CoachAppBase, db: _orm.Session = Depends(get
 @router.post("/app/coach/login", response_model=CoachLoginResponse,  tags=["App Router"])
 async def login_coach(coach_data: CoachLogin, db: _orm.Session = Depends(get_db)):
     try:
-        result = await _coach_service.login_coach(coach_data.org_id,coach_data.email_address, coach_data.wallet_address, db)
+        result = await _coach_service.login_coach(coach_data.email_address, coach_data.wallet_address, db)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
