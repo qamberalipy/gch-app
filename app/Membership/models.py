@@ -6,6 +6,7 @@ import app.core.db.session as _database
 import bcrypt as _bcrypt
 import sqlalchemy.ext.declarative as _declarative
 from enum import Enum as pyEnum
+import sqlalchemy as _sql
 
 class MembershipStatus(str,pyEnum):
     active='active'
