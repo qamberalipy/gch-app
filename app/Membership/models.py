@@ -5,9 +5,10 @@ import sqlalchemy.orm as _orm
 import app.core.db.session as _database
 import bcrypt as _bcrypt
 import sqlalchemy.ext.declarative as _declarative
+from enum import Enum as pyEnum
 import sqlalchemy as _sql
 
-class Status(str,pyEnum):
+class MembershipStatus(str,pyEnum):
     active='active'
     inactive='inactive'
 
@@ -18,8 +19,8 @@ class MembershipPlan(_database.Base):
     name = _sql.Column(_sql.String, nullable=False)
     org_id = _sql.Column(_sql.Integer)
     group_id = _sql.Column(_sql.Integer)
-    status = _sql.Column(_sql.Enum(Status))  
-    description = _sql.Column(_sql.Text)  
+    status = _sql.Column(_sql.Enum(MembershipStatus))
+    description = _sql.Column(_sql.Text)
     access_time = _sql.Column(_sql.JSON)
     net_price = _sql.Column(_sql.Float)
     income_category_id = _sql.Column(_sql.Integer)
@@ -66,7 +67,7 @@ class Facility(_database.Base):
     name = _sql.Column(_sql.String, nullable=False)
     min_limit=_sql.Column(_sql.Integer)
     org_id = _sql.Column(_sql.Integer)
-    status=_sql.Column(_sql.Enum(Status),nullable=False)
+    status=_sql.Column(_sql.Enum(MembershipStatus),nullable=False)
     is_deleted= _sql.Column(_sql.Boolean, default=False)
     created_at=_sql.Column(_sql.DateTime,default=_dt.datetime.now)
     updated_at=_sql.Column(_sql.DateTime,default=_dt.datetime.now)
@@ -91,7 +92,7 @@ class Income_category(_database.Base):
     position=_sql.Column(_sql.Integer)
     sale_tax_id=_sql.Column(_sql.Integer)
     org_id = _sql.Column(_sql.Integer)
-    status = _sql.Column(_sql.Enum(Status),nullable=False)
+    status = _sql.Column(_sql.Enum(MembershipStatus),nullable=False)
     is_deleted= _sql.Column(_sql.Boolean, default=False)
     created_at=_sql.Column(_sql.DateTime,default=_dt.datetime.now)
     updated_at=_sql.Column(_sql.DateTime,default=_dt.datetime.now)
@@ -106,7 +107,7 @@ class Sale_tax(_database.Base):
     percentage=_sql.Column(_sql.Float)
     org_id = _sql.Column(_sql.Integer)
     is_deleted= _sql.Column(_sql.Boolean, default=False)
-    status = _sql.Column(_sql.Enum(Status),nullable=False)
+    status = _sql.Column(_sql.Enum(MembershipStatus),nullable=False)
     created_at=_sql.Column(_sql.DateTime,default=_dt.datetime.now)
     updated_at=_sql.Column(_sql.DateTime,default=_dt.datetime.now)
     created_by=_sql.Column(_sql.Integer)
