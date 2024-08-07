@@ -76,12 +76,11 @@ def create_appcoach(coach: _schemas.CoachAppBase,db: _orm.Session):
     return db_coach
 
 async def login_coach(
-    org_id: int,
     email_address: str,
     wallet_address: str,
     db: _orm.Session = _fastapi.Depends(get_db),
 ) -> dict:
-    coach = await get_coach_by_email(org_id, email_address, db)
+    coach = await get_coach_by_email(email_address, db)
 
     if not coach:
         return {"is_registered": False}
@@ -90,23 +89,15 @@ async def login_coach(
     db.commit()
     db.refresh(coach)
 
-    token = _helpers.create_token(dict(id=coach.id, org_id=org_id), "Coach")
+    token = _helpers.create_token(dict(id=coach.id), "Coach")
 
     return {"is_registered": True, "coach": coach, "access_token": token}
 
 async def get_coach_by_email(
-    org_id: int, email_address: str, db: _orm.Session = _fastapi.Depends(get_db)
+    email_address: str, db: _orm.Session = _fastapi.Depends(get_db)
 ) -> _models.Coach:
 
-    query = db.query(_models.Coach)
-    if org_id != 0:
-        query = query.join(
-            _models.CoachOrganization,
-            _models.Coach.id == _models.CoachOrganization.coach_id,
-        ).filter(
-            _models.CoachOrganization.org_id == org_id,
-        )
-    query = query.filter(
+    query = db.query(_models.Coach).filter(
         models.Coach.email == email_address,
     )
     return query.first()

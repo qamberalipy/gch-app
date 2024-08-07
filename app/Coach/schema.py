@@ -90,7 +90,6 @@ class CoachAppBase(pydantic.BaseModel):
     coach_since: Optional[datetime.datetime] = None
 
 class CoachLogin(pydantic.BaseModel):
-    org_id: int
     email_address: str
     wallet_address: str
 

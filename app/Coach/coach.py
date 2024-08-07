@@ -27,8 +27,8 @@ def get_db():
         db.close()
 
 @router.post("/coach", response_model=_schemas.CoachRead ,tags=["Coach API"])
-def create_coach(coach: _schemas.CoachCreate, db: _orm.Session = Depends(get_db)):
-    return _services.create_coach(coach,db)
+async def create_coach(coach: _schemas.CoachCreate, db: _orm.Session = Depends(get_db)):
+    return await _services.create_coach(coach,db)
 
 @router.put("/coach", response_model=_schemas.CoachUpdate , tags=["Coach API"])
 async def update_coach(coach: _schemas.CoachUpdate, db: _orm.Session = Depends(get_db)):

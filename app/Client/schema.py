@@ -181,7 +181,6 @@ class CreateClientCoach(ClientCoach):
     pass
     
 class ClientLogin(pydantic.BaseModel):
-    org_id: int
     email_address: str
     wallet_address: str
     

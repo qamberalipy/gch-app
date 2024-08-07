@@ -112,18 +112,12 @@ async def authenticate_client(
 
 
 async def login_client(
-    org_id: int,
     email_address: str,
     wallet_address: str,
     db: _orm.Session = _fastapi.Depends(get_db),
 ) -> dict:
     client = (
         db.query(models.Client, _models.ClientOrganization)
-        .join(
-            _models.ClientOrganization,
-            and_(_models.Client.id == _models.ClientOrganization.client_id,
-            _models.ClientOrganization.org_id == org_id,)
-        )
         .filter(
             _models.Client.email == email_address, _models.Client.is_deleted == False
         )
@@ -139,7 +133,7 @@ async def login_client(
     db.refresh(client)
     
 
-    token = _helpers.create_token(dict(id=client.id, org_id=org_id), "Member")
+    token = _helpers.create_token(dict(id=client.id), "Member")
 
     return {"is_registered": True, "client": client, "access_token": token}
 
