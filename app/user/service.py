@@ -98,6 +98,21 @@ async def delete_organization(org_id: int, db: _orm.Session):
     db.commit()
     return db_org
 
+async def get_opening_hours(org_id: int, db: _orm.Session) -> _models.Organization:
+    return db.query(_models.Organization).filter(_models.Organization.id == org_id).first()
+
+async def update_opening_hours(org_id: int, opening_hours_data: _schemas.OpeningHoursUpdate, db: _orm.Session):
+    organization = db.query(_models.Organization).filter(_models.Organization.id == org_id).first()
+    if organization:
+        organization.opening_hours = opening_hours_data.opening_hours
+        organization.opening_hours_notes = opening_hours_data.opening_hours_notes
+        organization.updated_at = datetime.datetime.now()
+        db.commit()
+        db.refresh(organization)
+        return organization
+    return None
+
+
 async def create_user(user: _schemas.UserRegister, db: _orm.Session):
     try:
         valid = _email_check.validate_email(user.email)

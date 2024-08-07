@@ -107,13 +107,34 @@ class OrganizationUpdate(OrganizationBase):
 
 class OrganizationRead(OrganizationBase):
     id: int
-    created_at: datetime.datetime
-    updated_at: datetime.datetime
+    created_at: Optional[datetime.datetime]=None
+    updated_at: Optional[datetime.datetime]=None
 
     class Config:
         from_attributes = True
 
+class OpeningHoursBase(pydantic.BaseModel):
 
+    opening_hours: Optional[dict] = None
+    opening_hours_notes: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+    
+class OpeningHoursRead(OpeningHoursBase):
+    id: int
+    created_at: Optional[datetime.datetime]=None
+    updated_at: Optional[datetime.datetime]=None
+
+    class Config:
+        from_attributes = True
+
+class OpeningHoursUpdate(OpeningHoursBase):
+    id:int
+    
+    class Config:
+        from_attributes = True
+        
 
 class getStaff(pydantic.BaseModel):
     

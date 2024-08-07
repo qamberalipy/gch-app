@@ -61,6 +61,19 @@ async def delete_organization(id: int, db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Organization not found")
     return deleted_org
 
+@router.get("/opening_hours/{id}", response_model=_schemas.OpeningHoursRead, tags=["Organizations API"])
+async def read_opening_hours(id: int, db: _orm.Session = Depends(get_db)):
+    organization = await _services.get_opening_hours(id, db)
+    if organization:
+        return organization
+    raise HTTPException(status_code=404, detail="Organization not found")
+
+@router.put("/opening-hours", response_model=_schemas.OpeningHoursRead, tags=["Organizations API"])
+async def update_opening_hours(opening_hours_data: _schemas.OpeningHoursUpdate, db: _orm.Session = Depends(get_db)):
+    updated_organization = await _services.update_opening_hours(opening_hours_data.id, opening_hours_data, db)
+    if updated_organization:
+        return updated_organization
+    raise HTTPException(status_code=404, detail="Organization not found")
 
 @router.get("/staff/list",response_model=List[_schemas.getStaff],tags=["Staff APIs"])
 async def get_staff_list(org_id:int, db: _orm.Session= Depends(get_db)):
