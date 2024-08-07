@@ -158,6 +158,7 @@ def get_membership_plan_by_id(membership_plan_id: int, db: _orm.Session):
     ]
 
     response = _schemas.MembershipPlanResponse(
+        id = membership_plan.id,
         name=membership_plan.name,
         org_id=membership_plan.org_id,
         group_id=membership_plan.group_id,
