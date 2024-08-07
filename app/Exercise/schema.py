@@ -2,13 +2,15 @@
 import pydantic
 from datetime import date
 from typing import Dict, List, Optional
-from app.Exercise.models import ExerciseType,VisibleFor,Difficulty
+from app.Exercise.models import ExerciseType,VisibleFor,Difficulty,Intensity
 
 class ExerciseBase(pydantic.BaseModel):
     exercise_name:str
     visible_for:VisibleFor
     org_id:int
     exercise_type :ExerciseType
+    exercise_intensity:Intensity
+    intensity_value:float
     difficulty:Difficulty
     sets :int
     seconds_per_set:List[int]

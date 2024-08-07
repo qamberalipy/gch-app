@@ -44,6 +44,8 @@ async def create_exercise(exercise: _schemas.ExerciseCreate, db: _orm.Session):
         visible_for=exercise.visible_for,
         org_id=exercise.org_id,
         category_id=exercise.category_id,
+        exercise_intensity=exercise.exercise_intensity,
+        intensity_value=exercise.intensity_value,
         exercise_type=exercise.exercise_type,
         difficulty=exercise.difficulty,
         sets=exercise.sets,

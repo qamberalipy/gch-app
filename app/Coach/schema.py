@@ -144,3 +144,42 @@ class CoachReadSchema(pydantic.BaseModel):
         arbitrary_types_allowed=True
 
    
+class CoachResponse(pydantic.BaseModel):
+    id: int
+    wallet_address: Optional[str]
+    own_coach_id: Optional[str]
+    profile_img: Optional[str]
+    first_name: Optional[str]
+    last_name: Optional[str]
+    dob: Optional[datetime.date]
+    gender: Optional[str]
+    email: Optional[str]
+    password: Optional[str]
+    phone: Optional[str]
+    mobile_number: Optional[str]
+    notes: Optional[str]
+    source_id: Optional[int]
+    country_id: Optional[int]
+    city: Optional[str]
+    zipcode: Optional[str]
+    address_1: Optional[str]
+    address_2: Optional[str]
+    check_in: Optional[datetime.datetime]
+    last_online: Optional[datetime.datetime]
+    coach_since: Optional[datetime.datetime]
+    bank_detail_id: Optional[int]
+    created_at: Optional[datetime.datetime]
+    updated_at: Optional[datetime.datetime]
+    created_by: Optional[int]
+    updated_by: Optional[int]
+    is_deleted: bool
+    coach_status: CoachStatus
+    org_id: int
+    bank_name: Optional[str]
+    iban_no: Optional[str]
+    acc_holder_name: Optional[str]
+    swift_code: Optional[str]
+    members: List[int]
+
+    class Config:
+        from_attributes = True
