@@ -80,7 +80,25 @@ class FacilityFilterParams(pydantic.BaseModel):
     status: Optional[bool] = True
     limit:Optional[int] = None
     offset:Optional[int] = None
-        
+
+
+
+
+class data_list(pydantic.BaseModel):
+    id:Optional[int]=None    
+    name:Optional[str]=None    
+
+
+class data_list_income_category(pydantic.BaseModel):
+    id:Optional[int]=None    
+    name:Optional[str]=None    
+    sale_tax_id:Optional[int]=None
+
+class data_list_saletax(pydantic.BaseModel):
+    id:Optional[int]=None    
+    name:Optional[str]=None    
+    percentage:Optional[float]=None
+    
 class IncomeCategoryBase(pydantic.BaseModel):
     name: Optional[str] = None
     position: Optional[int] = None

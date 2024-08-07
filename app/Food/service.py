@@ -1,8 +1,9 @@
 from datetime import date
+
 import datetime
-from typing import Optional
+from typing import Annotated,Any, List
 import jwt
-from sqlalchemy import desc, func, or_
+from sqlalchemy import String, asc, cast, desc, func, literal_column, or_
 import sqlalchemy.orm as _orm
 from sqlalchemy.sql import and_  
 import email_validator as _email_check
@@ -11,12 +12,16 @@ import fastapi.security as _security
 import app.core.db.session as _database
 import app.Food.schema as _schemas
 import app.Food.models as _models
+import app.user.models as _usermodels
+import app.Shared.helpers as _helpers
 import random
 import json
 import pika
 import time
 import os
 import bcrypt as _bcrypt
+from . import models, schema
+from sqlalchemy.orm import aliased
 
 
 async def create_food(food: _schemas.FoodCreate, db: _orm.Session):
@@ -29,8 +34,6 @@ async def create_food(food: _schemas.FoodCreate, db: _orm.Session):
     return db_food
 
 
-async def get_all_foods(db: _orm.Session):
-    return db.query(_models.Food).all()
 
 async def get_food_by_id(food_id: int, db: _orm.Session):
     return db.query(_models.Food).filter(_models.Food.id == food_id).first()
@@ -57,3 +60,44 @@ async def delete_food(food_id: int, db: _orm.Session):
     db.delete(db_food)
     db.commit()
     return db_food
+
+async def get_all_foods(db: _orm.Session,org_id:int):
+    return db.query(_models.Food.id,_models.Food.name).filter(
+            _models.Food.org_id == org_id).order_by(
+            desc(_models.Food.created_at)).all()
+
+async def get_food_by_org_id(db: _orm.Session,org_id: int,params: _schemas.FoodFilterParams):
+    sort_order = desc(_models.Food.created_at) if params.sort_order == "desc" else asc(_models.Food.created_at)
+
+    query = db.query(_models.Food).filter(_models.Food.org_id == org_id).order_by(sort_order)
+    total_counts = db.query(func.count()).select_from(query.subquery()).scalar()
+
+    if params.search_key:
+        query = query.filter(
+            or_(_models.Food.name.ilike(f"%{params.search_key}%"))
+        )
+    
+    if params.category:
+        query = query.filter(_models.Food.category == params.category)
+    
+    if params.total_nutrition:
+        query = query.filter(
+            _models.Food.total_nutrition >= params.total_nutrition
+        )
+        
+    if params.total_fat:
+        query = query.filter(
+            _models.Food.fat >= params.total_fat
+        )
+    query = query.order_by(sort_order).offset(params.offset).limit(params.limit)
+    filtered_counts = db.query(func.count()).select_from(query.subquery()).scalar()
+    db_foods = query.all()
+    
+    foods = []
+    for food in db_foods:
+        foods.append(food)
+
+    if foods:
+        return {"data":foods,"total_counts":total_counts,"filtered_counts": filtered_counts}
+    else:
+        return None

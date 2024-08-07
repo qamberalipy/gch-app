@@ -41,7 +41,7 @@ class UserType(PyEnum):
     coach = 'Coach'
 
 class HouseKeeping():
-    create_user_type: Mapped[UserType] = mapped_column(Enum(UserType), nullable=False)
+    create_user_type: Mapped[UserType] = mapped_column(Enum(UserType), nullable=True)
     update_user_type: Mapped[UserType] = mapped_column(Enum(UserType))
     created_by: Mapped[int] = mapped_column(Integer)
     updated_by: Mapped[int] = mapped_column(Integer)
@@ -54,15 +54,14 @@ class Workout(_database.Base, HouseKeeping):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True, autoincrement=True)
     org_id: Mapped[int] = mapped_column(Integer)
-    workout_name: Mapped[str] = mapped_column(String, nullable=False)
+    workout_name: Mapped[str] = mapped_column(String, nullable=True)
     description: Mapped[str] = mapped_column(String, nullable=True)
-    visible_for: Mapped[VisibleFor] = mapped_column(Enum(VisibleFor), nullable=False)
-    goals: Mapped[WorkoutGoal] = mapped_column(Enum(WorkoutGoal), nullable=False)
-    level: Mapped[WorkoutLevel] = mapped_column(Enum(WorkoutLevel), nullable=False)
+    visible_for: Mapped[VisibleFor] = mapped_column(Enum(VisibleFor), nullable=True)
+    goals: Mapped[WorkoutGoal] = mapped_column(Enum(WorkoutGoal), nullable=True)
+    level: Mapped[WorkoutLevel] = mapped_column(Enum(WorkoutLevel), nullable=True)
     notes: Mapped[str] = mapped_column(String, nullable=True)
-    weeks: Mapped[int] = mapped_column(Integer, nullable=False)
+    weeks: Mapped[int] = mapped_column(Integer, nullable=True)
     img_url: Mapped[str] = mapped_column(String, nullable=True)
-    assign_to: Mapped[List[int]] = mapped_column(ARRAY(Integer), nullable=True)
 
     days = relationship(
         "WorkoutDay",
@@ -110,7 +109,7 @@ class WorkoutDayExercise(_database.Base, HouseKeeping):
     percentage_of_1rm: Mapped[float] = mapped_column(Float, nullable=True)
     distance: Mapped[float] = mapped_column(Float, nullable=True)
     speed: Mapped[float] = mapped_column(Float, nullable=True)
-    met_value: Mapped[float] = mapped_column(Float, nullable=False)
+    met_value: Mapped[float] = mapped_column(Float, nullable=True)
     notes: Mapped[str] = mapped_column(String, nullable=True)
 
     workout_day = relationship(

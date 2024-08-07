@@ -22,6 +22,10 @@ def get_db():
 async def get_muscle(db: _orm.Session = _fastapi.Depends(get_db)):
     return db.query(*_models.Muscle.__table__.columns)
 
+
+async def get_met(db: _orm.Session = _fastapi.Depends(get_db)):
+    return db.query(*_models.MET.__table__.columns)
+
 async def get_category(db: _orm.Session = _fastapi.Depends(get_db)):
     return db.query(*_models.ExerciseCategory.__table__.columns)
 

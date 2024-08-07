@@ -4,6 +4,22 @@ import sqlalchemy.orm as _orm
 import app.core.db.session as _database
 import bcrypt as _bcrypt
 import sqlalchemy.ext.declarative as _declarative
+from enum import Enum as PyEnum
+
+
+class Status(PyEnum):
+    new='new'
+    contacted='contacted'
+    incontact='in contact'
+    appointment_made='appointment made'
+    appointment_held='appointment held'
+    free_trail='free trail'
+    signup_scheduled='sign up scheduled'
+    no_show='no show'
+    closed_refused='closed refused'
+    closed_lost_contact='closed lost contact'
+    closed_disqualified='closed disqualified'
+    closed_third_party_aggregators='closed third-party aggregators'
 
 class Leads(_database.Base):
     __tablename__ = "leads"
@@ -14,7 +30,7 @@ class Leads(_database.Base):
     mobile = _sql.Column(_sql.String)
     phone = _sql.Column(_sql.String)
     staff_id = _sql.Column(_sql.Integer)
-    status = _sql.Column(_sql.String)
+    status=_sql.Column(_sql.Enum(Status))
     source_id = _sql.Column(_sql.Integer)
     org_id=_sql.Column(_sql.Integer)
     lead_since = _sql.Column(_sql.Date)
