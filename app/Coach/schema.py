@@ -12,7 +12,7 @@ class CoachList(pydantic.BaseModel):
 class CoachBase(pydantic.BaseModel):
     wallet_address: Optional[str] = None 
     org_id: Optional[int] = None
-    coach_status: Optional[str] = "pending"
+    coach_status: Optional[str]=None
     own_coach_id: Optional[str] = None
     profile_img: Optional[str] = None
     first_name: Optional[str] = None
@@ -84,7 +84,7 @@ class CoachAppBase(pydantic.BaseModel):
     swift_code: Optional[str] = None
     updated_by:Optional[int]=0
     member_ids: Optional[List[int]] = None
-    coach_status: Optional[str] = "pending"
+    coach_status: Optional[str] = None
     check_in: Optional[datetime.datetime] = None
     last_online: Optional[datetime.datetime] = None
     coach_since: Optional[datetime.datetime] = None

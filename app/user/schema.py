@@ -2,6 +2,7 @@ import pydantic
 import datetime
 from datetime import date
 from typing import Optional, List, Any
+from app.user.models import Status
 
 class UserBase(pydantic.BaseModel):
     first_name: str
@@ -101,7 +102,7 @@ class StaffBase(pydantic.BaseModel):
     zipcode: Optional[str] = None
     address_1: Optional[str] = None
     address_2: Optional[str] = None
-    status: Optional[str] = None
+    status:Status
     send_invitation: Optional[bool]=False
     
     class Config:
@@ -181,6 +182,7 @@ class StaffFilterParams(pydantic.BaseModel):
     staff_name: Optional[str] = None
     role_name: Optional[str] = None
     sort_key:Optional[str]=None
+    status:Optional[Status]=None
     sort_order: Optional[str] = "asc"
     limit: Optional[int] = 10
     offset: Optional[int] = 0

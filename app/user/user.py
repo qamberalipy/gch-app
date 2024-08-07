@@ -48,7 +48,7 @@ async def get_privileges(org_id:int, db: _orm.Session= Depends(get_db)):
     return organization_roles
 
 
-@router.post("/staff", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
+@router.post("/staff", tags=["Staff APIs"])
 async def register_staff(staff: _schemas.CreateStaff, db: _orm.Session = Depends(get_db)):
     try:
         
@@ -108,7 +108,7 @@ async def get_all_staff(org_id: int, db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
    
 
-@router.put("/staff", response_model=_schemas.ReadStaff, tags=["Staff APIs"])
+@router.put("/staff", tags=["Staff APIs"])
 async def update_staff(staff_update: _schemas.UpdateStaff, db: _orm.Session = Depends(get_db)):
     try:
             

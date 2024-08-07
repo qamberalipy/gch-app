@@ -65,7 +65,10 @@ def upgrade() -> None:
                type_=status,
                existing_nullable=True,
                postgresql_using='status::status')
-    op.add_column('sale_tax', sa.Column('status', sa.Enum('active', 'inactive', name='status'), nullable=True))
+    op.add_column(
+        'sale_tax', 
+        sa.Column('status', sa.Enum('active', 'inactive', name='status'), nullable=True)
+    )
     op.alter_column('staff', 'status',
                existing_type=sa.VARCHAR(length=20),
                type_=coach_status,

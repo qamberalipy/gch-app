@@ -72,7 +72,6 @@ def create_appcoach(coach: _schemas.CoachAppBase,db: _orm.Session):
     db.commit()
     db.refresh(db_coach_org)
 
-    print("db_coach",db_coach)
     return db_coach
 
 async def login_coach(
@@ -85,7 +84,7 @@ async def login_coach(
 
     if not coach:
         return {"is_registered": False}
-    print("MYCLIENT: ", coach)
+
     setattr(coach, wallet_address, wallet_address)
     db.commit()
     db.refresh(coach)
@@ -179,8 +178,8 @@ def create_client_coach_mappings(coach_id: int, member_ids: List[int], db: _orm.
         db.add(db_client_coach)
     db.commit()
 
-async def create_coach(coach: _schemas.CoachCreate, db: _orm.Session):
-    coach_db = await get_coach_by_email(coach.email, db)
+async def create_coach(coach: _schemas.CoachCreate, db: _orm.Session=_fastapi.Depends(get_db)):
+    coach_db = await get_coach_by_email(coach.email,db=db)
     if coach_db:
             raise _fastapi.HTTPException(status_code=400, detail="Email already registered")
         
@@ -191,8 +190,11 @@ async def create_coach(coach: _schemas.CoachCreate, db: _orm.Session):
     if coach.member_ids:
         create_client_coach_mappings(db_coach.id, coach.member_ids, db)
 
-    print("db_coach", db_coach)
-    return db_coach
+    return {
+            "status_code": "201",
+            "id": db_coach.id,
+            "message": "Coach created successfully"
+        }
 
 
 def get_coach_list(org_id:int,db: _orm.Session = _fastapi.Depends(get_db)):
@@ -280,7 +282,7 @@ def update_coach_organization(coach_id: int, org_id: int, coach_status: str, upd
 
 
 async def update_coach(coach_id:int , coach: _schemas.CoachUpdate,Type:str,db: _orm.Session):
-    print("hello ",coach_id, coach)
+
     db_coach = db.query(_models.Coach).filter(
         _models.Coach.id == coach_id
     ).first()
@@ -304,7 +306,7 @@ async def update_coach(coach_id:int , coach: _schemas.CoachUpdate,Type:str,db: _
     )
     if Type=="app":
         return db_coach
-    return coach
+    return {"status":"201","detail":"Coach updated successfully"}
 
 
 
@@ -315,10 +317,10 @@ def delete_coach(coach_id: int,db: _orm.Session):
         db.commit()
         db.refresh(db_coach)
 
-    return db_coach
+    return {"status":"201","detail":"Coach deleted successfully"}
 
 def get_coach_by_id(coach_id: int, db: _orm.Session):
-    print("this is the coach id", coach_id)
+    
     
     # Aliases for joined tables
     CoachOrg = aliased(_models.CoachOrganization)
@@ -365,7 +367,7 @@ def get_coach_by_id(coach_id: int, db: _orm.Session):
     )
     
     db_coach = query.first()
-    print(db_coach)
+    
     if db_coach:
         return _schemas.CoachReadSchema(**db_coach._asdict())
     else:

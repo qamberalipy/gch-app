@@ -21,6 +21,7 @@ from . import models, schema
 import logging
 from app.Exercise.service import extract_columns
 from collections import defaultdict
+from app.user.models import Status
 
 # Load environment variables
 
@@ -160,7 +161,11 @@ async def create_staff(staff: _schemas.CreateStaff, db: _orm.Session = _fastapi.
     db.add(db_staff)
     db.commit()
     db.refresh(db_staff)
-    return db_staff
+    return {
+            "status_code": "201",
+            "id": db_staff.id,
+            "message": "Staff created successfully"
+        }
         
 async def authenticate_user(email: str, password: str, db: _orm.Session):
     # Authenticate a user
@@ -199,7 +204,7 @@ async def get_one_staff(staff_id: int, db: _orm.Session):
     
 
 async def update_staff(staff_id: int, staff_update: _schemas.UpdateStaff, db: _orm.Session):
-    staff = db.query(_models.User).filter(_models.User.id == staff_id).first()
+    staff = db.query(_models.User).filter(and_(_models.User.id == staff_id,_models.User.is_deleted == False)).first()
     if staff is None:
         raise _fastapi.HTTPException(status_code=404, detail="Staff not found")
     
@@ -210,17 +215,17 @@ async def update_staff(staff_id: int, staff_update: _schemas.UpdateStaff, db: _o
     staff.updated_at = datetime.now()
     db.commit()
     db.refresh(staff)
-    return staff
+    return {"status":"201","detail":"Staff updated successfully"}
 
 
 async def delete_staff(staff_id: int, db: _orm.Session):
-    staff = db.query(_models.User).filter(_models.User.id == staff_id).first()
+    staff = db.query(_models.User).filter(and_(_models.User.id == staff_id,_models.User.is_deleted == False)).first()
     if staff is None:
         raise _fastapi.HTTPException(status_code=404, detail="Staff not found")
     
     staff.is_deleted = True
     db.commit()
-    return {"detail": "Staff deleted successfully"}
+    return {"status":"201","detail":"Staff deleted successfully"}
 
 def get_filtered_staff(org_id: int, params: _schemas.StaffFilterParams,db:_orm.Session=_fastapi.Depends(get_db)):
     query = db.query(
@@ -242,6 +247,9 @@ def get_filtered_staff(org_id: int, params: _schemas.StaffFilterParams,db:_orm.S
 
     if params.role_name:
         query = query.filter(models.Role.name.ilike(f"%{params.role_name}%"))
+
+    if params.status:
+        query = query.filter(models.User.status == params.status)    
 
     if params.search_key:
         search_pattern = f"%{params.search_key}%"
@@ -548,6 +556,7 @@ def get_filters(
     staff_name: Annotated[str , _fastapi.Query(title="Staff Name")] = None,
     role_name: Annotated[str,_fastapi.Query(title="Role Name")]=None,
     sort_key: Annotated[str,_fastapi.Query(title="Sort Key")]=None,
+    status: Annotated[Status,_fastapi.Query(title="Status")]=None,
     sort_order: Annotated[str,_fastapi.Query(title="Sort Order")]=None,
     limit: Annotated[int, _fastapi.Query(description="Pagination Limit")] = None,
     offset: Annotated[int, _fastapi.Query(description="Pagination offset")] = None):
@@ -556,6 +565,7 @@ def get_filters(
         search_key=search_key,
         sort_key=sort_key,
         sort_order=sort_order,
+        status=status,
         staff_name=staff_name,
         role_name=role_name,
         limit=limit,

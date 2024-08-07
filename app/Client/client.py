@@ -12,6 +12,7 @@ import app.core.db.session as _database
 import pika
 import logging
 import datetime
+from app.Client.models import Status
 
 router = APIRouter()
 
@@ -27,7 +28,7 @@ def get_db():
     finally:
         db.close()
         
-@router.post("/member", response_model=_schemas.ClientRead, tags=["Member Router"])
+@router.post("/member", tags=["Member Router"])
 async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depends(get_db)):
     try:
         db_client = await _services.get_client_by_email(client.email, db)
@@ -69,10 +70,8 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 
-
     
-    
-@router.put("/member", response_model=_schemas.ClientRead, tags=["Member Router"])
+@router.put("/member", tags=["Member Router"])
 async def update_client(client: _schemas.ClientUpdate, db: _orm.Session = Depends(get_db)):
     try:
         # Update client details
@@ -95,10 +94,9 @@ async def update_client(client: _schemas.ClientUpdate, db: _orm.Session = Depend
         db.rollback()
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
-
     
 
-@router.delete("/member/{id}", response_model=_schemas.ClientRead, tags=["Member Router"])
+@router.delete("/member/{id}", tags=["Member Router"])
 async def delete_client(id:int, db: _orm.Session = Depends(get_db)):
     try:
         
@@ -136,7 +134,7 @@ def get_filters(
 
     search_key: Annotated[str | None, Query(title="Search Key")] = None,
     member_name: Annotated[str, Query(description="Member First/Last Name")] = None,
-    status: Annotated[str | None, Query(title="status")] = None,
+    status: Annotated[Status | None, Query(title="status")] = None,
     coach_assigned: Annotated[int, Query(description="Coach ID")] = None,
     membership_plan: Annotated[int, Query(description="Membership ID")] = None,
     sort_order: Annotated[str,Query(title="Sorting Order")] = 'desc',

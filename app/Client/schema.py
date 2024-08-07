@@ -2,7 +2,7 @@ import pydantic
 import datetime 
 import datetime 
 from typing import Dict, Optional, List, Any
-
+from app.Client.models import Status
 class ClientBase(pydantic.BaseModel):
     profile_img: Optional[str] = None
     own_member_id: str  
@@ -234,11 +234,11 @@ class ClientFilterParams(pydantic.BaseModel):
     
     search_key: Optional[str] = None
     member_name: Optional[str] = None
-    status: Optional[str] = None
     sort_key:Optional[str]=None
     sort_order: Optional[str] = None
     coach_assigned: Optional[int] = None
     membership_plan: Optional[int] = None
+    status:Optional[Status]=None
     limit:Optional[int] = 10
     offset:Optional[int] = 0
     

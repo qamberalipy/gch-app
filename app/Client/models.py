@@ -6,7 +6,7 @@ import bcrypt as _bcrypt
 import sqlalchemy.ext.declarative as _declarative
 from enum import Enum as PyEnum
 
-class Status(PyEnum):
+class Status(str,PyEnum):
     active='active'
     inactive='inactive'
 
