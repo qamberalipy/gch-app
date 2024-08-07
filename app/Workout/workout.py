@@ -190,6 +190,7 @@ workout_columns = list(WorkoutRead.model_fields.keys())
 def get_filters(
     goals: Annotated[WorkoutGoal | None, Query(title="Workout Goal")] = None,
     level: Annotated[WorkoutLevel | None, Query(title="Workout Level")] = None,
+    equipment_id: Annotated[int | None, Query(title="Filter workouts by equipment")] = None,
     _search: Annotated[
         str | None, Query(title="Search", description="Search workout by name")
     ] = None,
@@ -225,6 +226,7 @@ def get_filters(
         sort_column=_sort_column,
         sort_dir=_sort_dir,
         results_per_goal=_results_per_goal,
+        equipment_id=equipment_id,
     )
 
 
