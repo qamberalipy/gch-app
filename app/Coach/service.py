@@ -1,5 +1,5 @@
 from datetime import date
-
+from app.Exercise.service import extract_columns
 from typing import Annotated,Any, List
 import jwt
 from sqlalchemy import String, asc, cast, desc, func, literal_column, or_
@@ -194,6 +194,10 @@ async def create_coach(coach: _schemas.CoachCreate, db: _orm.Session):
     print("db_coach", db_coach)
     return db_coach
 
+
+def get_coach_list(org_id:int,db: _orm.Session = _fastapi.Depends(get_db)):
+    query=db.query(_models.Coach.id,func.concat(_models.Coach.first_name,' ',_models.Coach.last_name).label('name')).join(_models.CoachOrganization,_models.Coach.id == _models.CoachOrganization.coach_id).filter(_models.CoachOrganization.org_id == org_id)
+    return query
 
 def update_bank_detail(coach: _schemas.CoachUpdate, db: _orm.Session, db_coach):
     db_bank_detail = db.query(_usermodels.Bank_detail).filter(
@@ -432,6 +436,7 @@ def get_all_coaches_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Co
     CoachOrg = aliased(_models.CoachOrganization)
     BankDetail = aliased(_usermodels.Bank_detail)
     ClientCoach = aliased(_client_models.ClientCoach)
+    Client = aliased(_client_models.Client)
 
     query = db.query(
         *_models.Coach.__table__.columns,
@@ -441,25 +446,27 @@ def get_all_coaches_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Co
         BankDetail.iban_no,
         BankDetail.acc_holder_name,
         BankDetail.swift_code,
-        func.array_agg(func.coalesce(ClientCoach.client_id, 0)).label('member_ids')
+        func.array_agg(func.coalesce(ClientCoach.client_id, 0)).label('members')
     ).join(
         CoachOrg, _models.Coach.id == CoachOrg.coach_id
     ).join(
         BankDetail, _models.Coach.bank_detail_id == BankDetail.id
     ).join(
         ClientCoach, ClientCoach.coach_id == _models.Coach.id
+    ).join(
+        Client, Client.id == ClientCoach.client_id
     ).filter(
         _models.Coach.is_deleted == False,
+        Client.is_deleted == False,
         CoachOrg.org_id == org_id
-    ).order_by(sort_order).group_by(
+    ).group_by(
         _models.Coach.id,
         CoachOrg.coach_status,
         CoachOrg.org_id,
         BankDetail.bank_name,
         BankDetail.iban_no,
         BankDetail.acc_holder_name,
-        BankDetail.swift_code
-    )
+        BankDetail.swift_code)
 
     total_counts = db.query(func.count()).select_from(query.subquery()).scalar()
     
@@ -478,12 +485,20 @@ def get_all_coaches_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Co
     if params.status is not None:
         query = query.filter(CoachOrg.coach_status == params.status)
 
+    if params.sort_key in extract_columns(query):       
+        sort_order = desc(params.sort_key) if params.sort_order == "desc" else asc(params.sort_key)
+        query=query.order_by(sort_order)
+
+    elif params.sort_key is not None:
+        raise _fastapi.HTTPException(status_code=400, detail="Sorting column not found.")    
+
     filtered_counts = db.query(func.count()).select_from(query.subquery()).scalar()
     
     query = query.offset(params.offset).limit(params.limit)
     db_coaches = query.all()
-    
-    coaches = [_schemas.CoachReadSchema(**coach._asdict()) for coach in db_coaches]
+
+    coaches = [_schemas.CoachResponse.from_orm(coach) for coach in db_coaches]
+
     return {"data":coaches,"total_counts":total_counts,"filtered_counts": filtered_counts}
 
 async def get_total_coaches(org_id: int, db: _orm.Session = _fastapi.Depends(get_db)) -> int:
@@ -498,14 +513,16 @@ async def get_total_coaches(org_id: int, db: _orm.Session = _fastapi.Depends(get
 def get_filters(
 
     search_key: Annotated[str, _fastapi.Query(title="Search Key")] = None,
-    status: Annotated[str , _fastapi.Query(title="Equipment")] = None,
-    sort_order: Annotated[str,_fastapi.Query(title="Primary Muscle")]=None,
+    status: Annotated[str , _fastapi.Query(title="Status")] = None,
+    sort_order: Annotated[str,_fastapi.Query(title="Sort Order")]=None,
+    sort_key: Annotated[str,_fastapi.Query(title="Sort Key")]=None,
     limit: Annotated[int, _fastapi.Query(description="Pagination Limit")] = None,
     offset: Annotated[int, _fastapi.Query(description="Pagination offset")] = None):
     
     return _schemas.CoachFilterParams(
         search_key=search_key,
         sort_order=sort_order,
+        sort_key=sort_key,
         status=status,
         limit=limit,
         offset = offset

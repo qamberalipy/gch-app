@@ -51,6 +51,19 @@ def get_coach_by_id(id: int, db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Coach not found")
     return db_coach
 
+@router.get("/coach/list/{org_id}", response_model=List[_schemas.CoachList],tags=["Coach API"])
+async def get_coach(org_id,db: _orm.Session = Depends(get_db)):
+    try:
+            
+        coaches = _services.get_coach_list(org_id,db=db)
+        return coaches
+    
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 @router.get("/coach", tags=["Coach API"])
 def get_coaches_by_org_id(org_id: int,filters: Annotated[_schemas.CoachFilterParams, Depends(_services.get_filters)] = None,db: _orm.Session = Depends(get_db)):

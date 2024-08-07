@@ -2,6 +2,12 @@ import sqlalchemy as _sql
 import sqlalchemy.orm as _orm
 import app.core.db.session as _database
 import datetime as _dt
+from enum import Enum as PyEnum
+
+class CoachStatus(PyEnum):
+    active='active'
+    inactive='inactive'
+    pending='pending'
 
 class Coach(_database.Base):
     __tablename__ = "coach"
@@ -40,5 +46,5 @@ class CoachOrganization(_database.Base):
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     coach_id = _sql.Column(_sql.Integer)
     org_id = _sql.Column(_sql.Integer)
-    coach_status = _sql.Column(_sql.String)
+    coach_status = _sql.Column(_sql.Enum(CoachStatus))
     is_deleted = _sql.Column(_sql.Boolean, default=False)

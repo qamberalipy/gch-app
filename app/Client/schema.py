@@ -209,8 +209,8 @@ class ClientCount(pydantic.BaseModel):
     
 class ClientList(pydantic.BaseModel):
     id: int
-    first_name:Optional[str]=None
-    last_name:Optional[str]=None
+    name:Optional[str]=None
+    
 # class ClientLoginResponse(pydantic.BaseModel):
 #     is_registered: bool
 
@@ -235,6 +235,7 @@ class ClientFilterParams(pydantic.BaseModel):
     search_key: Optional[str] = None
     member_name: Optional[str] = None
     status: Optional[str] = None
+    sort_key:Optional[str]=None
     sort_order: Optional[str] = None
     coach_assigned: Optional[int] = None
     membership_plan: Optional[int] = None

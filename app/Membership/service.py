@@ -463,6 +463,21 @@ def get_group_by_id(id:int,db: _orm.Session=Depends(get_db)):
 
     return db_group
 
+def get_income_category(org_id:int,db: _orm.Session = _fastapi.Depends(get_db)):
+    return db.query(*_models.Income_category.__table__.columns).filter(_models.Income_category.org_id == org_id)
+    
+
+def get_facility(org_id:int,db: _orm.Session = _fastapi.Depends(get_db)):
+    return db.query(*_models.Facility.__table__.columns).filter(_models.Facility.org_id == org_id)
+
+
+def get_membership_plan(org_id:int,db: _orm.Session = _fastapi.Depends(get_db)):
+    return db.query(*_models.MembershipPlan.__table__.columns).filter(_models.MembershipPlan.org_id == org_id)
+    
+
+def get_salestax(org_id:int,db: _orm.Session = _fastapi.Depends(get_db)):
+    return db.query(*_models.Sale_tax.__table__.columns).filter(_models.Sale_tax.org_id == org_id)
+    
 
 def get_all_groups_by_org_id(db: _orm.Session, params: _schemas.StandardParams):
     sort_order = desc(_models.Membership_group.created_at) if params.sort_order == "desc" else asc(_models.Membership_group.created_at)

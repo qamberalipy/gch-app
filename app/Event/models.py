@@ -24,6 +24,7 @@ class Events(_database.Base):
     activity = _sql.Column(_sql.String(100), nullable=False)
     org_id = _sql.Column(_sql.Integer, nullable=True)
     coach_id = _sql.Column(_sql.Integer, nullable=True)
+    price=_sql.Column(_sql.Float, nullable=True)
     description = _sql.Column(_sql.Text, nullable=True)
     recurrency = _sql.Column(_sql.Enum(RecurrencyEnum), nullable=True)
     link = _sql.Column(_sql.String(50), nullable=True)

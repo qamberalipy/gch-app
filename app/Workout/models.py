@@ -42,9 +42,9 @@ class UserType(PyEnum):
 
 class HouseKeeping():
     create_user_type: Mapped[UserType] = mapped_column(Enum(UserType), nullable=False)
-    update_user_type: Mapped[UserType] = mapped_column(Enum(UserType))
+    update_user_type: Mapped[UserType] = mapped_column(Enum(UserType), nullable=True)
     created_by: Mapped[int] = mapped_column(Integer)
-    updated_by: Mapped[int] = mapped_column(Integer)
+    updated_by: Mapped[int] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -54,13 +54,13 @@ class Workout(_database.Base, HouseKeeping):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True, autoincrement=True)
     org_id: Mapped[int] = mapped_column(Integer)
-    workout_name: Mapped[str] = mapped_column(String, nullable=False)
+    workout_name: Mapped[str] = mapped_column(String, nullable=True)
     description: Mapped[str] = mapped_column(String, nullable=True)
-    visible_for: Mapped[VisibleFor] = mapped_column(Enum(VisibleFor), nullable=False)
-    goals: Mapped[WorkoutGoal] = mapped_column(Enum(WorkoutGoal), nullable=False)
-    level: Mapped[WorkoutLevel] = mapped_column(Enum(WorkoutLevel), nullable=False)
+    visible_for: Mapped[VisibleFor] = mapped_column(Enum(VisibleFor), nullable=True)
+    goals: Mapped[WorkoutGoal] = mapped_column(Enum(WorkoutGoal), nullable=True)
+    level: Mapped[WorkoutLevel] = mapped_column(Enum(WorkoutLevel), nullable=True)
     notes: Mapped[str] = mapped_column(String, nullable=True)
-    weeks: Mapped[int] = mapped_column(Integer, nullable=False)
+    weeks: Mapped[int] = mapped_column(Integer, nullable=True)
     img_url: Mapped[str] = mapped_column(String, nullable=True)
     assign_to: Mapped[List[int]] = mapped_column(ARRAY(Integer), nullable=True)
 
@@ -76,10 +76,10 @@ class WorkoutDay(_database.Base, HouseKeeping):
     __tablename__ = "workout_day"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True, autoincrement=True)
-    workout_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
-    day_name: Mapped[str] = mapped_column(String, nullable=False)
-    week: Mapped[int] = mapped_column(Integer, nullable=False)
-    day: Mapped[int] = mapped_column(Integer, nullable=False)
+    workout_id: Mapped[int] = mapped_column(Integer, nullable=True)
+    day_name: Mapped[str] = mapped_column(String, nullable=True)
+    week: Mapped[int] = mapped_column(Integer, nullable=True)
+    day: Mapped[int] = mapped_column(Integer, nullable=True)
 
     workout = relationship(
         "Workout",
@@ -110,7 +110,7 @@ class WorkoutDayExercise(_database.Base, HouseKeeping):
     percentage_of_1rm: Mapped[float] = mapped_column(Float, nullable=True)
     distance: Mapped[float] = mapped_column(Float, nullable=True)
     speed: Mapped[float] = mapped_column(Float, nullable=True)
-    met_value: Mapped[float] = mapped_column(Float, nullable=False)
+    met_value: Mapped[float] = mapped_column(Float, nullable=True)
     notes: Mapped[str] = mapped_column(String, nullable=True)
 
     workout_day = relationship(

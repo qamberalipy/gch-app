@@ -1,5 +1,6 @@
 from typing import Annotated, Dict, List, Optional
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, Header, Request, status
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError, DataError
 import app.user.schema as _schemas
 import sqlalchemy.orm as _orm
@@ -32,12 +33,10 @@ def get_db():
         db.close()
 
 
-
-
 @router.get("/staff/list",response_model=List[_schemas.getStaff],tags=["Staff APIs"])
 async def get_staff_list(org_id:int, db: _orm.Session= Depends(get_db)):
     
-    filtered_users =  db.query(_models.User.org_id,_models.User.id,_models.User.first_name).filter(_models.User.org_id == org_id, _models.User.is_deleted == False).all()
+    filtered_users =  db.query(_models.User.id,func.concat(_models.User.first_name,' ',_models.User.last_name).label('name')).filter(_models.User.org_id == org_id, _models.User.is_deleted == False).all()
     return filtered_users
 
 

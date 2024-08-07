@@ -52,9 +52,8 @@ class OrganizationCreate(pydantic.BaseModel):
 
 class getStaff(pydantic.BaseModel):
     
-    org_id:int
     id:Optional[int]
-    first_name:Optional[str]
+    name:Optional[str]
     class Config:
        from_attributes=True
 

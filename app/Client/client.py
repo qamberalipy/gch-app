@@ -140,6 +140,7 @@ def get_filters(
     coach_assigned: Annotated[int, Query(description="Coach ID")] = None,
     membership_plan: Annotated[int, Query(description="Membership ID")] = None,
     sort_order: Annotated[str,Query(title="Sorting Order")] = 'desc',
+    sort_key:Annotated[str,Query(title="Sort Key")] =None,
     limit: Annotated[int, Query(description="Pagination Limit")] = None,
     offset: Annotated[int, Query(description="Pagination offset")] = None
 ):
@@ -150,6 +151,7 @@ def get_filters(
         coach_assigned=coach_assigned,
         membership_plan=membership_plan,
         sort_order = sort_order,
+        sort_key = sort_key,
         limit=limit,
         offset = offset
     )

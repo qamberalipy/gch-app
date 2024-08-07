@@ -22,6 +22,7 @@ import time
 import os
 import bcrypt as _bcrypt
 from . import models, schema
+from app.Exercise.service import extract_columns
 
 # Load environment variables
 JWT_SECRET = os.getenv("JWT_SECRET")
@@ -250,7 +251,7 @@ def get_list_clients(
     org_id: int, db: _orm.Session = _fastapi.Depends(get_db)
 ) -> List[models.Client]:
     return (
-        db.query(_models.Client.id, _models.Client.first_name, _models.Client.last_name)
+        db.query(_models.Client.id,func.concat(_models.Client.first_name,' ',_models.Client.last_name).label('name'))
         .join(
             _models.ClientOrganization,
             _models.Client.id == _models.ClientOrganization.client_id,
@@ -410,9 +411,9 @@ def get_filtered_clients(
         func.coalesce(BusinessClient.first_name + ' ' + BusinessClient.last_name, _models.Client.first_name + ' ' + _models.Client.last_name).label('business_name')
     ).outerjoin(
         BusinessClient, _models.Client.business_id == BusinessClient.id
-    ).join(
+    ).outerjoin(
         _models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id
-    ).join(
+    ).outerjoin(
         _coach_models.Coach, _coach_models.Coach.id == _models.ClientCoach.coach_id
     ).join(
         _models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id
@@ -428,11 +429,8 @@ def get_filtered_clients(
         BusinessClient.id  # Group by BusinessClient.id to include in select
     )
     total_counts = db.query(func.count()).select_from(query.subquery()).scalar()
-    sort_order = (
-        desc(_models.Client.created_at)
-        if params.sort_order == "desc"
-        else asc(_models.Client.created_at)
-    )
+    
+    
 
     if params.member_name:
         query = query.filter(or_(
@@ -475,7 +473,15 @@ def get_filtered_clients(
             )
         )
     filtered_counts = db.query(func.count()).select_from(query.subquery()).scalar()
-    query = query.order_by(sort_order).offset(params.offset).limit(params.limit)
+    
+    if params.sort_key in extract_columns(query):       
+        sort_order = desc(params.sort_key) if params.sort_order == "desc" else asc(params.sort_key)
+        query=query.order_by(sort_order)
+
+    elif params.sort_key is not None:
+        raise _fastapi.HTTPException(status_code=400, detail="Sorting column not found.")
+    
+    query = query.offset(params.offset).limit(params.limit)
     db_clients = query.all()
 
     clients = []
@@ -503,9 +509,9 @@ async def get_client_byid(db: _orm.Session, client_id: int) -> _schemas.ClientBy
                 )
             )
         ).label('coaches')
-        ).join(
+        ).outerjoin(
             _models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id
-        ).join(
+        ).outerjoin(
             _coach_models.Coach, _coach_models.Coach.id == _models.ClientCoach.coach_id
         ).join(
             _models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id

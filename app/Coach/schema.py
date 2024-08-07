@@ -4,6 +4,11 @@ from typing import Dict, List, Optional
 
 from sqlalchemy import JSON
 
+
+class CoachList(pydantic.BaseModel):
+    id:Optional[int]
+    name:Optional[str]
+
 class CoachBase(pydantic.BaseModel):
     wallet_address: Optional[str] = None 
     org_id: Optional[int] = None
@@ -100,6 +105,7 @@ class CoachCount(pydantic.BaseModel):
 class CoachFilterParams(pydantic.BaseModel):
     search_key: Optional[str] = None
     sort_order: Optional[str] = None
+    sort_key: Optional[str] =None
     status: Optional[str] = None
     limit:Optional[int] = None
     offset:Optional[int] = None
@@ -132,7 +138,7 @@ class CoachReadSchema(pydantic.BaseModel):
     acc_holder_name: Optional[str] = None
     swift_code: Optional[str] = None
     created_at: Optional[datetime.datetime] = None
-    members: Optional[List[Dict]] = []
+    members: Optional[List[int]] = []
     
     class Config:
         from_attributes = True
