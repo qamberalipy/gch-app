@@ -31,7 +31,7 @@ def get_db():
 async def create_coach(coach: _schemas.CoachCreate, db: _orm.Session = Depends(get_db)):
     return await _services.create_coach(coach,db)
 
-@router.put("/coach",response_model=SharedModifySchema,tags=["Coach API"])
+@router.put("/coach",response_model = _schemas.CoachUpdate,tags=["Coach API"])
 async def update_coach(coach: _schemas.CoachUpdate, db: _orm.Session = Depends(get_db)):
     db_coach = await _services.update_coach(coach.id,coach,"web",db)
     if db_coach is None:

@@ -258,7 +258,7 @@ async def update_staff(staff_id: int, staff_update: _schemas.UpdateStaff, db: _o
     staff.updated_at = datetime.now()
     db.commit()
     db.refresh(staff)
-    return {"status":"201","detail":"Staff updated successfully"}
+    return staff
 
 
 async def delete_staff(staff_id: int, db: _orm.Session):

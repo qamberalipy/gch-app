@@ -128,8 +128,7 @@ def update_membership_plan(membership_plan_id: int, membership_plan: _schemas.Me
     if membership_plan.facilities:
         update_facility_membership_plans(membership_plan_id, membership_plan.facilities, db)
 
-    return {"status":"201","detail":"Membership Plan updated successfully"}
-
+    return db_membership_plan
 
 def delete_membership_plan( membership_plan_id: int,db: _orm.Session):
     db_membership_plan = db.query(models.MembershipPlan).filter(and_(models.MembershipPlan.id == membership_plan_id,_models.MembershipPlan.is_deleted == False)).first()
@@ -324,7 +323,7 @@ def update_facility(facility_update: _schemas.FacilityUpdate, db: _orm.Session):
 
     db.commit()
     db.refresh(db_facility)
-    return {"status":"201","detail":"Facility updated successfully"}
+    return db_facility
 
 
 def delete_facility(facility_id: int,db: _orm.Session):
@@ -429,7 +428,7 @@ def update_income_category(income_category: _schemas.IncomeCategoryUpdate, db: _
 
     db.commit()
     db.refresh(db_income_category)
-    return {"status":"201","detail":"Income Category updated successfully"}
+    return db_income_category
 
 def delete_income_category(income_category_id: int, db: _orm.Session):
     db_income_category = db.query(_models.Income_category).filter(and_(_models.Income_category.id == income_category_id,_models.Income_category.is_deleted == False)).first()
@@ -505,7 +504,7 @@ def update_sale_tax(sale_tax: _schemas.SaleTaxUpdate, db: _orm.Session):
 
     db.commit()
     db.refresh(db_sale_tax)
-    return {"status":"201","detail":"Sale Tax updated successfully"}
+    return db_sale_tax
 
 
 def delete_sale_tax(sale_tax_id: int,db: _orm.Session):
