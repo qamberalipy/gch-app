@@ -207,7 +207,7 @@ async def update_client(
     db.refresh(db_client)
     db.refresh(db_client_status)
     
-    return {"status":"201","detail":"Member updated successfully"}
+    return db_client
 
 
 async def update_client_membership(

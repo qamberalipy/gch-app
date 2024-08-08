@@ -5,6 +5,7 @@ import app.Client.schema as _schemas
 import sqlalchemy.orm as _orm
 import app.Client.models as _models
 import app.Client.service as _services
+import app.Client.schema as _schemas
 import app.user.service as _user_service
 import app.Shared.helpers as _helpers
 # from main import logger
@@ -76,7 +77,7 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
 
 
     
-@router.put("/member",response_model=SharedModifySchema, tags=["Member Router"])
+@router.put("/member",response_model = _schemas.ClientUpdate, tags=["Member Router"])
 async def update_client(client: _schemas.ClientUpdate, db: _orm.Session = Depends(get_db)):
     try:
         # Update client details
