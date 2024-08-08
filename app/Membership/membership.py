@@ -148,7 +148,7 @@ def get_filters(
         offset = offset
     )
 
-@router.get("/facilities", response_model=List[_schemas.FacilityRead], tags=["Facility APIs"])
+@router.get("/facilities", tags=["Facility APIs"])
 def get_facilitys_by_org_id(
     org_id: int,
     filters: Annotated[_schemas.FacilityFilterParams, Depends(get_filters)], 
@@ -160,7 +160,6 @@ def get_facilitys_by_org_id(
         raise HTTPException(status_code=400, detail="Integrity error occurred")
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
-    
     
     
 @router.get("/facilities/{id}", response_model=_schemas.FacilityRead, tags=["Facility APIs"])
@@ -200,7 +199,7 @@ def get_income_category_filters(
         limit=limit,
         offset = offset)
     
-@router.get("/income_category", response_model=List[_schemas.IncomeCategoryRead], tags=["Income Category APIs"])
+@router.get("/income_category", tags=["Income Category APIs"])
 def get_all_income_categories(org_id: int, filters: Annotated[_schemas.IncomeCategoryFilterParams, Depends(get_income_category_filters)],db: _orm.Session = Depends(get_db)):
     
     try:    
@@ -264,7 +263,7 @@ def create_sale_tax(sale_tax: _schemas.SaleTaxCreate, db: _orm.Session = Depends
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
 
-@router.get("/sale_taxes", response_model=List[_schemas.SaleTaxRead], tags=["Sale_tax APIs"])
+@router.get("/sale_taxes", tags=["Sale_tax APIs"])
 def get_all_sale_taxes(org_id: int,filters: Annotated[_schemas.IncomeCategoryFilterParams, Depends(get_filters)], db: _orm.Session = Depends(get_db)):
     try:    
         

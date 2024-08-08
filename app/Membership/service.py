@@ -17,7 +17,7 @@ from sqlalchemy.sql import and_  ,desc
 from fastapi import FastAPI, Header,APIRouter, Depends, HTTPException, Request, status
 from . import models, schema
 from typing import List 
-from sqlalchemy import asc, or_, text
+from sqlalchemy import asc, func, or_, text
 from app.Exercise.service import extract_columns
 
 # Load environment variables
@@ -268,7 +268,6 @@ def get_membership_plans_by_org_id(
     result = db.execute(query, params)
     return result
 
-
 def create_facility(facility: _schemas.FacilityCreate,db: _orm.Session):
     
     existing_facility = db.query(_models.Facility
@@ -331,15 +330,24 @@ def get_facility_by_org_id(org_id : int , params : _schemas.FacilityFilterParams
         .order_by(sort_order)\
         .offset(params.offset)\
         .limit(params.limit)
+    
+    total_counts = db.query(func.count()).select_from(facilities_query.subquery()).scalar()    
+        
     if params.search_key:
         facilities_query = facilities_query.filter(or_(
             _models.Facility.name.ilike(params.search_key)
         ))
         
     if params.status:
-        facilities_query=facilities_query.filter(_models.Facility.status == params.status)   
+        facilities_query=facilities_query.filter(_models.Facility.status == params.status)  
+    
+    filtered_counts = db.query(func.count()).select_from(facilities_query.subquery()).scalar()    
+    db_facilities= facilities_query.all()
 
-    return facilities_query.all()
+    facilities_data = [_schemas.FacilityRead.from_orm(facility) for facility in db_facilities]
+
+    return {"data":facilities_data,"total_counts":total_counts,"filtered_counts": filtered_counts}
+
 
 def get_facility_by_id(facility_id: int,db: _orm.Session):
     return db.query(_models.Facility).filter(_models.Facility.id == facility_id, _models.Facility.is_deleted == False).first()
@@ -360,6 +368,8 @@ def get_all_income_categories_by_org_id(org_id : int, params : _schemas.IncomeCa
     query = db.query(_models.Income_category)\
     .filter(_models.Income_category.org_id == org_id, _models.Income_category.is_deleted == False)
     
+    total_counts = db.query(func.count()).select_from(query.subquery()).scalar()
+    
     if params.search_key:
         query = query.filter(or_(_models.Income_category.name.ilike(f"%{params.search_key}%")))
 
@@ -371,11 +381,16 @@ def get_all_income_categories_by_org_id(org_id : int, params : _schemas.IncomeCa
         query=query.order_by(sort_order)
 
     elif params.sort_key is not None:
-        raise _fastapi.HTTPException(status_code=400, detail="Sorting column not found.")    
+        raise _fastapi.HTTPException(status_code=400, detail="Sorting column not found.")  
     
-    query=query.limit(params.limit).offset(params.offset)
+    filtered_counts = db.query(func.count()).select_from(query.subquery()).scalar()
          
-    return query.all()
+    query=query.limit(params.limit).offset(params.offset)
+    db_income_category=query.all()
+      
+    income_category = [_schemas.IncomeCategoryRead.from_orm(income) for income in db_income_category]
+    
+    return {"data":income_category,"total_counts":total_counts,"filtered_counts": filtered_counts}
 
 def get_income_category_by_id(income_category_id: int, db: _orm.Session):
     return db.query(_models.Income_category).filter(_models.Income_category.id == income_category_id, _models.Income_category.is_deleted == False).first()
@@ -429,6 +444,8 @@ def get_all_sale_taxes_by_org_id(org_id,db: _orm.Session, params: _schemas.SaleT
     
     query = db.query(_models.Sale_tax)\
     .filter(_models.Sale_tax.org_id == org_id, _models.Sale_tax.is_deleted == False)\
+     
+    total_counts = db.query(func.count()).select_from(query.subquery()).scalar()    
         
     if params.search_key:
         query = query.filter(or_(_models.Sale_tax.name.ilike(f"%{params.search_key}%")))
@@ -443,9 +460,13 @@ def get_all_sale_taxes_by_org_id(org_id,db: _orm.Session, params: _schemas.SaleT
     elif params.sort_key is not None:
         raise _fastapi.HTTPException(status_code=400, detail="Sorting column not found")
     
-    query=query.limit(params.limit).offset(params.offset)
+    filtered_counts = db.query(func.count()).select_from(query.subquery()).scalar()
     
-    return query.all()
+    query=query.limit(params.limit).offset(params.offset)
+    db_saletax=query.all()
+    sale_tax = [_schemas.IncomeCategoryRead.from_orm(tax) for tax in db_saletax]
+    
+    return {"data":sale_tax,"total_counts":total_counts,"filtered_counts": filtered_counts}
 
 
 def get_sale_tax_by_id(sale_tax_id: int,db: _orm.Session):
