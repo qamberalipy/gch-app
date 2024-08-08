@@ -325,14 +325,13 @@ class RoleUpdate(pydantic.BaseModel):
     id: int
     name: Optional[str] = None
     org_id: int
-    status: Optional[bool] = None
+    status: Optional[RoleStatus] = []
     resource_id: Optional[List[int]] = None
     access_type: Optional[List[str]] = None
     created_at: Optional[datetime.datetime] = None
     created_by: Optional[int] = None
     updated_by: Optional[int] = None
     updated_at: Optional[datetime.datetime] = None
-    is_deleted: Optional[bool] = False
 
     class Config:
         from_attributes = True
