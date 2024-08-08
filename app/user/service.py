@@ -517,7 +517,8 @@ async def get_role(role_id: int, db: _orm.Session):
 
 
 async def edit_role(role: _schemas.RoleUpdate, db: _orm.Session):
-    db_role = db.query(_models.Role).filter(_models.Role.id == role.id).first()
+    db_role = db.query(_models.Role).filter(_models.Role.id == role.id, _models.Role.is_deleted == False).first()
+    
     if db_role is None:
         raise _fastapi.HTTPException(status_code=404, detail="Role not found")
     
@@ -571,7 +572,7 @@ async def delete_role(role_id: int, db: _orm.Session):
         raise _fastapi.HTTPException(status_code=404, detail="Role not found")
     
     role.is_deleted = 1
-    role.status = 0
+    role.status = 'inactive'
     db.commit()
 
     permissions = db.query(_models.Permission).filter(_models.Permission.role_id == role_id).all()
