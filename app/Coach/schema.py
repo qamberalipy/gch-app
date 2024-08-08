@@ -107,6 +107,10 @@ class CoachFilterParams(pydantic.BaseModel):
     status: Optional[CoachStatus] = None
     limit:Optional[int] = None
     offset:Optional[int] = None
+
+class MemberSchema(pydantic.BaseModel):
+    id: int
+    name: str
     
 class CoachReadSchema(pydantic.BaseModel):
     id: int
@@ -136,7 +140,7 @@ class CoachReadSchema(pydantic.BaseModel):
     acc_holder_name: Optional[str] = None
     swift_code: Optional[str] = None
     created_at: Optional[datetime.datetime] = None
-    members: Optional[List[int]] = []
+    members: Optional[List[MemberSchema]] = []
     
     class Config:
         from_attributes = True
