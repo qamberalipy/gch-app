@@ -4,7 +4,7 @@ import string
 from typing import List
 import jwt
 from pydantic import ValidationError
-from sqlalchemy import asc, case, desc, func, or_
+from sqlalchemy import asc, case, desc, func, or_, text
 import sqlalchemy.orm as _orm
 from sqlalchemy.sql import and_
 import email_validator as _email_check
@@ -396,7 +396,17 @@ def get_filtered_clients(
     org_id: int,
     params: _schemas.ClientFilterParams
 ) -> List[_schemas.ClientFilterRead]:
-    BusinessClient = _orm.aliased(_models.Client)  # Alias for self-join
+    BusinessClient = _orm.aliased(_models.Client) 
+    sort_mapping = {
+        "own_member_id": "client.own_member_id",
+        "first_name": text("client.first_name"),
+        "last_name": text("client.last_name"),
+        "business_name": "business_name",
+        "last_online": text("client.last_online"),
+        "client_since": text("client.client_since"),
+        "created_at": text("client.created_at"),
+        "client_status": text("client.client_status")
+    }
 
     query = db.query(
         *_models.Client.__table__.columns,
@@ -406,7 +416,7 @@ def get_filtered_clients(
         func.array_agg(
             func.json_build_object(
                 'id', func.coalesce(_models.ClientCoach.coach_id, 0),
-                'name', func.concat(
+                'coach_name', func.concat(
                     func.coalesce(_coach_models.Coach.first_name, ""),
                     ' ',
                     func.coalesce(_coach_models.Coach.last_name, "")
@@ -431,11 +441,12 @@ def get_filtered_clients(
         _models.Client.id,
         _models.ClientOrganization.id,
         _models.ClientMembership.membership_plan_id,
-        BusinessClient.id 
+        BusinessClient.id,
+        _coach_models.Coach.first_name,  # Add to GROUP BY clause
+        _coach_models.Coach.last_name    # Add to GROUP BY clause
     )
+    
     total_counts = db.query(func.count()).select_from(query.subquery()).scalar()
-    
-    
 
     if params.member_name:
         query = query.filter(or_(
@@ -474,11 +485,12 @@ def get_filtered_clients(
                 _models.Client.address_2.ilike(search_pattern),
             )
         )
-    filtered_counts = db.query(func.count()).select_from(query.subquery()).scalar()
     
-    if params.sort_key in extract_columns(query):       
-        sort_order = desc(params.sort_key) if params.sort_order == "desc" else asc(params.sort_key)
-        query=query.order_by(sort_order)
+    filtered_counts = db.query(func.count()).select_from(query.subquery()).scalar()
+
+    if params.sort_key in sort_mapping.keys():
+        sort_order = desc(sort_mapping.get(params.sort_key)) if params.sort_order == "desc" else asc(sort_mapping.get(params.sort_key))
+        query = query.order_by(sort_order)
 
     elif params.sort_key is not None:
         raise _fastapi.HTTPException(status_code=400, detail="Sorting column not found.")
@@ -487,13 +499,15 @@ def get_filtered_clients(
     db_clients = query.all()
 
     clients = []
-    for coach in db_clients:
-        clients.append(_schemas.ClientFilterRead(**coach._asdict()))
+    for client in db_clients:
+        clients.append(_schemas.ClientFilterRead(**client._asdict()))
 
     if clients:
-        return {"data":clients,"total_counts":total_counts,"filtered_counts": filtered_counts}
+        return {"data": clients, "total_counts": total_counts, "filtered_counts": filtered_counts}
     else:
         return None
+
+
   
     
 async def get_client_byid(db: _orm.Session, client_id: int) -> _schemas.ClientByID:

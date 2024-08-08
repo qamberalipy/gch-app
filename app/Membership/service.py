@@ -324,6 +324,12 @@ def delete_facility(facility_id: int,db: _orm.Session):
 
 def get_facility_by_org_id(org_id : int , params : _schemas.FacilityFilterParams, db: _orm.Session):
     sort_order = desc(_models.Facility.created_at) if params.sort_order == "desc" else asc(_models.Facility.created_at)
+    sort_mapping = {
+        "name": text("facility.name"),
+        "min_limit":text("facility.min_limit"),
+        "status": text("facility.status"),
+        "created_at" : text("facility.created_at")
+        }
     
     facilities_query = db.query(_models.Facility)\
         .filter(_models.Facility.org_id == org_id, _models.Facility.is_deleted == False)\
@@ -340,6 +346,13 @@ def get_facility_by_org_id(org_id : int , params : _schemas.FacilityFilterParams
         
     if params.status:
         facilities_query=facilities_query.filter(_models.Facility.status == params.status)  
+    
+    if params.sort_key in sort_mapping.keys():
+        sort_column = sort_mapping.get(params.sort_key)
+        sort_order = desc(sort_column) if params.sort_order == "desc" else asc(sort_column)
+        facilities_query = facilities_query.order_by(sort_order)
+    elif params.sort_key is not None:
+        raise _fastapi.HTTPException(status_code=400, detail="Sorting column not found.")
     
     filtered_counts = db.query(func.count()).select_from(facilities_query.subquery()).scalar()    
     db_facilities= facilities_query.all()
@@ -365,6 +378,13 @@ def create_income_category(income_category: _schemas.IncomeCategoryCreate, db: _
 
 def get_all_income_categories_by_org_id(org_id : int, params : _schemas.IncomeCategoryFilterParams, db: _orm.Session):
     
+    sort_mapping = {
+        "name": text("income_category.name"),
+        "sale_tax_id":text("income_category.sale_tax_id"),
+        "status": text("income_category.status"),
+        "created_at":text("income_category.created_at")
+        }
+    
     query = db.query(_models.Income_category)\
     .filter(_models.Income_category.org_id == org_id, _models.Income_category.is_deleted == False)
     
@@ -376,8 +396,8 @@ def get_all_income_categories_by_org_id(org_id : int, params : _schemas.IncomeCa
     if params.status:
         query=query.filter(_models.Income_category.status == params.status)   
 
-    if params.sort_key in extract_columns(query):       
-        sort_order = desc(params.sort_key) if params.sort_order == "desc" else asc(params.sort_key)
+    if params.sort_key in sort_mapping.keys():       
+        sort_order = desc(sort_mapping.get(params.sort_key)) if params.sort_order == "desc" else asc(sort_mapping.get(params.sort_key))
         query=query.order_by(sort_order)
 
     elif params.sort_key is not None:
@@ -441,6 +461,12 @@ def create_sale_tax(sale_tax: _schemas.SaleTaxCreate,db: _orm.Session):
         }
 
 def get_all_sale_taxes_by_org_id(org_id,db: _orm.Session, params: _schemas.SaleTaxFilterParams):
+    sort_mapping = {
+        "name": text("sale_tax.name"),
+        "percentage":text("sale_tax.percentage"),
+        "status": text("sale_tax.status"),
+        "created_at": text("sale_tax.created_at")
+        }
     
     query = db.query(_models.Sale_tax)\
     .filter(_models.Sale_tax.org_id == org_id, _models.Sale_tax.is_deleted == False)\
@@ -453,8 +479,8 @@ def get_all_sale_taxes_by_org_id(org_id,db: _orm.Session, params: _schemas.SaleT
     if params.status:
         query=query.filter(_models.Sale_tax.status == params.status)    
     
-    if params.sort_key in extract_columns(query):       
-        sort_order = desc(params.sort_key) if params.sort_order == "desc" else asc(params.sort_key)
+    if params.sort_key in sort_mapping.keys():       
+        sort_order = desc(sort_mapping.get(params.sort_key)) if params.sort_order == "desc" else asc(sort_mapping.get(params.sort_key))
         query=query.order_by(sort_order)
 
     elif params.sort_key is not None:

@@ -432,17 +432,17 @@ def get_all_coaches_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Co
 
     # Define the sort mapping using aliases
     sort_mapping = {
-        "first_name": "first_name",
-        "last_name": "last_name",
-        "coach_status": "coach_status",
-        "own_coach_id": "own_coach_id",
-        "last_online": "last_online",
-        "check_in": "check_in"
+        "first_name": text("coach.first_name"),
+        "last_name": text("coach.last_name"),
+        "coach_status": text("coach_status"),
+        "own_coach_id": text("coach.own_coach_id"),
+        "last_online": text("coach.last_online"),
+        "check_in": text("coach.check_in"),
+        "created_at":text("coach.created_at")
     }
-
     # Main query
-    main_query = db.query(
-        _models.Coach,
+    query = db.query(
+        *_models.Coach.__table__.columns,
         CoachOrg.coach_status,
         CoachOrg.org_id,
         BankDetail.bank_name,
@@ -473,11 +473,11 @@ def get_all_coaches_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Co
     )
 
     # Subquery for total counts
-    total_counts = db.query(func.count()).select_from(main_query.subquery()).scalar()
+    total_counts = db.query(func.count()).select_from(query.subquery()).scalar()
 
     # Apply search filters
     if params.search_key:
-        main_query = main_query.filter(or_(
+        query = query.filter(or_(
             _models.Coach.first_name.ilike(f"%{params.search_key}%"),
             _models.Coach.last_name.ilike(f"%{params.search_key}%"),
             _models.Coach.own_coach_id.ilike(f"%{params.search_key}%"),
@@ -489,15 +489,11 @@ def get_all_coaches_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Co
 
     # Apply status filter
     if params.status is not None:
-        main_query = main_query.filter(CoachOrg.coach_status == params.status)
-
-    subquery = main_query.subquery()
-
-    query = db.query(subquery)
-    print("This is query",query)
-    if params.sort_key in sort_mapping:
+        query = query.filter(CoachOrg.coach_status == params.status)
+    
+    if params.sort_key in sort_mapping.keys():
         sort_column = sort_mapping.get(params.sort_key)
-        sort_order = desc(text(sort_column)) if params.sort_order == "desc" else asc(text(sort_column))
+        sort_order = desc(sort_column) if params.sort_order == "desc" else asc(sort_column)
         query = query.order_by(sort_order)
     elif params.sort_key is not None:
         raise _fastapi.HTTPException(status_code=400, detail="Sorting column not found.")

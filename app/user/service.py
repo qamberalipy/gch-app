@@ -2,7 +2,7 @@ from datetime import date,datetime
 from typing import List, Dict, Any
 from typing import Annotated, List
 import jwt
-from sqlalchemy import asc, desc, func, or_
+from sqlalchemy import asc, desc, func, or_, text
 import sqlalchemy.orm as _orm
 from sqlalchemy.sql import and_  
 import email_validator as _email_check
@@ -256,6 +256,17 @@ async def delete_staff(staff_id: int, db: _orm.Session):
     return {"status":"201","detail":"Staff deleted successfully"}
 
 def get_filtered_staff(org_id: int, params: _schemas.StaffFilterParams,db:_orm.Session=_fastapi.Depends(get_db)):
+    
+    sort_mapping = {
+        "own_staff_id": text("staff.own_staff_id"),
+        "first_name":text("staff.first_name"),
+        "status": text("staff.status"),
+        "last_checkin": text("staff.last_checkin"),
+        "role_id": text("staff.role_id"),
+        "activated_on": text("staff.activated_on"),
+        "created_at":text("staff.created_at")
+        }
+    
     query = db.query(
         *models.User.__table__.columns, models.Role.name.label("role_name")
     ).join(
@@ -295,8 +306,8 @@ def get_filtered_staff(org_id: int, params: _schemas.StaffFilterParams,db:_orm.S
             models.User.address_2.ilike(search_pattern)
         ))
 
-    if params.sort_key in extract_columns(query):       
-        sort_order = desc(params.sort_key) if params.sort_order == "desc" else asc(params.sort_key)
+    if params.sort_key in sort_mapping.keys():       
+        sort_order = desc(sort_mapping.get(params.sort_key)) if params.sort_order == "desc" else asc(sort_mapping.get(params.sort_key))
         query = query.order_by(sort_order)
     elif params.sort_key is not None:
         raise _fastapi.HTTPException(status_code=400, detail="Sorting column not found.")
