@@ -266,11 +266,7 @@ def get_membership_plans_by_org_id(
     params["offset"] = parameters.offset
 
     result = db.execute(query, params)
-    return {
-            "status_code": "201",
-            "id": result.id,
-            "message": "Membership Plan created successfully"
-        }
+    return result
 
 
 def create_facility(facility: _schemas.FacilityCreate,db: _orm.Session):
@@ -343,7 +339,6 @@ def get_facility_by_org_id(org_id : int , params : _schemas.FacilityFilterParams
     if params.status:
         facilities_query=facilities_query.filter(_models.Facility.status == params.status)   
 
-    
     return facilities_query.all()
 
 def get_facility_by_id(facility_id: int,db: _orm.Session):
