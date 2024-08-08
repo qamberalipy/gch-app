@@ -43,6 +43,7 @@ from .schema import (
     WorkoutDayRead,
     WorkoutDayUpdate,
     WorkoutFilter,
+    WorkoutMobileFilter,
     WorkoutRead,
     WorkoutUpdate,
 )
@@ -184,9 +185,7 @@ async def verify_workout(
     return workout_model
 
 
-workout_columns = list(WorkoutRead.model_fields.keys())
-
-
+#workout_columns = list(WorkoutRead.model_fields.keys())
 def get_filters(
     goals: Annotated[WorkoutGoal | None, Query(title="Workout Goal")] = None,
     level: Annotated[WorkoutLevel | None, Query(title="Workout Level")] = None,
@@ -201,7 +200,7 @@ def get_filters(
         bool, Query(description="To include that workout's days and exercises")
     ] = False,
     _sort_column: Annotated[
-        Literal[*tuple(workout_columns)] | None, Query(description="The column to sort")
+        str | None, Query(description="The column to sort")
     ] = None,
     _sort_dir: Annotated[
         Literal["asc", "desc"],
@@ -477,18 +476,16 @@ async def get_all(
     filters: Annotated[WorkoutFilter, Depends(get_filters)],
     pagination_options: Annotated[PaginationOptions, Depends(get_pagination_options)],
     user: Annotated[dict, Depends(get_user)],
-    _view: Annotated[
-        Literal["table", "mobile"],
-        Query(
-            description="Returns data in tabular (table view) or goals wise form (mobile view) note: pagination and sorting wont work in mobile view"
-        ),
-    ],
 ):
-    if _view == "table":
         return await get_all_workout_table_view(db, user, filters, pagination_options)
-    else:
-        return await get_all_workout_mobile_view(db, user, filters, pagination_options)
 
+#@router.get("mobile/workout_plans")
+#async def get_all_mobile(
+#    db: Annotated[Session, Depends(get_db)],
+#    filters: Annotated[WorkoutMobileFilter, Depends()],
+#    user: Annotated[dict, Depends(get_user)],
+#):
+#        return await get_all_workout_mobile_view(db, user, filters)
 
 @router.get("/{workout_id}", dependencies=[Depends(get_read_permission)])
 async def get_one(

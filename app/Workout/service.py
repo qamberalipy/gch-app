@@ -1,8 +1,8 @@
 from operator import and_
-from typing import Annotated, List, Literal
+from typing import Annotated, List, Literal, Union
 from fastapi import Depends, HTTPException
 from sqlalchemy import Column, asc, desc, func, or_, update
-from sqlalchemy.orm import Session, joinedload, selectinload
+from sqlalchemy.orm import Query, Session, joinedload, selectinload
 from starlette.types import HTTPExceptionHandler
 
 from app.Shared.dependencies import get_user
@@ -21,6 +21,7 @@ from .schema import (
     WorkoutDayRead,
     WorkoutDayUpdate,
     WorkoutFilter,
+    WorkoutMobileFilter,
     WorkoutRead,
     WorkoutUpdate,
 )
@@ -221,14 +222,6 @@ def _workout_get_count_before_pagination(
         query = query.options(joinedload(Workout.days).joinedload(WorkoutDay.exercises))
     return query.scalar()
 
-
-def _extract_columns(query):
-    columns = []
-    if hasattr(query.statement, "columns"):
-        columns = [col.name for col in query.statement.columns]
-    return columns
-
-
 def _workout_get_count_before_pagination(
     db: Session, user: dict, params: WorkoutFilter
 ):
@@ -274,22 +267,8 @@ def _extract_columns(query):
     return columns
 
 
-async def get_all_workout_table_view(
-    db: Session,
-    user: dict,
-    params: WorkoutFilter,
-    pagination_options: PaginationOptions,
-):
-    id, user_type, org_id = user["id"], user["user_type"], user["org_id"]
-    total_counts = (
-        db.query(func.count("*"))
-        .filter(Workout.is_deleted == False, Workout.org_id == org_id)
-        .scalar()
-    )
-    exclude_by_default = {"days"}
-    query = db.query(Workout).filter(
-        Workout.is_deleted == False, Workout.org_id == org_id
-    )
+def workout_apply_filter(query, params: Union[WorkoutFilter,WorkoutMobileFilter], exclude_by_default, user: dict):
+    user_type = user["user_type"]
     if user_type == "member" or user_type == "coach":
         query = query.filter(
             or_(
@@ -308,19 +287,24 @@ async def get_all_workout_table_view(
         query = query.filter(Workout.level == params.level)
     if params.search:
         query = query.filter(Workout.workout_name.ilike(f"%{params.search}%"))
-    if params.include_days:
-        query = query.options(joinedload(Workout.days))
-        exclude_by_default.remove("days")
-    if params.include_days_and_exercises:
-        query = query.options(joinedload(Workout.days))
-        exclude_by_default = {"days": {"__all__": {"exercises"}}}
     if params.created_by_user:
         query = query.filter(
             Workout.create_user_type == user_type, Workout.created_by == id
         )
-    if params.include_days_and_exercises:
-        query = query.options(joinedload(Workout.days).joinedload(WorkoutDay.exercises))
-        exclude_by_default = {}
+    return query
+
+async def get_all_workout_table_view(
+    db: Session,
+    user: dict,
+    params: WorkoutFilter,
+    pagination_options: PaginationOptions,
+):
+    id, user_type, org_id = user["id"], user["user_type"], user["org_id"]
+    exclude_by_default = {"days"}
+    query = db.query(Workout).filter(
+        Workout.is_deleted == False, Workout.org_id == org_id
+    )
+    query = workout_apply_filter(query,params,exclude_by_default, user)
     if params.equipment_id:
         query = (
             query.join(WorkoutDay, WorkoutDay.workout_id == Workout.id)
@@ -346,10 +330,20 @@ async def get_all_workout_table_view(
             else asc(params.sort_column)
         )
         query = query.order_by(sort_order)
+    if params.include_days:
+        query = query.options(joinedload(Workout.days))
+        exclude_by_default = {"days": {"__all__": {"exercises"}}}
+    if params.include_days_and_exercises:
+        query = query.options(joinedload(Workout.days))
+        exclude_by_default = {}
 
     items = query.all()
     return {
-        "total": total_counts,
+        "total": (
+            db.query(func.count("*"))
+            .filter(Workout.is_deleted == False, Workout.org_id == org_id)
+            .scalar()
+        ),
         "totalFiltered": _workout_get_count_before_pagination(db, user, params),
         "data": [
             WorkoutRead.model_validate(item).model_dump(exclude=exclude_by_default)
@@ -366,54 +360,31 @@ def _group_by(arr: List[dict], key: str):
         groups[a[key]].append(a)
     return [{"group": key, "data": group} for key, group in groups.items()]
 
-
 async def get_all_workout_mobile_view(
     db: Session,
     user: dict,
-    params: WorkoutFilter,
-    pagination_options: PaginationOptions,
+    params: WorkoutMobileFilter,
 ):
     id, user_type, org_id = user["id"], user["user_type"], user["org_id"]
     exclude_by_default = {"days"}
 
+    if params.sort_column and params.sort_column not in list(WorkoutRead.model_fields.keys()):
+            raise HTTPException(
+                status_code=400, detail=f"Sort order must in {list(WorkoutRead.model_fields.keys())}"
+            )
+    sort_order = (
+        desc(params.sort_column if params.sort_column else Workout.id)
+        if params.sort_dir == "desc"
+        else asc(params.sort_column if params.sort_column else Workout.id)
+    )
     GROUP_COLUMN = "goals"
     query = db.query(
         Workout,
         func.row_number()
-        .over(partition_by=getattr(Workout, GROUP_COLUMN), order_by=Workout.id)
+        .over(partition_by=getattr(Workout, GROUP_COLUMN), order_by=sort_order)
         .label("row_num"),
     ).filter(Workout.is_deleted == False, Workout.org_id == org_id)
-    if user_type == "member" or user_type == "coach":
-       query = query.filter(
-           or_(
-               Workout.visible_for == "everyone_in_my_club",
-               Workout.visible_for == "members_of_my_club",
-               and_(
-                   Workout.visible_for == "only_myself",
-                   (Workout.created_by == id)
-                   & (Workout.create_user_type == user_type),
-               ).self_group(),
-           ).self_group()
-       )
-    if params.goals:
-        query = query.filter(Workout.goals == params.goals)
-    if params.level:
-        query = query.filter(Workout.level == params.level)
-    if params.search:
-        query = query.filter(Workout.workout_name.ilike(f"%{params.search}%"))
-    if params.include_days:
-        query = query.options(joinedload(Workout.days))
-        exclude_by_default.remove("days")
-    if params.include_days_and_exercises:
-        query = query.options(joinedload(Workout.days))
-        exclude_by_default = {"days": {"__all__": {"exercises"}}}
-    if params.created_by_user:
-        query = query.filter(
-            Workout.create_user_type == user_type, Workout.created_by == id
-        )
-    if params.include_days_and_exercises:
-        query = query.options(joinedload(Workout.days).joinedload(WorkoutDay.exercises))
-        exclude_by_default = {}
+    query = workout_apply_filter(query,params,exclude_by_default, user)
     query = query.subquery()
     query_final = db.query(query).filter(query.c.row_num <= 3)
     items = [

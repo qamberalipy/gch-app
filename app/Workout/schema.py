@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Annotated, List, Literal
+from typing import List, Literal
 from typing_extensions import Optional
-from pydantic import AfterValidator, BaseModel, Field, validator
+from pydantic import BaseModel, Field
 
 from ..Exercise.schema import ExerciseBase
 from .models import ExerciseIntensity, ExerciseType, VisibleFor, WorkoutGoal, WorkoutLevel
@@ -62,16 +62,21 @@ class WorkoutBase(MyBaseModel):
     level: WorkoutLevel
     notes: Optional[str] = None
     weeks: int = Field(ge=1)
+    img_url: str
 
 class WorkoutCreate(WorkoutBase):
     pass
 
-def check_empty(v):
-    return None if len(v) == 0 else v
-
 class WorkoutRead(WorkoutBase):
     id: int
-    days: Annotated[None | List[WorkoutDayRead], AfterValidator(check_empty)] = None
+    days: Optional[List[WorkoutDayRead]] = None
+    created_at: datetime
+    updated_at: Optional[datetime]
+    create_user_type: str
+    update_user_type: Optional[str]
+    created_by: int
+    updated_by: Optional[int]
+    is_deleted: bool
 
 
 class WorkoutUpdate(MyBaseModel):
@@ -83,19 +88,28 @@ class WorkoutUpdate(MyBaseModel):
     notes: Optional[str] = None
     weeks: Optional[int] = None
 
-columns = list(WorkoutRead.model_fields.keys())
+#columns = list(WorkoutRead.model_fields.keys())
 class WorkoutFilter(MyBaseModel):
-    workout_name: Optional[str] = None
     goals: Optional[WorkoutGoal] = None
     level: Optional[WorkoutLevel] = None
     search: Optional[str] = None
     include_days: Optional[bool] = False
     include_days_and_exercises: Optional[bool] = False
     created_by_user: Optional[bool] = None
+    sort_column: Optional[str] = None
+    # sort_column: Optional[Literal[*tuple(columns)]] = None
+    sort_dir: Optional[Literal["asc", "desc"]] = "asc"
+    equipment_id: Optional[int] = None
+
+class WorkoutMobileFilter(MyBaseModel):
+    goals: Optional[WorkoutGoal] = None
+    level: Optional[WorkoutLevel] = None
+    search: Optional[str] = None
+    created_by_user: Optional[bool] = None
+    sort_column: Optional[str] = None
     # sort_column: Optional[Literal[*tuple(columns)]] = None
     sort_dir: Optional[Literal["asc", "desc"]] = "asc"
     results_per_goal: Optional[int] = 3
-    equipment_id: Optional[int] = None
 
 class WorkoutDayCreate(WorkoutDayBase):
     pass
