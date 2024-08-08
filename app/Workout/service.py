@@ -1,7 +1,7 @@
 from operator import and_
 from typing import Annotated, List, Literal, Union
 from fastapi import Depends, HTTPException
-from sqlalchemy import Column, asc, desc, func, or_, update
+from sqlalchemy import Column, asc, desc, distinct, func, or_, update
 from sqlalchemy.orm import Query, Session, joinedload, selectinload
 from starlette.types import HTTPExceptionHandler
 
@@ -184,12 +184,11 @@ async def get_workout_filter(
         raise HTTPException(status_code=404, detail="Workout not found")
     return WorkoutRead.model_validate(workout).model_dump(exclude=exclude_by_default)
 
-
 def _workout_get_count_before_pagination(
     db: Session, user: dict, params: WorkoutFilter
 ):
     id, user_type, org_id = user["id"], user["user_type"], user["org_id"]
-    query = db.query(func.count("*")).filter(
+    query = db.query(func.count(distinct(Workout.id))).filter(
         Workout.is_deleted == False, Workout.org_id == org_id
     )
     if user_type == "member" or user_type == "coach":
@@ -210,53 +209,22 @@ def _workout_get_count_before_pagination(
         query = query.filter(Workout.level == params.level)
     if params.search:
         query = query.filter(Workout.workout_name.ilike(f"%{params.search}%"))
-    if params.include_days:
-        query = query.options(joinedload(Workout.days))
-    if params.include_days_and_exercises:
-        query = query.options(joinedload(Workout.days))
     if params.created_by_user:
         query = query.filter(
             Workout.create_user_type == user_type, Workout.created_by == id
         )
     if params.include_days_and_exercises:
         query = query.options(joinedload(Workout.days).joinedload(WorkoutDay.exercises))
-    return query.scalar()
-
-def _workout_get_count_before_pagination(
-    db: Session, user: dict, params: WorkoutFilter
-):
-    id, user_type, org_id = user["id"], user["user_type"], user["org_id"]
-    query = db.query(func.count("*")).filter(
-        Workout.is_deleted == False, Workout.org_id == org_id
-    )
-    if user_type == "member" or user_type == "coach":
-        query = query.filter(
-            or_(
-                Workout.visible_for == "everyone_in_my_club",
-                Workout.visible_for == "members_of_my_club",
-                and_(
-                    Workout.visible_for == "only_myself",
-                    (Workout.created_by == id)
-                    & (Workout.create_user_type == user_type),
-                ).self_group(),
-            ).self_group()
+    if params.equipment_id:
+        query = (
+            query.join(WorkoutDay, WorkoutDay.workout_id == Workout.id)
+            .join(
+                WorkoutDayExercise, WorkoutDayExercise.workout_day_id == WorkoutDay.id
+            )
+            .join(Exercise, Exercise.id == WorkoutDayExercise.exercise_id)
+            .join(ExerciseEquipment, ExerciseEquipment.exercise_id == Exercise.id)
+            .filter(ExerciseEquipment.equipment_id == params.equipment_id)
         )
-    if params.goals:
-        query = query.filter(Workout.goals == params.goals)
-    if params.level:
-        query = query.filter(Workout.level == params.level)
-    if params.search:
-        query = query.filter(Workout.workout_name.ilike(f"%{params.search}%"))
-    if params.include_days:
-        query = query.options(joinedload(Workout.days))
-    if params.include_days_and_exercises:
-        query = query.options(joinedload(Workout.days))
-    if params.created_by_user:
-        query = query.filter(
-            Workout.create_user_type == user_type, Workout.created_by == id
-        )
-    if params.include_days_and_exercises:
-        query = query.options(joinedload(Workout.days).joinedload(WorkoutDay.exercises))
     return query.scalar()
 
 
@@ -311,7 +279,7 @@ async def get_all_workout_table_view(
             .join(
                 WorkoutDayExercise, WorkoutDayExercise.workout_day_id == WorkoutDay.id
             )
-            .join(Exercise, Exercise.id == WorkoutDay.exercise_id)
+            .join(Exercise, Exercise.id == WorkoutDayExercise.exercise_id)
             .join(ExerciseEquipment, ExerciseEquipment.exercise_id == Exercise.id)
             .filter(ExerciseEquipment.equipment_id == params.equipment_id)
         )
