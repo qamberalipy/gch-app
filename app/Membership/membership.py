@@ -31,7 +31,7 @@ def create_membership_plan(membership_plan: _schemas.MembershipPlanCreate,db: _o
 
     return _services.create_membership_plan(membership_plan, db)
 
-@router.put("/membership_plan",tags=["Membership Plans"])
+@router.put("/membership_plan",response_model= _schemas.MembershipPlanUpdate,tags=["Membership Plans"])
 def update_membership_plan(membership_plan: _schemas.MembershipPlanUpdate, db: _orm.Session = Depends(get_db)):
     
     db_membership_plan = _services.update_membership_plan(membership_plan.id, membership_plan,db)
@@ -102,7 +102,7 @@ def create_facility(facility: _schemas.FacilityCreate, db: _orm.Session = Depend
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-@router.put("/facilities", tags=["Facility APIs"])
+@router.put("/facilities", response_model=_schemas.FacilityUpdate ,tags=["Facility APIs"])
 def update_facility(facility: _schemas.FacilityUpdate, db: _orm.Session = Depends(get_db)):
     try:    
         db_facility = _services.update_facility(facility, db)
@@ -221,7 +221,7 @@ def get_income_category(id: int, db: _orm.Session = Depends(get_db)):
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-@router.put("/income_category", tags=["Income Category APIs"])
+@router.put("/income_category", response_model=_schemas.IncomeCategoryUpdate ,tags=["Income Category APIs"])
 def update_income_category(income_category: _schemas.IncomeCategoryUpdate, db: _orm.Session = Depends(get_db)):
     try:    
         db_income_category = _services.update_income_category(income_category=income_category, db=db)
@@ -286,7 +286,7 @@ def get_sale_tax(id: int, db: _orm.Session = Depends(get_db)):
     
     
 
-@router.put("/sale_taxes", tags=["Sale_tax APIs"])
+@router.put("/sale_taxes", response_model=_schemas.SaleTaxUpdate ,tags=["Sale_tax APIs"])
 def update_sale_tax(sale_tax: _schemas.SaleTaxUpdate, db: _orm.Session = Depends(get_db)):
     
     try:    

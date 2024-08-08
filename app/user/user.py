@@ -150,10 +150,9 @@ async def get_all_staff(org_id: int, db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
    
 
-@router.put("/staff", tags=["Staff APIs"])
+@router.put("/staff", response_model= _schemas.UpdateStaff ,tags=["Staff APIs"])
 async def update_staff(staff_update: _schemas.UpdateStaff, db: _orm.Session = Depends(get_db)):
     try:
-            
         updated_staff = await _services.update_staff(staff_update.id, staff_update, db)
         return updated_staff
     except IntegrityError as e:
