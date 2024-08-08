@@ -238,7 +238,7 @@ class ClientFilterParams(pydantic.BaseModel):
     search_key: Optional[str] = None
     member_name: Optional[str] = None
     sort_key:Optional[str]=None
-    sort_order: Optional[str] = None
+    sort_order: Optional[str] = "desc"
     coach_assigned: Optional[int] = None
     membership_plan: Optional[int] = None
     status:Optional[ClientStatus]=None

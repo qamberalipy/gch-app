@@ -215,11 +215,11 @@ async def get_business_clients(org_id: int,db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
     
 
-# @router.get("/member/count/{org_id}", response_model=_schemas.ClientCount, tags=["Member Router"])
-# async def get_total_clients(org_id: int, db: _orm.Session = Depends(get_db)):
-    # try:
-        # 
-        # total_clients = await _services.get_total_clients(org_id, db)
-        # return {"total_members": total_clients}
-    # except Exception as e:
-        # raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+@router.get("/member/count/{org_id}", response_model=_schemas.ClientCount, tags=["Member Router"])
+async def get_total_clients(org_id: int, db: _orm.Session = Depends(get_db)):
+    try:
+        
+        total_clients = await _services.get_total_clients(org_id, db)
+        return {"total_members": total_clients}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")

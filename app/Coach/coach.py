@@ -72,10 +72,11 @@ def get_coaches_by_org_id(org_id: int,filters: Annotated[_schemas.CoachFilterPar
     return coaches
 
 
-# @router.get("/coach/count/{org_id}", response_model=_schemas.CoachCount, tags=["Coach API"])
-# async def get_total_coaches(org_id: int, db: _orm.Session = Depends(get_db)):
-    # try:
-        # total_coaches = await _services.get_total_coaches(org_id, db)
-        # return {"total_coaches": total_coaches}
-    # except Exception as e:
-        # raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+@router.get("/coach/count/{org_id}", response_model=_schemas.CoachCount, tags=["Coach API"])
+async def get_total_coaches(org_id: int, db: _orm.Session = Depends(get_db)):
+    try:
+        total_coaches = await _services.get_total_coaches(org_id, db)
+        return {"total_coaches": total_coaches}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+# 

@@ -2,7 +2,7 @@ from datetime import date
 from app.Exercise.service import extract_columns
 from typing import Annotated,Any, List
 import jwt
-from sqlalchemy import String, asc, cast, desc, func, literal_column, or_
+from sqlalchemy import String, asc, cast, desc, func, literal_column, or_, text
 import sqlalchemy.orm as _orm
 from sqlalchemy.sql import and_  
 import email_validator as _email_check
@@ -421,15 +421,28 @@ def get_coach_by_id(coach_id: int, db: _orm.Session):
 #     else:
 #         return None
     
+from sqlalchemy import text, func, asc, desc, or_
+from sqlalchemy.orm import aliased
+
 def get_all_coaches_by_org_id(org_id: int, db: _orm.Session, params: _schemas.CoachFilterParams):
-   
     CoachOrg = aliased(_models.CoachOrganization)
     BankDetail = aliased(_usermodels.Bank_detail)
     ClientCoach = aliased(_client_models.ClientCoach)
     Client = aliased(_client_models.Client)
 
-    query = db.query(
-        *_models.Coach.__table__.columns,
+    # Define the sort mapping using aliases
+    sort_mapping = {
+        "first_name": "first_name",
+        "last_name": "last_name",
+        "coach_status": "coach_status",
+        "own_coach_id": "own_coach_id",
+        "last_online": "last_online",
+        "check_in": "check_in"
+    }
+
+    # Main query
+    main_query = db.query(
+        _models.Coach,
         CoachOrg.coach_status,
         CoachOrg.org_id,
         BankDetail.bank_name,
@@ -437,7 +450,7 @@ def get_all_coaches_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Co
         BankDetail.acc_holder_name,
         BankDetail.swift_code,
         func.array_agg(func.coalesce(ClientCoach.client_id, 0)).label('members')
-    ).join(
+    ).select_from(_models.Coach).join(
         CoachOrg, _models.Coach.id == CoachOrg.coach_id
     ).join(
         BankDetail, _models.Coach.bank_detail_id == BankDetail.id
@@ -456,40 +469,49 @@ def get_all_coaches_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Co
         BankDetail.bank_name,
         BankDetail.iban_no,
         BankDetail.acc_holder_name,
-        BankDetail.swift_code)
+        BankDetail.swift_code
+    )
 
-    total_counts = db.query(func.count()).select_from(query.subquery()).scalar()
-    
+    # Subquery for total counts
+    total_counts = db.query(func.count()).select_from(main_query.subquery()).scalar()
+
+    # Apply search filters
     if params.search_key:
-        query = query.filter(or_(
+        main_query = main_query.filter(or_(
             _models.Coach.first_name.ilike(f"%{params.search_key}%"),
             _models.Coach.last_name.ilike(f"%{params.search_key}%"),
             _models.Coach.own_coach_id.ilike(f"%{params.search_key}%"),
             _models.Coach.email.ilike(f"%{params.search_key}%"),
             _models.Coach.mobile_number.ilike(f"%{params.search_key}%"),
-            _models.Coach.own_coach_id.ilike(f"%{params.search_key}%"),
             _models.Coach.gender.ilike(f"%{params.search_key}%"),
             _models.Coach.phone.ilike(f"%{params.search_key}%")
         ))
 
+    # Apply status filter
     if params.status is not None:
-        query = query.filter(CoachOrg.coach_status == params.status)
+        main_query = main_query.filter(CoachOrg.coach_status == params.status)
 
-    if params.sort_key in extract_columns(query):       
-        sort_order = desc(params.sort_key) if params.sort_order == "desc" else asc(params.sort_key)
-        query=query.order_by(sort_order)
+    subquery = main_query.subquery()
 
+    query = db.query(subquery)
+    print("This is query",query)
+    if params.sort_key in sort_mapping:
+        sort_column = sort_mapping.get(params.sort_key)
+        sort_order = desc(text(sort_column)) if params.sort_order == "desc" else asc(text(sort_column))
+        query = query.order_by(sort_order)
     elif params.sort_key is not None:
-        raise _fastapi.HTTPException(status_code=400, detail="Sorting column not found.")    
+        raise _fastapi.HTTPException(status_code=400, detail="Sorting column not found.")
 
     filtered_counts = db.query(func.count()).select_from(query.subquery()).scalar()
-    
+
+ 
     query = query.offset(params.offset).limit(params.limit)
     db_coaches = query.all()
 
     coaches = [_schemas.CoachResponse.from_orm(coach) for coach in db_coaches]
 
-    return {"data":coaches,"total_counts":total_counts,"filtered_counts": filtered_counts}
+    return {"data": coaches, "total_counts": total_counts, "filtered_counts": filtered_counts}
+
 
 async def get_total_coaches(org_id: int, db: _orm.Session = _fastapi.Depends(get_db)) -> int:
     total_coaches = db.query(func.count(models.Coach.id)).join(
