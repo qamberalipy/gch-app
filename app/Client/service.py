@@ -210,7 +210,8 @@ async def update_client(
     client: _schemas.ClientUpdate,
     db: _orm.Session = _fastapi.Depends(get_db),
 ):
-    db_client = db.query(_models.Client).filter(and_(_models.Client.id == client_id,_models.Client.is_deleted == False)).first()
+    db_client = db.query(_models.Client).filter(_models.Client.id == client_id).first()
+    print("db_client: ",db_client)
     if not db_client:
         raise _fastapi.HTTPException(status_code=404, detail="Member not found")
     
