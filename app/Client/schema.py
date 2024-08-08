@@ -95,13 +95,6 @@ class RegisterClientApp(pydantic.BaseModel):
     is_deleted:Optional[bool]=False
     
         
-class ClientOrganizationResponse(pydantic.BaseModel):
-    id: int
-    name: Optional[str] = None
-    profile_img: Optional[str] = None
-
-    class Config:
-        from_attributes = True
         
 class RegisterClient(ClientBase):
     pass
@@ -113,10 +106,50 @@ class ClientRead(ClientBase):
     class Config:
         from_attributes=True
 
+class ClientOrganizationResponse(pydantic.BaseModel):
+    id: int
+    name: Optional[str] = None
+    profile_img: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+        
+class ClientAPPBase(pydantic.BaseModel):
+    id: int
+    profile_img: Optional[str] = None
+    own_member_id: str  
+    first_name: str
+    last_name: str
+    gender: str
+    dob: datetime.date
+    email: str
+    phone: Optional[str] = None
+    mobile_number: Optional[str] = None
+    notes: Optional[str] = None
+    source_id: Optional[int] = None
+    language: Optional[str] = None
+    is_business: bool = False
+    business_id: Optional[int] = None
+    country_id: Optional[int] = None
+    city: Optional[str] = None
+    zipcode: Optional[str] = None
+    address_1: Optional[str] = None
+    address_2: Optional[str] = None
+    height:Optional[float]=0.0 
+    weight: Optional[float]=0.0 
+    bmi: Optional[float]=0.0     
+    circumference_waist_navel: Optional[float]=0.0
+    fat_percentage: Optional[float]=0.0
+    muscle_percentage: Optional[float]=0.0
+    coach_id: Optional[List[int]]=[]
+    organizations:Optional[List[ClientOrganizationResponse]]=[]
+    client_since: Optional[datetime.date] = None
+    created_at: Optional[datetime.datetime] = None
+    created_by: Optional[int] = None
         
 class ClientLoginResponse(pydantic.BaseModel):
     is_registered: bool
-    client: Optional[ClientRead] = None
+    client: Optional[ClientAPPBase] = None
     access_token: Optional[Dict[str, str]] = None
     
 class ClientByID(pydantic.BaseModel):

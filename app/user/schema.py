@@ -52,30 +52,11 @@ class BankAccountCreate(pydantic.BaseModel):
 class OrganizationCreateTest(pydantic.BaseModel):
     name: str
 
-class BusinessTypeEnum(str, PyEnum):
-    bootcamp = "Bootcamp"
-    community_services = "Community Services"
-    corporate_health = "Corporate Health"
-    crossfit_box = "CrossFit Box"
-    dance_studio = "Dance Studio"
-    dietitian = "Dietitian"
-    educational_institute = "Educational Institute"
-    fitness_center = "Fitness Center"
-    hospital_clinic = "Hospital or Clinic"
-    lifestyle_coach = "Lifestyle Coach"
-    martial_arts_center = "Martial Arts Center"
-    online_coach = "Online Coach"
-    personal_trainer = "Personal Trainer"
-    personal_training_studio = "Personal Training Studio"
-    physiotherapy_clinic = "Physiotherapy Clinic"
-    yoga_pilates_studio = "Yoga or Pilates Studio"
-    other = "Other" 
-
 class OrganizationBase(pydantic.BaseModel):
     name: str
     email: Optional[str]=None
     profile_img:Optional[str] = None
-    business_type: Optional[BusinessTypeEnum]=None
+    business_type: Optional[str]=None
     description: Optional[str] = None
     address: Optional[str] = None
     zipcode: Optional[str] = None

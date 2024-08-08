@@ -11,25 +11,7 @@ class StaffStatus(str,PyEnum):
     active='active'
     inactive='inactive'
     pending='pending'    
-    
-class BusinessTypeEnum(PyEnum):
-    bootcamp = "Bootcamp"
-    community_services = "Community Services"
-    corporate_health = "Corporate Health"
-    crossfit_box = "CrossFit Box"
-    dance_studio = "Dance Studio"
-    dietitian = "Dietitian"
-    educational_institute = "Educational Institute"
-    fitness_center = "Fitness Center"
-    hospital_clinic = "Hospital or Clinic"
-    lifestyle_coach = "Lifestyle Coach"
-    martial_arts_center = "Martial Arts Center"
-    online_coach = "Online Coach"
-    personal_trainer = "Personal Trainer"
-    personal_training_studio = "Personal Training Studio"
-    physiotherapy_clinic = "Physiotherapy Clinic"
-    yoga_pilates_studio = "Yoga or Pilates Studio"
-    other = "Other"
+
     
 class RoleStatus(str,PyEnum):
     active='active'
@@ -98,7 +80,7 @@ class Organization(_database.Base):
     name = _sql.Column(_sql.String)
     email = _sql.Column(_sql.String)
     profile_img = _sql.Column(_sql.String(150))  # varchar(150) in the image is likely a typo
-    business_type = _sql.Column(_sql.Enum(BusinessTypeEnum, name="businesstypeenum"))
+    business_type = _sql.Column(_sql.String(150))
     description = _sql.Column(_sql.String)
     address = _sql.Column(_sql.String(100)) 
     zipcode = _sql.Column(_sql.String(10))

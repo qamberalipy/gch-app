@@ -77,6 +77,7 @@ async def create_organization(org: _schemas.OrganizationCreate, db: _orm.Session
     db.refresh(db_org)
     return db_org
 
+
 async def get_organization(org_id: int, db: _orm.Session) -> models.Organization:
     return db.query(models.Organization).filter(models.Organization.id == org_id, models.Organization.is_deleted == False).first()
 

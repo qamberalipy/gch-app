@@ -37,8 +37,17 @@ async def create_organization(org: _schemas.OrganizationCreate, db: _orm.Session
     try:
         new_org = await _services.create_organization(org, db)
         return new_org
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+    
+    except IntegrityError as e:
+        db.rollback()
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Duplicate entry or integrity constraint violation")
+
+    except DataError as e:
+        db.rollback()
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+ 
 
 @router.get("/organizations/{id}", response_model=_schemas.OrganizationRead, tags=["Organizations API"])
 async def get_organization(id: int, db: _orm.Session = Depends(get_db)):

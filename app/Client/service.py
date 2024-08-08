@@ -135,27 +135,50 @@ async def login_client(
     wallet_address: str,
     db: _orm.Session = _fastapi.Depends(get_db),
 ) -> dict:
-    client = (
-        db.query(models.Client, _models.ClientOrganization)
-        .filter(
-            _models.Client.email == email_address, _models.Client.is_deleted == False
+
+    query = (
+        db.query(
+            *_models.Client.__table__.columns,
+            func.array_agg(
+                func.json_build_object(
+                    'id', func.coalesce(models.ClientOrganization.org_id, 0),
+                    'name', func.coalesce(_user_models.Organization.name, ""),
+                    'profile_url', func.coalesce(_user_models.Organization.profile_img, "")
+                )
+            ).label('organizations')
         )
-        .first()
+        .outerjoin(
+            models.ClientOrganization,
+            models.ClientOrganization.client_id == models.Client.id
+        )
+        .outerjoin(
+            _user_models.Organization,
+            _user_models.Organization.id == models.ClientOrganization.org_id
+        )
+        .filter(
+            models.Client.email == email_address,
+            models.Client.is_deleted == False
+        )
+        .group_by(
+            *_models.Client.__table__.columns
+        )
     )
+
+    client = query.first()
 
     if not client:
         return {"is_registered": False}
 
-    client = client[0]
-    client.wallet_address = wallet_address
-    db.commit()
-    db.refresh(client)
-    
+    client_dict = client._asdict()
+    # client_dict["wallet_address"] = wallet_address
+    print("client_dict: ",client_dict)
+
+    # db.commit()
+    # db.refresh(client)
 
     token = _helpers.create_token(dict(id=client.id), "Member")
 
-    return {"is_registered": True, "client": client, "access_token": token}
-
+    return {"is_registered": True, "client": client_dict, "access_token": token}
 
 async def get_client_by_email(
     email_address: str, db: _orm.Session = _fastapi.Depends(get_db)
