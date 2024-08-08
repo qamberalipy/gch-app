@@ -173,6 +173,7 @@ class StaffBase(pydantic.BaseModel):
     profile_img: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    status:Optional[StaffStatus]=None
     gender: Optional[str] = None
     dob: Optional[datetime.datetime]=None
     email: str
@@ -239,6 +240,7 @@ class UpdateStaff(pydantic.BaseModel):
     profile_img: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    status:Optional[StaffStatus]=None
     gender: Optional[str] = None
     dob: Optional[datetime.datetime] = None
     email: Optional[str] = None

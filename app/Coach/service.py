@@ -220,13 +220,11 @@ def update_bank_detail(coach: _schemas.CoachUpdate, db: _orm.Session, db_coach):
     return db_bank_detail
 
 def update_coach_record(coach: _schemas.CoachUpdate, db: _orm.Session, db_coach):
-    coach.is_deleted = False
     for field, value in coach.dict(exclude_unset=True).items():
         if hasattr(db_coach, field):
             setattr(db_coach, field, value)
     
     db_coach.updated_by = coach.updated_by
-
     db.add(db_coach)
     db.commit()
     db.refresh(db_coach)
@@ -424,8 +422,7 @@ def get_coach_by_id(coach_id: int, db: _orm.Session):
 #         return None
     
 def get_all_coaches_by_org_id(org_id: int, db: _orm.Session, params: _schemas.CoachFilterParams):
-    sort_order = desc(_models.Coach.created_at) if params.sort_order == "desc" else asc(_models.Coach.created_at)
-
+   
     CoachOrg = aliased(_models.CoachOrganization)
     BankDetail = aliased(_usermodels.Bank_detail)
     ClientCoach = aliased(_client_models.ClientCoach)

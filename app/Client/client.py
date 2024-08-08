@@ -13,6 +13,7 @@ import pika
 import logging
 import datetime
 from app.Client.models import ClientStatus
+from app.Shared.schema import SharedCreateSchema,SharedModifySchema
 
 router = APIRouter()
 
@@ -28,7 +29,7 @@ def get_db():
     finally:
         db.close()
         
-@router.post("/member", tags=["Member Router"])
+@router.post("/member",response_model=SharedCreateSchema, tags=["Member Router"])
 async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depends(get_db)):
     try:
         db_client = await _services.get_client_by_email(client.email, db)
@@ -57,7 +58,11 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
         if coach_ids is not None:
             await _services.create_client_coach(new_client.id, coach_ids, db)
 
-        return new_client
+        return {
+            "status_code": "201",
+            "id": new_client.id,
+            "message": "Member created successfully"
+        }
 
     except IntegrityError as e:
         db.rollback()
@@ -71,7 +76,7 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
 
 
     
-@router.put("/member", tags=["Member Router"])
+@router.put("/member",response_model=SharedModifySchema, tags=["Member Router"])
 async def update_client(client: _schemas.ClientUpdate, db: _orm.Session = Depends(get_db)):
     try:
         # Update client details
@@ -96,7 +101,7 @@ async def update_client(client: _schemas.ClientUpdate, db: _orm.Session = Depend
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
 
-@router.delete("/member/{id}", tags=["Member Router"])
+@router.delete("/member/{id}",response_model=SharedModifySchema, tags=["Member Router"])
 async def delete_client(id:int, db: _orm.Session = Depends(get_db)):
     try:
         
@@ -210,11 +215,11 @@ async def get_business_clients(org_id: int,db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
     
 
-@router.get("/member/count/{org_id}", response_model=_schemas.ClientCount, tags=["Member Router"])
-async def get_total_clients(org_id: int, db: _orm.Session = Depends(get_db)):
-    try:
-        
-        total_clients = await _services.get_total_clients(org_id, db)
-        return {"total_members": total_clients}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+# @router.get("/member/count/{org_id}", response_model=_schemas.ClientCount, tags=["Member Router"])
+# async def get_total_clients(org_id: int, db: _orm.Session = Depends(get_db)):
+    # try:
+        # 
+        # total_clients = await _services.get_total_clients(org_id, db)
+        # return {"total_members": total_clients}
+    # except Exception as e:
+        # raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")

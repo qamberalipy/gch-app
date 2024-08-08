@@ -44,6 +44,8 @@ async def create_exercise(exercise: _schemas.ExerciseCreate, db: _orm.Session):
         visible_for=exercise.visible_for,
         org_id=exercise.org_id,
         category_id=exercise.category_id,
+        exercise_intensity=exercise.exercise_intensity,
+        intensity_value=exercise.intensity_value,
         exercise_type=exercise.exercise_type,
         difficulty=exercise.difficulty,
         sets=exercise.sets,
@@ -165,7 +167,7 @@ async def exercise_update(data:_schemas.ExerciseUpdate,db: _orm.Session = _fasta
 
     db.commit()
 
-    return data    
+    return {"status":"201","detail":"Exercise updated successfully"}   
 
 def create_exercise_primary_joint(exercise_id,primary_joint_ids,db: _orm.Session = _fastapi.Depends(get_db)):
     db_exercise_primary_joint=[_models.ExercisePrimaryJoint(
@@ -224,6 +226,7 @@ def get_filters(
     category: Annotated[int , _fastapi.Query(title="Category")] = None,
     equipment: Annotated[list[int] , _fastapi.Query(title="Equipment")] = None,
     primary_muscle: Annotated[list[int],_fastapi.Query(title="Primary Muscle")]=None,
+    primary_joint: Annotated[list[int],_fastapi.Query(title="Primary Joint")]=None,
     sort_key:Annotated[str, _fastapi.Query(title="Sort Key")] = None,
     sort_order:Annotated[str, _fastapi.Query(title="Sort Order")] = 'asc',
     limit: Annotated[int, _fastapi.Query(description="Pagination Limit")] = None,
@@ -234,6 +237,7 @@ def get_filters(
         category=category,
         equipment=equipment,
         primary_muscle=primary_muscle,
+        primary_joint=primary_joint,
         sort_key=sort_key,
         sort_order=sort_order,
         limit=limit,
@@ -310,7 +314,7 @@ async def get_exercise(params:Optional[_schemas.ExerciseFilterParams]=None,org_i
         ).label('primary_joints')
     ).join(
         PrimaryJoint, _models.ExercisePrimaryJoint.primary_joint_id == PrimaryJoint.id
-    ).group_by(_models.ExercisePrimaryJoint.exercise_id).subquery()
+    ).group_by(_models.ExercisePrimaryJoint.exercise_id)
     
     if params:
         if params.equipment:
@@ -319,14 +323,21 @@ async def get_exercise(params:Optional[_schemas.ExerciseFilterParams]=None,org_i
         if params.primary_muscle:
             primary_muscle_query = primary_muscle_query.filter(_models.ExercisePrimaryMuscle.muscle_id.in_(params.primary_muscle))
 
+        if params.primary_joint:
+            primary_joint_query = primary_joint_query.filter(_models.ExercisePrimaryJoint.primary_joint_id.in_(params.primary_joint))
+            
+        
     equipment_query=equipment_query.subquery()
     primary_muscle_query=primary_muscle_query.subquery()
+    primary_joint_query=primary_joint_query.subquery()
 
     query = db.query(
     Exercise.exercise_name,
     Exercise.visible_for,
     Exercise.org_id,
     Exercise.exercise_type,
+    Exercise.exercise_intensity,
+    Exercise.intensity_value,
     Exercise.difficulty,
     Exercise.sets,
     Exercise.seconds_per_set,
@@ -343,6 +354,7 @@ async def get_exercise(params:Optional[_schemas.ExerciseFilterParams]=None,org_i
     Exercise.image_url_female,
     Exercise.image_url_male,
     Exercise.id,
+    Exercise.category_id,
     _models.ExerciseCategory.category_name,
     equipment_query.c.equipments,
     primary_muscle_query.c.primary_muscles,
@@ -373,16 +385,16 @@ async def get_exercise(params:Optional[_schemas.ExerciseFilterParams]=None,org_i
 
         elif params.sort_key is not None:
             raise _fastapi.HTTPException(status_code=400, detail="Sorting column not found.")
-    
-        query = query.offset(params.offset).limit(params.limit)
 
     if id:
         query=query.filter(Exercise.id == id)
         return query.first()
     else:
         query=query.filter(Exercise.org_id == org_id)
+        query = query.offset(params.offset).limit(params.limit)
         return query.all()
-
+    
+    
 
 
 

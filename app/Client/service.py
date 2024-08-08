@@ -55,11 +55,7 @@ async def create_client(
     db.add(db_client)
     db.commit()
     db.refresh(db_client)
-    return {
-            "status_code": "201",
-            "id": db_client.id,
-            "message": "Member created successfully"
-        }
+    return db_client
 
 
 async def create_client_for_app(
@@ -172,16 +168,26 @@ async def update_client(
     client: _schemas.ClientUpdate,
     db: _orm.Session = _fastapi.Depends(get_db),
 ):
-    db_client = db.query(_models.Client).filter(_models.Client.id == client_id).first()
+    db_client = db.query(_models.Client).filter(and_(_models.Client.id == client_id,_models.Client.is_deleted == False)).first()
     if not db_client:
-        raise _fastapi.HTTPException(status_code=404, detail="Client not found")
-    client.is_deleted = False
+        raise _fastapi.HTTPException(status_code=404, detail="Member not found")
+    
     for key, value in client.dict(exclude_unset=True).items():
         setattr(db_client, key, value)
 
-    db_client.updated_at = datetime.datetime.utcnow()
+    db_client_status=db.query(_models.ClientOrganization).filter(and_(_models.ClientOrganization.client_id == client_id,_models.ClientOrganization.org_id == client.org_id)).first()    
+    
+    if not db_client_status:
+        raise _fastapi.HTTPException(status_code=404, detail="Please enter correct organization of member")
+        
+    db_client_status.client_status = client.status
+        
+    db_client.updated_at = datetime.datetime.now()
     db.commit()
+    
     db.refresh(db_client)
+    db.refresh(db_client_status)
+    
     return {"status":"201","detail":"Member updated successfully"}
 
 
@@ -234,9 +240,9 @@ async def update_client_coach(client_id: int, coach_ids: List[int], db: _orm.Ses
 
 
 async def delete_client(client_id: int, db: _orm.Session = _fastapi.Depends(get_db)):
-    db_client = db.query(_models.Client).filter(_models.Client.id == client_id).first()
+    db_client = db.query(_models.Client).filter(and_(_models.Client.id == client_id,_models.Client.is_deleted == False)).first()
     if not db_client:
-        raise _fastapi.HTTPException(status_code=404, detail="Client not found")
+        raise _fastapi.HTTPException(status_code=404, detail="Member not found")
 
     db_client.is_deleted = True
     db_client.updated_at = datetime.datetime.now()
@@ -395,6 +401,7 @@ def get_filtered_clients(
     query = db.query(
         *_models.Client.__table__.columns,
         _models.ClientOrganization.org_id,
+        _models.ClientOrganization.client_status,
         _models.ClientMembership.membership_plan_id,
         func.array_agg(
             func.json_build_object(
@@ -422,9 +429,9 @@ def get_filtered_clients(
         _models.ClientOrganization.org_id == org_id
     ).group_by(
         _models.Client.id,
-        _models.ClientOrganization.org_id,
+        _models.ClientOrganization.id,
         _models.ClientMembership.membership_plan_id,
-        BusinessClient.id  # Group by BusinessClient.id to include in select
+        BusinessClient.id 
     )
     total_counts = db.query(func.count()).select_from(query.subquery()).scalar()
     

@@ -8,7 +8,7 @@ from datetime import datetime
 
 
 class Intensity(str,PyEnum):
-    irm='%IRM'
+    irm='irm'
     max_intensity='Max Intensity'
 
 class Difficulty(str,PyEnum):

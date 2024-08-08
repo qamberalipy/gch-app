@@ -219,6 +219,9 @@ class ClientFilterRead(pydantic.BaseModel):
     own_member_id: str
     first_name: str
     last_name: str
+    org_id:int
+    client_status:ClientStatus
+    membership_plan_id:int
     phone: Optional[str]
     mobile_number: Optional[str]
     check_in: Optional[datetime.datetime]
@@ -279,7 +282,7 @@ class ClientUpdate(pydantic.BaseModel):
     membership_id: Optional[int] = None
     org_id: Optional[int] = None
     status: Optional[ClientStatus] = None
-    is_deleted:Optional[bool]=False
+
 
     class Config:
         from_attributes = True

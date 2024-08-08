@@ -2,13 +2,15 @@
 import pydantic
 from datetime import date
 from typing import Dict, List, Optional
-from app.Exercise.models import ExerciseType,VisibleFor,Difficulty
+from app.Exercise.models import ExerciseType,VisibleFor,Difficulty,Intensity
 
 class ExerciseBase(pydantic.BaseModel):
     exercise_name:str
     visible_for:VisibleFor
     org_id:int
     exercise_type :ExerciseType
+    exercise_intensity:Intensity
+    intensity_value:float
     difficulty:Difficulty
     sets :int
     seconds_per_set:List[int]
@@ -41,6 +43,7 @@ class ExerciseFilterParams(pydantic.BaseModel):
     category : Optional[int] = None
     equipment : Optional[List[int]] = []
     primary_muscle: Optional[List[int]] = []
+    primary_joint: Optional[List[int]] = []
     sort_key: Optional[str] = None
     sort_order: Optional[str] = 'asc'
     limit:Optional[int] = None
@@ -57,6 +60,7 @@ class ExerciseCreate(ExerciseBase):
 
 class ExerciseRead(ExerciseBase):
     id:int
+    category_id:int
     category_name:str
     equipments:Optional[List[Dict]]
     primary_muscles:Optional[List[Dict]]
@@ -70,6 +74,8 @@ class ExerciseUpdate(pydantic.BaseModel):
     org_id:int
     category_id :int
     exercise_type :ExerciseType
+    exercise_intensity:Intensity
+    intensity_value:float
     difficulty:Difficulty
     sets :int
     seconds_per_set:List[int]

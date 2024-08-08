@@ -122,13 +122,12 @@ async def get_exercise(id:int,db: _orm.Session = Depends(get_db)):
     exercises = await _services.get_exercise(id=id,db=db)
     return exercises   
 
-@router.put("/exercise",response_model=_schemas.ExerciseUpdate)
+@router.put("/exercise")
 async def update_exercise(data:_schemas.ExerciseUpdate,db: _orm.Session = Depends(get_db)):
     exercises = await _services.exercise_update(data,db)
     return exercises
 
-
-@router.delete("/exercise/{id}")
+@router.delete("/exercise/{id}",summary="Delete Exercise")
 async def delete_coach(id:int, db: _orm.Session = Depends(get_db)):
     db_exercise = await _services.delete_exercise(id,db)
     return db_exercise

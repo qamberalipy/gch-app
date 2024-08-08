@@ -1,0 +1,9 @@
+todo in exercise
+category_id,category_name.
+
+member
+membership plan
+coach
+
+primary joints filter add
+get_membership_plan_by_org_id

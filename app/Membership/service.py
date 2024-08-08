@@ -131,9 +131,12 @@ def update_membership_plan(membership_plan_id: int, membership_plan: _schemas.Me
     return {"status":"201","detail":"Membership Plan updated successfully"}
 
 
-
 def delete_membership_plan( membership_plan_id: int,db: _orm.Session):
-    db_membership_plan = db.query(models.MembershipPlan).filter(models.MembershipPlan.id == membership_plan_id).first()
+    db_membership_plan = db.query(models.MembershipPlan).filter(and_(models.MembershipPlan.id == membership_plan_id,_models.MembershipPlan.is_deleted == False)).first()
+    
+    if not db_membership_plan:
+        raise _fastapi.HTTPException(status_code=404, detail="Membership Plan not found")
+    
     if db_membership_plan:
         db_membership_plan.is_deleted = True
         db.commit()
@@ -263,7 +266,11 @@ def get_membership_plans_by_org_id(
     params["offset"] = parameters.offset
 
     result = db.execute(query, params)
-    return result.fetchall()
+    return {
+            "status_code": "201",
+            "id": result.id,
+            "message": "Membership Plan created successfully"
+        }
 
 
 def create_facility(facility: _schemas.FacilityCreate,db: _orm.Session):
@@ -272,11 +279,12 @@ def create_facility(facility: _schemas.FacilityCreate,db: _orm.Session):
     ).filter(_models.Facility.name == facility.name, _models.Facility.org_id == facility.org_id).first()
     
     if existing_facility:
-        raise HTTPException(status_code=400, detail="Facility with this name already exists.")
+        raise HTTPException(status_code=400, detail="Facility with this name already exists in organization")
     
     db_facility = _models.Facility(
         name=facility.name,
         org_id=facility.org_id,
+        status=facility.status,
         min_limit=facility.min_limit,
         created_by=facility.created_by
     )
@@ -310,10 +318,10 @@ def update_facility(facility_update: _schemas.FacilityUpdate, db: _orm.Session):
     return {"status":"201","detail":"Facility updated successfully"}
 
 
-def delete_facility( facility_id: int,db: _orm.Session):
-    db_facility = db.query(_models.Facility).filter(_models.Facility.id == facility_id).first()
+def delete_facility(facility_id: int,db: _orm.Session):
+    db_facility = db.query(_models.Facility).filter(and_(_models.Facility.id == facility_id,_models.Facility.is_deleted == False)).first()
     if not db_facility:
-        return None
+        raise _fastapi.HTTPException(status_code=404, detail="Facility not found")
     
     db_facility.is_deleted = True
     db.commit()
@@ -400,9 +408,11 @@ def update_income_category(income_category: _schemas.IncomeCategoryUpdate, db: _
     return {"status":"201","detail":"Income Category updated successfully"}
 
 def delete_income_category(income_category_id: int, db: _orm.Session):
-    db_income_category = db.query(_models.Income_category).filter(_models.Income_category.id == income_category_id).first()
-    if db_income_category is None:
-        return None
+    db_income_category = db.query(_models.Income_category).filter(and_(_models.Income_category.id == income_category_id,_models.Income_category.is_deleted == False)).first()
+    
+    if not db_income_category:
+        raise _fastapi.HTTPException(status_code=404, detail="Income Category not found")
+    
     db_income_category.is_deleted = True
     db_income_category.updated_at = datetime.datetime.now()
     db.commit()
@@ -469,9 +479,12 @@ def update_sale_tax(sale_tax: _schemas.SaleTaxUpdate, db: _orm.Session):
 
 
 def delete_sale_tax(sale_tax_id: int,db: _orm.Session):
-    db_sale_tax = db.query(_models.Sale_tax).filter(_models.Sale_tax.id == sale_tax_id).first()
-    if db_sale_tax is None:
-        return None
+    
+    db_sale_tax = db.query(_models.Sale_tax).filter(and_(_models.Sale_tax.id == sale_tax_id,_models.Sale_tax.is_deleted == False)).first()
+    
+    if not db_sale_tax:
+        raise _fastapi.HTTPException(status_code=404, detail="Sales Tax not found")
+    
     db_sale_tax.is_deleted = True
     db_sale_tax.updated_at = datetime.datetime.now()
     db.commit()
@@ -540,7 +553,7 @@ def update_group(group:_schemas.GroupUpdate,db:_orm.Session):
     
     
 async def delete_group(id:int,db:_orm.Session=Depends(get_db)):
-    db_group=db.query(_models.Membership_group).filter(_models.Membership_group.id == id).first()
+    db_group=db.query(_models.Membership_group).filter(and_(_models.Membership_group.id == id,_models.Membership_group.is_deleted == False)).first()
     
     if not db_group:
         raise _fastapi.HTTPException(status_code=404, detail="Group not found")

@@ -26,12 +26,12 @@ def get_db():
     finally:
         db.close()
         
-@router.post("/membership_plan", response_model=_schemas.MembershipPlanRead, tags=["Membership Plans"])
+@router.post("/membership_plan", tags=["Membership Plans"])
 def create_membership_plan(membership_plan: _schemas.MembershipPlanCreate,db: _orm.Session = Depends(get_db)):
 
     return _services.create_membership_plan(membership_plan, db)
 
-@router.put("/membership_plan", response_model=_schemas.MembershipPlanRead, tags=["Membership Plans"])
+@router.put("/membership_plan",tags=["Membership Plans"])
 def update_membership_plan(membership_plan: _schemas.MembershipPlanUpdate, db: _orm.Session = Depends(get_db)):
     
     db_membership_plan = _services.update_membership_plan(membership_plan.id, membership_plan,db)
@@ -97,7 +97,7 @@ def get_membership_plans_by_org_id(
     return membership_plans
 
     
-@router.post("/facilities", response_model=_schemas.FacilityRead, tags=["Facility APIs"])
+@router.post("/facilities", tags=["Facility APIs"])
 def create_facility(facility: _schemas.FacilityCreate, db: _orm.Session = Depends(get_db)):
     try:    
         return _services.create_facility(facility, db)
@@ -106,7 +106,7 @@ def create_facility(facility: _schemas.FacilityCreate, db: _orm.Session = Depend
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-@router.put("/facilities", response_model=_schemas.FacilityRead, tags=["Facility APIs"])
+@router.put("/facilities", tags=["Facility APIs"])
 def update_facility(facility: _schemas.FacilityUpdate, db: _orm.Session = Depends(get_db)):
     try:    
         db_facility = _services.update_facility(facility, db)
@@ -118,7 +118,7 @@ def update_facility(facility: _schemas.FacilityUpdate, db: _orm.Session = Depend
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-@router.delete("/facilities/{id}", response_model=_schemas.FacilityRead, tags=["Facility APIs"])
+@router.delete("/facilities/{id}", tags=["Facility APIs"])
 def delete_facility(id:int, db: _orm.Session = Depends(get_db)):
     try:    
         db_facility = _services.delete_facility(id, db)
@@ -134,6 +134,7 @@ def get_filters(
 
     search_key: Annotated[str | None, Query(title="Search Key")] = None,
     sort_order: Annotated[str,Query(title="Sorting Order")] = 'desc',
+    sort_key: Annotated[str,Query(title="Sort Key")] = None,
     status : Annotated[MembershipStatus | None, Query(title="Status")] = None,
     limit: Annotated[int, Query(description="Pagination Limit")] = None,
     offset: Annotated[int, Query(description="Pagination offset")] = None
@@ -141,6 +142,7 @@ def get_filters(
     return _schemas.FacilityFilterParams(
         search_key=search_key,
         sort_order=sort_order,
+        sort_key=sort_key,
         status = status,
         limit=limit,
         offset = offset
@@ -149,7 +151,6 @@ def get_filters(
 @router.get("/facilities", response_model=List[_schemas.FacilityRead], tags=["Facility APIs"])
 def get_facilitys_by_org_id(
     org_id: int,
-    request: Request,
     filters: Annotated[_schemas.FacilityFilterParams, Depends(get_filters)], 
     db: _orm.Session = Depends(get_db)):
     try:    
@@ -174,7 +175,7 @@ def get_facility_by_id(id: int, db: _orm.Session = Depends(get_db)):
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
-@router.post("/income_category", response_model=_schemas.IncomeCategoryRead, tags=["Income Category APIs"])
+@router.post("/income_category", tags=["Income Category APIs"])
 def create_income_category(income_category: _schemas.IncomeCategoryCreate, db: _orm.Session = Depends(get_db)):
     try:    
         return _services.create_income_category(income_category=income_category, db=db)
@@ -197,8 +198,7 @@ def get_income_category_filters(
         sort_key=sort_key,
         sort_order=sort_order,
         limit=limit,
-        offset = offset
-    )
+        offset = offset)
     
 @router.get("/income_category", response_model=List[_schemas.IncomeCategoryRead], tags=["Income Category APIs"])
 def get_all_income_categories(org_id: int, filters: Annotated[_schemas.IncomeCategoryFilterParams, Depends(get_income_category_filters)],db: _orm.Session = Depends(get_db)):
@@ -226,7 +226,7 @@ def get_income_category(id: int, db: _orm.Session = Depends(get_db)):
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-@router.put("/income_category", response_model=_schemas.IncomeCategoryRead, tags=["Income Category APIs"])
+@router.put("/income_category", tags=["Income Category APIs"])
 def update_income_category(income_category: _schemas.IncomeCategoryUpdate, db: _orm.Session = Depends(get_db)):
     try:    
         db_income_category = _services.update_income_category(income_category=income_category, db=db)
@@ -239,7 +239,7 @@ def update_income_category(income_category: _schemas.IncomeCategoryUpdate, db: _
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-@router.delete("/income_category/{id}", response_model=_schemas.IncomeCategoryRead, tags=["Income Category APIs"])
+@router.delete("/income_category/{id}", tags=["Income Category APIs"])
 def delete_income_category(id:int, db: _orm.Session = Depends(get_db)):
     try:    
         db_income_category = _services.delete_income_category(income_category_id=id, db=db)
@@ -253,7 +253,7 @@ def delete_income_category(id:int, db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
     
-@router.post("/sale_taxes", response_model=_schemas.SaleTaxRead, tags=["Sale_tax APIs"])
+@router.post("/sale_taxes", tags=["Sale_tax APIs"])
 def create_sale_tax(sale_tax: _schemas.SaleTaxCreate, db: _orm.Session = Depends(get_db)):
     try:    
         return _services.create_sale_tax(sale_tax=sale_tax,db=db)
@@ -291,7 +291,7 @@ def get_sale_tax(id: int, db: _orm.Session = Depends(get_db)):
     
     
 
-@router.put("/sale_taxes", response_model=_schemas.SaleTaxRead, tags=["Sale_tax APIs"])
+@router.put("/sale_taxes", tags=["Sale_tax APIs"])
 def update_sale_tax(sale_tax: _schemas.SaleTaxUpdate, db: _orm.Session = Depends(get_db)):
     
     try:    
@@ -305,7 +305,7 @@ def update_sale_tax(sale_tax: _schemas.SaleTaxUpdate, db: _orm.Session = Depends
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
-@router.delete("/sale_taxes/{id}", response_model=_schemas.SaleTaxRead, tags=["Sale_tax APIs"])
+@router.delete("/sale_taxes/{id}", tags=["Sale_tax APIs"])
 def delete_sale_tax(id:int, db: _orm.Session = Depends(get_db)):
     try:    
         db_sale_tax = _services.delete_sale_tax(sale_tax_id=id,db=db)
@@ -319,7 +319,7 @@ def delete_sale_tax(id:int, db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 
-@router.post("/group",response_model=_schemas.GroupRead, tags=["Group API"])
+@router.post("/group", tags=["Group API"])
 def create_group(group:_schemas.GroupCreate,db: _orm.Session = Depends(get_db)): 
     try:    
         return _services.create_group(group=group,db=db)
@@ -420,7 +420,7 @@ async def get_categories(org_id,db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")        
 
 
-@router.put("/group",response_model=_schemas.GroupRead, tags=["Group API"])
+@router.put("/group",tags=["Group API"])
 def update_group(group:_schemas.GroupUpdate,db: _orm.Session = Depends(get_db)):
     
     try:    

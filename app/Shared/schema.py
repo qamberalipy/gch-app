@@ -49,3 +49,13 @@ class UserBase(BaseModel):
     org_id: int
     class Config:
         from_attributes=True
+
+class SharedCreateSchema(BaseModel):
+    status_code:Optional[str]
+    id:Optional[int]
+    message:Optional[str]
+
+
+class SharedModifySchema(BaseModel):
+    status:Optional[str]
+    detail:Optional[str]

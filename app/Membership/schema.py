@@ -50,7 +50,7 @@ class FacilityBase(pydantic.BaseModel):
     name: Optional[str] = None
     org_id: Optional[int] = None
     min_limit: Optional[int] = None
-    status: Optional[MembershipStatus] = True
+    status: Optional[MembershipStatus] = "active"
 
 class FacilityDelete(pydantic.BaseModel):
     id: int  # Correctly annotated with the type int
@@ -76,6 +76,7 @@ class FacilityRead(FacilityBase):
         
 class FacilityFilterParams(pydantic.BaseModel):
     search_key: Optional[str] = None
+    sort_key:Optional[str]=None
     sort_order: Optional[str] = 'desc'
     status: Optional[MembershipStatus] = None
     limit:Optional[int] = None
@@ -100,6 +101,7 @@ class data_list_saletax(pydantic.BaseModel):
 class IncomeCategoryBase(pydantic.BaseModel):
     name: Optional[str] = None
     position: Optional[int] = None
+    status:Optional[MembershipStatus]="active"
     sale_tax_id: Optional[int] = None
     org_id: Optional[int] = None
 
@@ -137,6 +139,7 @@ class IncomeCategoryFilterParams(pydantic.BaseModel):
 class SaleTaxBase(pydantic.BaseModel):
     name: Optional[str] = None
     percentage: Optional[float] = None
+    status: Optional[MembershipStatus] = "active"
     org_id: Optional[int] = None
 
 class SaleTaxCreate(SaleTaxBase):
