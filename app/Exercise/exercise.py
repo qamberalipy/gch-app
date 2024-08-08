@@ -1,4 +1,4 @@
-from typing import Annotated, List, Optional
+from typing import Annotated, List, Optional, Union
 from fastapi import APIRouter, Depends, HTTPException, Header
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.exc import IntegrityError, DataError
@@ -110,7 +110,7 @@ async def create_exercise(exercise: _schemas.ExerciseCreate, db: _orm.Session = 
         raise HTTPException(status_code=400, detail="Data error occurred, check your input") 
     
 
-@router.get("/exercise", response_model=List[_schemas.ExerciseRead])
+@router.get("/exercise", response_model=Union[List[_schemas.ExerciseRead],_schemas.GetAllResponse])
 async def get_exercise(org_id:int,filters: Annotated[_schemas.ExerciseFilterParams, Depends(_services.get_filters)] = None,db: _orm.Session = Depends(get_db)):
     
         exercises = await _services.get_exercise(org_id=org_id,params=filters,db=db)

@@ -1,5 +1,5 @@
 from typing import Annotated, Optional
-from sqlalchemy import and_, asc, desc, func, inspect, or_, select
+from sqlalchemy import and_, asc, desc, func, inspect, or_, select, text
 import sqlalchemy.orm as _orm
 import fastapi as _fastapi
 import fastapi.security as _security
@@ -264,6 +264,13 @@ def extract_columns(query):
 
 async def get_exercise(params:Optional[_schemas.ExerciseFilterParams]=None,org_id:Optional[int]=None,id:Optional[int]=None,db: _orm.Session = _fastapi.Depends(get_db)):
     
+    sort_mapping = {
+        "exercise_name": text("exercise_1.exercise_name"),
+        "category_name":text("exercise_category.category_name"),
+        "visible_for": text("exercise_1.visible_for"),
+        "created_at" : text("exercise_1.created_at")
+        }
+    
     PrimaryMuscle = aliased(_models.Muscle)
     SecondaryMuscle = aliased(_models.Muscle)
     PrimaryJoint = aliased(_models.PrimaryJoint)
@@ -370,29 +377,42 @@ async def get_exercise(params:Optional[_schemas.ExerciseFilterParams]=None,org_i
     primary_joint_query, Exercise.id == primary_joint_query.c.exercise_id).filter(
     Exercise.is_deleted == False)
     
-    if params:
+    if id:
+        query=query.filter(Exercise.id == id)
+        return query.first()
+    
+    else:
+        query=query.filter(Exercise.org_id == org_id)
+    
+        total_count_query=db.query(Exercise.id).filter(and_(Exercise.is_deleted == False,Exercise.org_id == org_id))
+        total_counts = db.query(func.count()).select_from(total_count_query).scalar()
+
         if params.search_key:
             search_pattern = f"%{params.search_key}%"
             query = query.filter(or_(
                 _models.Exercise.exercise_name.ilike(search_pattern)))
-
+            
         if params.category:
             query = query.filter(_models.ExerciseCategory.id == params.category)
-
-        if params.sort_key in extract_columns(query):       
-            sort_order = desc(params.sort_key) if params.sort_order == "desc" else asc(params.sort_key)
+            
+        filtered_counts = db.query(func.count()).select_from(query.subquery()).scalar()
+        
+        if params.sort_key in sort_mapping.keys():       
+            sort_order = desc(sort_mapping.get(params.sort_key)) if params.sort_order == "desc" else asc(sort_mapping.get(params.sort_key))
             query=query.order_by(sort_order)
-
+            
         elif params.sort_key is not None:
             raise _fastapi.HTTPException(status_code=400, detail="Sorting column not found.")
-
-    if id:
-        query=query.filter(Exercise.id == id)
-        return query.first()
-    else:
-        query=query.filter(Exercise.org_id == org_id)
+       
         query = query.offset(params.offset).limit(params.limit)
-        return query.all()
+        
+        db_exercise=query.all()
+        
+        exercise_data = [_schemas.ExerciseRead.from_orm(exercise) for exercise in db_exercise]
+        
+        return {'data': exercise_data, 'total_counts': total_counts, 'filtered_counts': filtered_counts}
+        
+    
     
     
 

@@ -102,7 +102,7 @@ class CoachCount(pydantic.BaseModel):
     
 class CoachFilterParams(pydantic.BaseModel):
     search_key: Optional[str] = None
-    sort_order: Optional[str] = None
+    sort_order: Optional[str] = "desc"
     sort_key: Optional[str] =None
     status: Optional[CoachStatus] = None
     limit:Optional[int] = None

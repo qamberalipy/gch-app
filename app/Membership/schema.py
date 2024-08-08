@@ -195,7 +195,7 @@ class GroupUpdate(pydantic.BaseModel):
 
 class SaleTaxFilterParams(pydantic.BaseModel):
     search_key:Optional[str] = None
-    sort_order:Optional[str]="asc"
+    sort_order:Optional[str]="desc"
     sort_key:Optional[str]=None
     status:Optional[MembershipStatus]=None
     limit:Optional[int]= None
@@ -207,8 +207,9 @@ class MembershipFilterParams(pydantic.BaseModel):
     discount_percentage: Optional[float] = None
     total_amount: Optional[float] = None
     status: Optional[MembershipStatus] = None
+    sort_key:Optional[str]=None
     search_key: Optional[str] = None
-    sort_order: Optional[str] = "asc"
+    sort_order: Optional[str] = "desc"
     limit: Optional[int] = 10
     offset: Optional[int] = 0
 

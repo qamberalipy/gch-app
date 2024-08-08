@@ -248,6 +248,8 @@ def get_membership_plans_by_org_id(
         _models.MembershipPlan.created_by,
         _models.MembershipPlan.created_at,
     )
+    
+    
     total_counts = db.query(func.count()).select_from(query.subquery()).scalar()
     if params.search_key:
         query = query.filter(or_(
@@ -273,7 +275,9 @@ def get_membership_plans_by_org_id(
     query = query.offset(params.offset).limit(params.limit)
     
     result = query.all()
+    
     membership_plan = []
+    
     for membershipplans in result:
         membership_plan.append(_schemas.MembershipPlanResponse(**membershipplans._asdict()))
     print(membership_plan)
