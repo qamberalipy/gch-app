@@ -342,6 +342,7 @@ async def create_role(role: _schemas.RoleCreate, db: _orm.Session = _fastapi.Dep
     db_role = _models.Role(
         name=role.name,
         org_id=role.org_id,
+        status = role.status,
         is_deleted=0
     )
     db.add(db_role)
