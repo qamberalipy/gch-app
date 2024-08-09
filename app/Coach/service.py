@@ -90,23 +90,74 @@ def create_appcoach(coach: _schemas.CoachAppBase,db: _orm.Session):
 
     return db_coach
 
+# async def login_coach(
+#     email_address: str,
+#     wallet_address: str,
+#     db: _orm.Session = _fastapi.Depends(get_db),
+# ) -> dict:
+#     coach = await get_coach_by_email(email_address, db)
+
+#     if not coach:
+#         return {"is_registered": False}
+
+#     setattr(coach, wallet_address, wallet_address)
+#     db.commit()
+#     db.refresh(coach)
+
+#     token = _helpers.create_token(dict(id=coach.id), "Coach")
+
+#     return {"is_registered": True, "coach": coach, "access_token": token}
+
+
 async def login_coach(
     email_address: str,
     wallet_address: str,
     db: _orm.Session = _fastapi.Depends(get_db),
 ) -> dict:
-    coach = await get_coach_by_email(email_address, db)
+
+    query = (
+        db.query(
+            *_models.Coach.__table__.columns,
+            func.array_agg(
+                func.json_build_object(
+                    'id', func.coalesce(_models.CoachOrganization.org_id, 0),
+                    'name', func.coalesce(_usermodels.Organization.name, ""),
+                    'profile_url', func.coalesce(_usermodels.Organization.profile_img, "")
+                )
+            ).label('organizations')
+        )
+        .outerjoin(
+            models.CoachOrganization,
+            models.CoachOrganization.coach_id == models.Coach.id
+        )
+        .outerjoin(
+            _usermodels.Organization,
+            _usermodels.Organization.id == models.CoachOrganization.org_id
+        )
+        .filter(
+            models.Coach.email == email_address,
+            models.Coach.is_deleted == False
+        )
+        .group_by(
+            *_models.Coach.__table__.columns
+        )
+    )
+
+    coach = query.first()
 
     if not coach:
         return {"is_registered": False}
 
-    setattr(coach, wallet_address, wallet_address)
-    db.commit()
-    db.refresh(coach)
+    coach_dict = coach._asdict()
+    # coach_dict["wallet_address"] = wallet_address
+    print("coach_dict: ",coach_dict)
+
+    # db.commit()
+    # db.refresh(coach)
 
     token = _helpers.create_token(dict(id=coach.id), "Coach")
 
-    return {"is_registered": True, "coach": coach, "access_token": token}
+    return {"is_registered": True, "coach": coach_dict, "access_token": token}
 
 async def get_coach_by_email(
     email_address: str, db: _orm.Session = _fastapi.Depends(get_db)

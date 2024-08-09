@@ -110,12 +110,8 @@ async def read_sources(db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="No sources found")
     return sources
 
-@router.post(
-    "/app/member/signup", response_model=ClientLoginResponse, tags=["App Router"]
-)
-async def register_mobileclient(
-    client: ClientCreateApp, db: _orm.Session = Depends(get_db)
-):
+@router.post("/app/member/signup", response_model=ClientLoginResponse, tags=["App Router"])
+async def register_mobileclient(client: ClientCreateApp, db: _orm.Session = Depends(get_db)):
     try:
         db_client = await _client_service.get_client_by_email(client.email, db)
         if db_client:
@@ -178,21 +174,21 @@ async def register_mobileclient(
         )
 
    
-@router.get("/app/member", response_model=list[ClientOrganizationResponse], tags=["App Router"])
-async def get_client_organization(email: str, db: _orm.Session = Depends(get_db)):
-    try:
-        organizations = await _client_service.get_client_organzation(email, db)
-        return organizations
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+# @router.get("/app/member", response_model=list[ClientOrganizationResponse], tags=["App Router"])
+# async def get_client_organization(email: str, db: _orm.Session = Depends(get_db)):
+#     try:
+#         organizations = await _client_service.get_client_organzation(email, db)
+#         return organizations
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
     
-@router.get("/app/coach", response_model=list[CoachOrganizationResponse], tags=["App Router"])
-async def get_coach_organization(email: str, db: _orm.Session = Depends(get_db)):
-    try:
-        organizations = await _coach_service.get_coach_organzation(email, db)
-        return organizations
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+# @router.get("/app/coach", response_model=list[CoachOrganizationResponse], tags=["App Router"])
+# async def get_coach_organization(email: str, db: _orm.Session = Depends(get_db)):
+#     try:
+#         organizations = await _coach_service.get_coach_organzation(email, db)
+#         return organizations
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
 @router.post("/app/member/login", response_model=ClientLoginResponse,  tags=["App Router"])
 async def login_client(client_data: ClientLogin, db: _orm.Session = Depends(get_db)):
@@ -211,25 +207,15 @@ async def create_mobilecoach(coach: CoachAppBase, db: _orm.Session = Depends(get
         if db_coach:
             if db_coach.is_deleted:
                 updated_coach = await _coach_service.update_coach(db_coach.id,coach,"app", db)
-                coach_base=dict(id=db_coach.id)
-                token = _helpers.create_token(coach_base, "Coach")
-                return {
-                    "is_registered": True,
-                    "coach": updated_coach,
-                    "access_token": token
-                }
+                
+                result = await _coach_service.login_coach(coach.email, updated_coach.wallet_address, db)
+                return result
             else:
                 raise HTTPException(status_code=400, detail="Email already registered")
 
         new_coach=_coach_service.create_appcoach(coach,db)
-        new_coach.org_id=0
-        member_base=dict(id=new_coach.id)
-        token = _helpers.create_token(member_base, "Coach")
-        return {
-            "is_registered": True,
-            "coach": new_coach,
-            "access_token": token
-        }
+        result = await _coach_service.login_coach(new_coach.email, new_coach.wallet_address, db)
+        return result
 
     except IntegrityError as e:
         db.rollback()

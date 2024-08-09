@@ -92,9 +92,53 @@ class CoachLogin(pydantic.BaseModel):
     email_address: str
     wallet_address: str
 
+class CoachOrganizationResponse(pydantic.BaseModel):
+    id: int
+    name: Optional[str] = None
+    profile_img: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+        
+class CoachNewAppRead(CoachBase):
+    id:int
+    wallet_address: Optional[str] = None 
+    org_id: Optional[int] = None
+    coach_status: Optional[CoachStatus]="active"
+    own_coach_id: Optional[str] = None
+    profile_img: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    dob: Optional[datetime.date] = None
+    gender: Optional[str] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
+    phone: Optional[str] = None
+    mobile_number: Optional[str] = None
+    notes: Optional[str] = None
+    source_id: Optional[int] = None
+    country_id: Optional[int] = None
+    city: Optional[str] = None
+    zipcode: Optional[str] = None
+    address_1: Optional[str] = None
+    address_2: Optional[str] = None
+    organizations:Optional[List[CoachOrganizationResponse]]=[]
+    check_in: Optional[datetime.datetime] = None
+    last_online: Optional[datetime.datetime] = None
+    coach_since: Optional[datetime.datetime] = None
+    bank_name: Optional[str] = None
+    iban_no: Optional[str] = None
+    acc_holder_name: Optional[str] = None
+    swift_code: Optional[str] = None
+    created_at: Optional[datetime.datetime] = None
+    updated_at: Optional[datetime.datetime] = None
+
+    class Config:
+        from_attributes = True
+
 class CoachLoginResponse(pydantic.BaseModel):
     is_registered: bool
-    coach: Optional[CoachRead] = []
+    coach: Optional[CoachNewAppRead] = []
     access_token: Optional[Dict[str, str]] = None
     
 class CoachCount(pydantic.BaseModel):
@@ -142,13 +186,6 @@ class CoachReadSchema(pydantic.BaseModel):
         from_attributes = True
         arbitrary_types_allowed=True
         
-class CoachOrganizationResponse(pydantic.BaseModel):
-    id: int
-    name: Optional[str] = None
-    profile_img: Optional[str] = None
-
-    class Config:
-        from_attributes = True
 
    
 class CoachResponse(pydantic.BaseModel):
