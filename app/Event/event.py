@@ -17,7 +17,7 @@ router = APIRouter(tags=["Event Router"])
 logger = logging.getLogger("uvicorn.error")
 logger.setLevel(logging.DEBUG)
 
-# Hello World - Test ticket - 108 v2
+# Hello World - Test ticket - 108 v3
 
 def get_db():
     db = _database.SessionLocal()
