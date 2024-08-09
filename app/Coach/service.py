@@ -111,7 +111,7 @@ def create_appcoach(coach: _schemas.CoachAppBase,db: _orm.Session):
 
 async def login_coach(
     email_address: str,
-    wallet_address: str,
+    wallet_address: str='',
     db: _orm.Session = _fastapi.Depends(get_db),
 ) -> dict:
 
@@ -297,6 +297,24 @@ def update_coach_record(coach: _schemas.CoachUpdate, db: _orm.Session, db_coach)
     db.refresh(db_coach)
     
     return db_coach
+
+async def update_app_coach_record(coach_id: int, coach: _schemas.CoachAppUpdate, db: _orm.Session):
+    # Fetch the coach record from the database
+    db_coach = db.query(_models.Coach).filter(_models.Coach.id == coach_id).first()
+
+    if not db_coach:
+        return None  # or raise an exception
+    coach.is_deleted=False
+    # Update the fields that are set in the incoming `coach` data
+    for field, value in coach.dict(exclude_unset=True).items():
+        setattr(db_coach, field, value)
+    
+    # Commit the changes and refresh the object
+    db.commit()
+    db.refresh(db_coach)
+    
+    return db_coach
+
 
 def update_client_coach_mappings(coach_id: int, member_ids: List[int], db: _orm.Session):
     db.query(_client_models.ClientCoach).filter(_client_models.ClientCoach.coach_id == coach_id).delete()
