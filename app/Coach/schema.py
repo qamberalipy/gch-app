@@ -47,6 +47,14 @@ class CoachUpdate(CoachBase):
     updated_by: Optional[int] = None
     member_ids: Optional[List[int]] = []
 
+
+class CoachAppUpdate(CoachBase):
+    id: int
+    is_deleted: Optional[bool] = False
+    updated_by: Optional[int] = None
+    member_ids: Optional[List[int]] = []
+
+
 class CoachRead(CoachBase):
     id:int
     created_at: Optional[datetime.datetime] = None

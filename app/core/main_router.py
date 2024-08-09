@@ -206,9 +206,9 @@ async def create_mobilecoach(coach: CoachAppBase, db: _orm.Session = Depends(get
         print("MY COACH",db_coach)
         if db_coach:
             if db_coach.is_deleted:
-                updated_coach = await _coach_service.update_coach(db_coach.id,coach,"app", db)
+                updated_coach = await _coach_service.update_app_coach_record(db_coach.id,coach,db)
                 
-                result = await _coach_service.login_coach(coach.email, updated_coach.wallet_address, db)
+                result = await _coach_service.login_coach(coach.email,'', db)
                 return result
             else:
                 raise HTTPException(status_code=400, detail="Email already registered")
@@ -222,10 +222,10 @@ async def create_mobilecoach(coach: CoachAppBase, db: _orm.Session = Depends(get
         logger.error(f"IntegrityError: {e}")
         raise HTTPException(status_code=400, detail="Duplicate entry or integrity constraint violation")
         
-    except DataError as e:
-        db.rollback()
-        logger.error(f"DataError: {e}")
-        raise HTTPException(status_code=400, detail="Data error occurred, check your input")    
+    # except DataError as e:
+    #     db.rollback()
+    #     logger.error(f"DataError: {e}")
+    #     raise HTTPException(status_code=400, detail="Data error occurred, check your input")    
                     
 
 
