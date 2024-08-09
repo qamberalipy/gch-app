@@ -66,6 +66,7 @@ def get_membership_filters(
     discount_percentage: Annotated[int, Query(description="discount_percentage")] = None,
     total_amount: Annotated[int, Query(description="total_amount")] = None,
     status: Annotated[MembershipStatus | None, Query(title="status")] = None,
+    sort_key : Annotated[str | None, Query(title="Sort Key")] = None,
     sort_order: Annotated[str,Query(title="Sorting Order")] = 'desc',
     limit: Annotated[int, Query(description="Pagination Limit")] = None,
     offset: Annotated[int, Query(description="Pagination offset")] = None
@@ -77,6 +78,7 @@ def get_membership_filters(
         discount_percentage=discount_percentage,
         total_amount=total_amount,
         status=status,
+        sort_key=sort_key,
         sort_order = sort_order,
         limit=limit,
         offset = offset

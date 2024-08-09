@@ -139,7 +139,8 @@ class FoodFilterParams(pydantic.BaseModel):
     category: Optional[str] = None
     total_nutrition: Optional[int] = None
     total_fat: Optional[int] = None
-    sort_order: Optional[str] = None
+    sort_key:Optional[str]=None
+    sort_order: Optional[str] = "desc"
     limit: Optional[int] = None
     offset: Optional[int] = None
 

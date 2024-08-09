@@ -614,7 +614,7 @@ def get_filters(
     role_name: Annotated[str,_fastapi.Query(title="Role Name")]=None,
     sort_key: Annotated[str,_fastapi.Query(title="Sort Key")]=None,
     status: Annotated[StaffStatus,_fastapi.Query(title="Status")]=None,
-    sort_order: Annotated[str,_fastapi.Query(title="Sort Order")]=None,
+    sort_order: Annotated[str,_fastapi.Query(title="Sort Order")]="desc",
     limit: Annotated[int, _fastapi.Query(description="Pagination Limit")] = None,
     offset: Annotated[int, _fastapi.Query(description="Pagination offset")] = None):
     

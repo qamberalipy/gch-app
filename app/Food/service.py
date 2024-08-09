@@ -3,7 +3,7 @@ from datetime import date
 import datetime
 from typing import Annotated,Any, List
 import jwt
-from sqlalchemy import String, asc, cast, desc, func, literal_column, or_
+from sqlalchemy import String, asc, cast, desc, func, literal_column, or_, text
 import sqlalchemy.orm as _orm
 from sqlalchemy.sql import and_  
 import email_validator as _email_check
@@ -67,9 +67,16 @@ async def get_all_foods(db: _orm.Session,org_id:int):
             desc(_models.Food.created_at)).all()
 
 async def get_food_by_org_id(db: _orm.Session,org_id: int,params: _schemas.FoodFilterParams):
-    sort_order = desc(_models.Food.created_at) if params.sort_order == "desc" else asc(_models.Food.created_at)
+    
+    sort_mapping = {
+        "name": text("foods.name"),
+        "brand":text("foods.brand"),
+        "total_nutrition": text("foods.total_nutrition"),
+        "category" : text("foods.category"),
+        "fat":text("foods.fat")
+        }
 
-    query = db.query(_models.Food).filter(_models.Food.org_id == org_id).order_by(sort_order)
+    query = db.query(_models.Food).filter(_models.Food.org_id == org_id)
     total_counts = db.query(func.count()).select_from(query.subquery()).scalar()
 
     if params.search_key:
@@ -89,7 +96,14 @@ async def get_food_by_org_id(db: _orm.Session,org_id: int,params: _schemas.FoodF
         query = query.filter(
             _models.Food.fat >= params.total_fat
         )
-    query = query.order_by(sort_order).offset(params.offset).limit(params.limit)
+    
+    if params.sort_key in sort_mapping.keys():       
+            sort_order = desc(sort_mapping.get(params.sort_key)) if params.sort_order == "desc" else asc(sort_mapping.get(params.sort_key))
+            query=query.order_by(sort_order)
+            
+    elif params.sort_key is not None:
+        raise _fastapi.HTTPException(status_code=400, detail="Sorting column not found.")
+    
     filtered_counts = db.query(func.count()).select_from(query.subquery()).scalar()
     db_foods = query.all()
     

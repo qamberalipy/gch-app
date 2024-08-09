@@ -210,8 +210,8 @@ async def update_client(
     client: _schemas.ClientUpdate,
     db: _orm.Session = _fastapi.Depends(get_db),
 ):
-    db_client = db.query(_models.Client).filter(_models.Client.id == client_id).first()
-    print("db_client: ",db_client)
+    db_client = db.query(_models.Client).filter(and_(_models.Client.id == client_id,_models.Client.is_deleted == False)).first()
+
     if not db_client:
         raise _fastapi.HTTPException(status_code=404, detail="Member not found")
     
@@ -441,14 +441,15 @@ def get_filtered_clients(
 ) -> List[_schemas.ClientFilterRead]:
     BusinessClient = _orm.aliased(_models.Client) 
     sort_mapping = {
-        "own_member_id": "client.own_member_id",
+
+        "own_member_id": text("client.own_member_id"),
         "first_name": text("client.first_name"),
         "last_name": text("client.last_name"),
         "business_name": "business_name",
         "last_online": text("client.last_online"),
         "client_since": text("client.client_since"),
         "created_at": text("client.created_at"),
-        "client_status": text("client.client_status")
+        "client_status": text("client_organization.client_status")
     }
 
     query = db.query(
@@ -463,9 +464,7 @@ def get_filtered_clients(
                     func.coalesce(_coach_models.Coach.first_name, ""),
                     ' ',
                     func.coalesce(_coach_models.Coach.last_name, "")
-                )
-            )
-        ).label('coaches'),
+                ))).label('coaches'),
         func.coalesce(BusinessClient.first_name + ' ' + BusinessClient.last_name, _models.Client.first_name + ' ' + _models.Client.last_name).label('business_name')
     ).outerjoin(
         BusinessClient, _models.Client.business_id == BusinessClient.id
@@ -479,14 +478,13 @@ def get_filtered_clients(
         _models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id
     ).filter(
         _models.Client.is_deleted == False,
+        _coach_models.Coach.is_deleted == False,
         _models.ClientOrganization.org_id == org_id
     ).group_by(
         _models.Client.id,
         _models.ClientOrganization.id,
         _models.ClientMembership.membership_plan_id,
-        BusinessClient.id,
-        _coach_models.Coach.first_name,  # Add to GROUP BY clause
-        _coach_models.Coach.last_name    # Add to GROUP BY clause
+        BusinessClient.id
     )
     
     total_counts = db.query(func.count()).select_from(query.subquery()).scalar()
@@ -551,8 +549,6 @@ def get_filtered_clients(
         return None
 
 
-  
-    
 async def get_client_byid(db: _orm.Session, client_id: int) -> _schemas.ClientByID:
     query = db.query(
             *_models.Client.__table__.columns,

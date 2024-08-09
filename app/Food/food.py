@@ -43,6 +43,7 @@ def get_filters(
     category: Annotated[str | None, Query(title="Category (Enum)")] = None,
     total_nutrition: Annotated[int, Query(title="Total Nutrition")] = None,
     total_fat: Annotated[int, Query(title="Total Fat")] = None,
+    sort_key:Annotated[str | None, Query(title="Sort Key")] = None,
     sort_order: Annotated[str,Query(title="Sorting Order")] = 'desc',
     limit: Annotated[int, Query(description="Pagination Limit")] = None,
     offset: Annotated[int, Query(description="Pagination offset")] = None
@@ -52,6 +53,7 @@ def get_filters(
         category=category,
         total_nutrition=total_nutrition,
         total_fat=total_fat,
+        sort_key=sort_key,
         sort_order=sort_order,
         limit=limit,
         offset = offset

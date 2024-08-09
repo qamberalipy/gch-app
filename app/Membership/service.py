@@ -193,6 +193,17 @@ def get_membership_plans_by_org_id(
     params: _schemas.MembershipFilterParams
 ):
   
+    sort_mapping = {
+        "name": text("membership_plan.name"),
+        "group_id":text("membership_plan.group_id"),
+        "income_category_id": text("membership_plan.income_category_id"),
+        "status" : text("membership_plan.status"),
+        "total_price":text("membership_plan.total_price"),
+        "discount":text("membership_plan.discount"),
+        "created_at" : text("membership_plan.created_at")
+        }
+
+
     sort_order = desc(_models.MembershipPlan.created_at) if params.sort_order == "desc" else asc(_models.MembershipPlan.created_at)
    
     query = db.query(
@@ -248,6 +259,8 @@ def get_membership_plans_by_org_id(
         _models.MembershipPlan.created_by,
         _models.MembershipPlan.created_at,
     )
+    
+    
     total_counts = db.query(func.count()).select_from(query.subquery()).scalar()
     if params.search_key:
         query = query.filter(or_(
@@ -270,10 +283,19 @@ def get_membership_plans_by_org_id(
     
     filtered_counts = db.query(func.count()).select_from(query.subquery()).scalar()    
     
+    if params.sort_key in sort_mapping.keys():       
+            sort_order = desc(sort_mapping.get(params.sort_key)) if params.sort_order == "desc" else asc(sort_mapping.get(params.sort_key))
+            query=query.order_by(sort_order)
+            
+    elif params.sort_key is not None:
+        raise _fastapi.HTTPException(status_code=400, detail="Sorting column not found.")
+    
     query = query.offset(params.offset).limit(params.limit)
     
     result = query.all()
+    
     membership_plan = []
+    
     for membershipplans in result:
         membership_plan.append(_schemas.MembershipPlanResponse(**membershipplans._asdict()))
     print(membership_plan)

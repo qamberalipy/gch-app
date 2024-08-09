@@ -10,22 +10,22 @@ class ExerciseBase(pydantic.BaseModel):
     org_id:int
     exercise_type :ExerciseType
     exercise_intensity:Intensity
-    intensity_value:float
+    intensity_value:Optional[float]
     difficulty:Difficulty
-    sets :int
-    seconds_per_set:List[int]
-    repetitions_per_set:List[int] 
-    rest_between_set:List[int]  
-    distance:float
-    speed:float
-    met_id :int
+    sets :Optional[int]
+    seconds_per_set:Optional[List[int]]
+    repetitions_per_set:Optional[List[int]] 
+    rest_between_set:Optional[List[int]]  
+    distance:Optional[float]
+    speed:Optional[float]
+    met_id :Optional[int]
     gif_url :str
-    video_url_male :str 
-    video_url_female :str
-    thumbnail_male :str 
-    thumbnail_female :str
-    image_url_female :str
-    image_url_male :str 
+    video_url_male :Optional[str] 
+    video_url_female :Optional[str]
+    thumbnail_male :Optional[str] 
+    thumbnail_female :Optional[str]
+    image_url_female :Optional[str]
+    image_url_male :Optional[str] 
 
     class Config:
             from_attributes = True
@@ -45,7 +45,7 @@ class ExerciseFilterParams(pydantic.BaseModel):
     primary_muscle: Optional[List[int]] = []
     primary_joint: Optional[List[int]] = []
     sort_key: Optional[str] = None
-    sort_order: Optional[str] = 'asc'
+    sort_order: Optional[str] = 'desc'
     limit:Optional[int] = None
     offset:Optional[int] = None
 
@@ -75,22 +75,22 @@ class ExerciseUpdate(pydantic.BaseModel):
     category_id :int
     exercise_type :ExerciseType
     exercise_intensity:Intensity
-    intensity_value:float
+    intensity_value:Optional[float]
     difficulty:Difficulty
-    sets :int
-    seconds_per_set:List[int]
-    repetitions_per_set:List[int] 
-    rest_between_set:List[int]  
-    distance:float
-    speed:float
-    met_id :int
+    sets :Optional[int]
+    seconds_per_set:Optional[List[int]]
+    repetitions_per_set:Optional[List[int]] 
+    rest_between_set:Optional[List[int]]  
+    distance:Optional[float]
+    speed:Optional[float]
+    met_id :Optional[int]
     gif_url :str
-    video_url_male :str 
-    video_url_female :str
-    thumbnail_male :str 
-    thumbnail_female :str
-    image_url_female :str
-    image_url_male :str 
+    video_url_male :Optional[str] 
+    video_url_female :Optional[str]
+    thumbnail_male :Optional[str] 
+    thumbnail_female :Optional[str]
+    image_url_female :Optional[str]
+    image_url_male :Optional[str] 
     equipment_ids:Optional[List[int]]
     primary_muscle_ids:Optional[List[int]]
     secondary_muscle_ids:Optional[List[int]]
@@ -126,3 +126,7 @@ class ExerciseDelete(pydantic.BaseModel):
     secondary_muscle_ids:Optional[int]=None
     primary_joint_ids:Optional[int]=None
 
+class GetAllResponse(pydantic.BaseModel):
+    data:List[ExerciseRead]
+    total_counts:int
+    filtered_counts:int

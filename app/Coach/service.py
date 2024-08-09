@@ -538,7 +538,7 @@ def get_filters(
 
     search_key: Annotated[str, _fastapi.Query(title="Search Key")] = None,
     status: Annotated[str , _fastapi.Query(title="Status")] = None,
-    sort_order: Annotated[str,_fastapi.Query(title="Sort Order")]=None,
+    sort_order: Annotated[str,_fastapi.Query(title="Sort Order")]="desc",
     sort_key: Annotated[str,_fastapi.Query(title="Sort Key")]=None,
     limit: Annotated[int, _fastapi.Query(description="Pagination Limit")] = None,
     offset: Annotated[int, _fastapi.Query(description="Pagination offset")] = None):
