@@ -387,7 +387,7 @@ async def get_membership_plan(org_id,db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
 
-@router.get("/facilities/list/{org_id}", response_model=List[_schemas.data_list],tags=["Facility APIs"])
+@router.get("/facilities/list/{org_id}", response_model=List[_schemas.data_list_facilities],tags=["Facility APIs"])
 async def get_categories(org_id,db: _orm.Session = Depends(get_db)):
     try:
         facilities = _services.get_facility(org_id,db=db)
@@ -401,7 +401,7 @@ async def get_categories(org_id,db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 
-@router.get("/sales_tax/list/{org_id}", response_model=List[_schemas.data_list_saletax],tags=["Sale_tax APIs"])
+@router.get("/sale_taxes/list/{org_id}", response_model=List[_schemas.data_list_saletax],tags=["Sale_tax APIs"])
 async def get_categories(org_id,db: _orm.Session = Depends(get_db)):
     try:
             
