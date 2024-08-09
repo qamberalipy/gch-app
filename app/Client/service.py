@@ -441,6 +441,7 @@ def get_filtered_clients(
 ) -> List[_schemas.ClientFilterRead]:
     BusinessClient = _orm.aliased(_models.Client) 
     sort_mapping = {
+
         "own_member_id": text("client.own_member_id"),
         "first_name": text("client.first_name"),
         "last_name": text("client.last_name"),
