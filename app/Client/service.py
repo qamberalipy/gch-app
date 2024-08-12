@@ -460,14 +460,14 @@ def get_filtered_clients(
         _models.ClientMembership.membership_plan_id,
         func.array_agg(
             func.json_build_object(
-                'id', func.coalesce(_models.ClientCoach.coach_id, 0),
+                'id',func.coalesce(_models.ClientCoach.coach_id, 0),
                 'coach_name', func.concat(
                     func.coalesce(_coach_models.Coach.first_name, ""),
                     ' ',
                     func.coalesce(_coach_models.Coach.last_name, "")
                 ))).label('coaches'),
-        func.coalesce(BusinessClient.first_name + ' ' + BusinessClient.last_name, _models.Client.first_name + ' ' + _models.Client.last_name).label('business_name')
-    ).outerjoin(
+        func.coalesce(BusinessClient.first_name + ' ' + BusinessClient.last_name, _models.Client.first_name + ' ' + _models.Client.last_name).label('business_name'))\
+    .outerjoin(
         BusinessClient, _models.Client.business_id == BusinessClient.id
     ).outerjoin(
         _models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id
@@ -479,7 +479,6 @@ def get_filtered_clients(
         _models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id
     ).filter(
         _models.Client.is_deleted == False,
-        _coach_models.Coach.is_deleted == False,
         _models.ClientOrganization.org_id == org_id
     ).group_by(
         _models.Client.id,
@@ -544,10 +543,8 @@ def get_filtered_clients(
     for client in db_clients:
         clients.append(_schemas.ClientFilterRead(**client._asdict()))
 
-    if clients:
-        return {"data": clients, "total_counts": total_counts, "filtered_counts": filtered_counts}
-    else:
-        return None
+    return {"data": clients, "total_counts": total_counts, "filtered_counts": filtered_counts}
+   
 
 
 async def get_client_byid(db: _orm.Session, client_id: int) -> _schemas.ClientByID:
