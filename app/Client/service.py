@@ -281,6 +281,25 @@ async def update_client_coach(client_id: int, coach_ids: List[int], db: _orm.Ses
     db.commit()
     return db.query(_models.ClientCoach).filter(_models.ClientCoach.client_id == client_id).all()
 
+async def update_app_client(
+    client_id: int,
+    client: _schemas.ClientUpdate,
+    db: _orm.Session = _fastapi.Depends(get_db),
+):
+    db_client = db.query(_models.Client).filter(_models.Client.id == client_id).first()
+
+    if not db_client:
+        raise _fastapi.HTTPException(status_code=404, detail="Member not found")
+    client.is_deleted=False
+    for key, value in client.dict(exclude_unset=True).items():
+        setattr(db_client, key, value)
+     
+    db_client.updated_at = datetime.datetime.now()
+    db.commit()
+    
+    db.refresh(db_client)
+    
+    return db_client
 
 async def delete_client(client_id: int, db: _orm.Session = _fastapi.Depends(get_db)):
     db_client = db.query(_models.Client).filter(and_(_models.Client.id == client_id,_models.Client.is_deleted == False)).first()

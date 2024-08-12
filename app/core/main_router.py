@@ -116,9 +116,10 @@ async def read_sources(db: _orm.Session = Depends(get_db)):
 async def register_mobileclient(client: ClientCreateApp, db: _orm.Session = Depends(get_db)):
     try:
         db_client = await _client_service.get_client_by_email(client.email, db)
+        print("ID",db_client.id)
         if db_client:
             if db_client.is_deleted:
-                updated_client = await _client_service.update_client(
+                updated_client = await _client_service.update_app_client(
                     db_client.id, client, db
                 )
                 result = await _client_service.login_client(updated_client.email, updated_client.wallet_address, db)

@@ -322,6 +322,7 @@ class ClientUpdate(pydantic.BaseModel):
     coach_id: Optional[List[int]] = []
     membership_id: Optional[int] = None
     org_id: Optional[int] = None
+    is_deleted:Optional[bool]=False
     status: Optional[ClientStatus] = None
 
 
