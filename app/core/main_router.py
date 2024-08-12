@@ -26,7 +26,7 @@ logger.setLevel(logging.DEBUG)
 router = APIRouter()
 login_attempts: Dict[str, int] = {}
 lockout_expiry: Dict[str, datetime.datetime] = {}
-MAX_ATTEMPTS = 3
+MAX_ATTEMPTS = 5
 LOCKOUT_TIME = datetime.timedelta(minutes=30)
 
 
@@ -62,6 +62,7 @@ async def register_user(user: _schemas.UserCreate, db: _orm.Session = Depends(ge
 @router.post("/login")
 async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_db)):
     
+    print("user: ",user,"lockout_expiry: ",lockout_expiry,"login_attempts: ",login_attempts)
     if user.email in lockout_expiry and datetime.datetime.now() < lockout_expiry[user.email]:
         raise HTTPException(status_code=403, detail="Account locked. Try again later.")
 
@@ -72,6 +73,7 @@ async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_
         if login_attempts[user.email] >= MAX_ATTEMPTS:
             # Lock the account if maximum attempts are reached
             lockout_expiry[user.email] = datetime.datetime.now() + LOCKOUT_TIME
+            login_attempts[user.email] = 0
             raise HTTPException(status_code=403, detail="Account locked. Try again later.")
 
         raise HTTPException(status_code=401, detail="Invalid email or password")
