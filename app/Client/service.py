@@ -489,7 +489,7 @@ def get_filtered_clients(
     .outerjoin(
         BusinessClient, _models.Client.business_id == BusinessClient.id
     ).outerjoin(
-        and_(_models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id,_models.ClientCoach.is_deleted == False)
+        _models.ClientCoach,and_(_models.Client.id == _models.ClientCoach.client_id,_models.ClientCoach.is_deleted == False)
     ).outerjoin(
         _coach_models.Coach, _coach_models.Coach.id == _models.ClientCoach.coach_id
     ).join(

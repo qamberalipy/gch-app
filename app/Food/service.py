@@ -73,7 +73,8 @@ async def get_food_by_org_id(db: _orm.Session,org_id: int,params: _schemas.FoodF
         "brand":text("foods.brand"),
         "total_nutrition": text("foods.total_nutrition"),
         "category" : text("foods.category"),
-        "fat":text("foods.fat")
+        "fat":text("foods.fat"),
+        "created_at":text("foods.created_at")
         }
 
     query = db.query(_models.Food).filter(_models.Food.org_id == org_id)
