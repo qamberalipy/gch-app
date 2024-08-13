@@ -26,7 +26,7 @@ logger.setLevel(logging.DEBUG)
 router = APIRouter()
 login_attempts: Dict[str, int] = {}
 lockout_expiry: Dict[str, datetime.datetime] = {}
-MAX_ATTEMPTS = 3
+MAX_ATTEMPTS = 5
 LOCKOUT_TIME = datetime.timedelta(minutes=30)
 
 
@@ -62,6 +62,7 @@ async def register_user(user: _schemas.UserCreate, db: _orm.Session = Depends(ge
 @router.post("/login")
 async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_db)):
     
+    print("user: ",user,"lockout_expiry: ",lockout_expiry,"login_attempts: ",login_attempts)
     if user.email in lockout_expiry and datetime.datetime.now() < lockout_expiry[user.email]:
         raise HTTPException(status_code=403, detail="Account locked. Try again later.")
 
@@ -72,6 +73,7 @@ async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_
         if login_attempts[user.email] >= MAX_ATTEMPTS:
             # Lock the account if maximum attempts are reached
             lockout_expiry[user.email] = datetime.datetime.now() + LOCKOUT_TIME
+            login_attempts[user.email] = 0
             raise HTTPException(status_code=403, detail="Account locked. Try again later.")
 
         raise HTTPException(status_code=401, detail="Invalid email or password")
@@ -114,9 +116,10 @@ async def read_sources(db: _orm.Session = Depends(get_db)):
 async def register_mobileclient(client: ClientCreateApp, db: _orm.Session = Depends(get_db)):
     try:
         db_client = await _client_service.get_client_by_email(client.email, db)
+        print("ID",db_client.id)
         if db_client:
             if db_client.is_deleted:
-                updated_client = await _client_service.update_client(
+                updated_client = await _client_service.update_app_client(
                     db_client.id, client, db
                 )
                 result = await _client_service.login_client(updated_client.email, updated_client.wallet_address, db)
@@ -206,9 +209,9 @@ async def create_mobilecoach(coach: CoachAppBase, db: _orm.Session = Depends(get
         print("MY COACH",db_coach)
         if db_coach:
             if db_coach.is_deleted:
-                updated_coach = await _coach_service.update_coach(db_coach.id,coach,"app", db)
+                updated_coach = await _coach_service.update_app_coach_record(db_coach.id,coach,db)
                 
-                result = await _coach_service.login_coach(coach.email, updated_coach.wallet_address, db)
+                result = await _coach_service.login_coach(coach.email,'', db)
                 return result
             else:
                 raise HTTPException(status_code=400, detail="Email already registered")
@@ -222,10 +225,10 @@ async def create_mobilecoach(coach: CoachAppBase, db: _orm.Session = Depends(get
         logger.error(f"IntegrityError: {e}")
         raise HTTPException(status_code=400, detail="Duplicate entry or integrity constraint violation")
         
-    except DataError as e:
-        db.rollback()
-        logger.error(f"DataError: {e}")
-        raise HTTPException(status_code=400, detail="Data error occurred, check your input")    
+    # except DataError as e:
+    #     db.rollback()
+    #     logger.error(f"DataError: {e}")
+    #     raise HTTPException(status_code=400, detail="Data error occurred, check your input")    
                     
 
 

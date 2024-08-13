@@ -281,6 +281,25 @@ async def update_client_coach(client_id: int, coach_ids: List[int], db: _orm.Ses
     db.commit()
     return db.query(_models.ClientCoach).filter(_models.ClientCoach.client_id == client_id).all()
 
+async def update_app_client(
+    client_id: int,
+    client: _schemas.ClientUpdate,
+    db: _orm.Session = _fastapi.Depends(get_db),
+):
+    db_client = db.query(_models.Client).filter(_models.Client.id == client_id).first()
+
+    if not db_client:
+        raise _fastapi.HTTPException(status_code=404, detail="Member not found")
+    client.is_deleted=False
+    for key, value in client.dict(exclude_unset=True).items():
+        setattr(db_client, key, value)
+     
+    db_client.updated_at = datetime.datetime.now()
+    db.commit()
+    
+    db.refresh(db_client)
+    
+    return db_client
 
 async def delete_client(client_id: int, db: _orm.Session = _fastapi.Depends(get_db)):
     db_client = db.query(_models.Client).filter(and_(_models.Client.id == client_id,_models.Client.is_deleted == False)).first()
@@ -449,7 +468,8 @@ def get_filtered_clients(
         "last_online": text("client.last_online"),
         "client_since": text("client.client_since"),
         "created_at": text("client.created_at"),
-        "client_status": text("client_organization.client_status")
+        "client_status": text("client_organization.client_status"),
+        "membership_plan_id":text("client_membership.membership_plan_id")                      
     }
 
     query = db.query(
@@ -459,17 +479,17 @@ def get_filtered_clients(
         _models.ClientMembership.membership_plan_id,
         func.array_agg(
             func.json_build_object(
-                'id', func.coalesce(_models.ClientCoach.coach_id, 0),
+                'id',func.coalesce(_models.ClientCoach.coach_id, 0),
                 'coach_name', func.concat(
                     func.coalesce(_coach_models.Coach.first_name, ""),
                     ' ',
                     func.coalesce(_coach_models.Coach.last_name, "")
                 ))).label('coaches'),
-        func.coalesce(BusinessClient.first_name + ' ' + BusinessClient.last_name, _models.Client.first_name + ' ' + _models.Client.last_name).label('business_name')
-    ).outerjoin(
+        func.coalesce(BusinessClient.first_name + ' ' + BusinessClient.last_name, _models.Client.first_name + ' ' + _models.Client.last_name).label('business_name'))\
+    .outerjoin(
         BusinessClient, _models.Client.business_id == BusinessClient.id
     ).outerjoin(
-        _models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id
+        _models.ClientCoach,and_(_models.Client.id == _models.ClientCoach.client_id,_models.ClientCoach.is_deleted == False)
     ).outerjoin(
         and_(_coach_models.Coach, _coach_models.Coach.id == _models.ClientCoach.coach_id,_coach_models.Coach.is_deleted == False)
     ).join(
@@ -542,10 +562,8 @@ def get_filtered_clients(
     for client in db_clients:
         clients.append(_schemas.ClientFilterRead(**client._asdict()))
 
-    if clients:
-        return {"data": clients, "total_counts": total_counts, "filtered_counts": filtered_counts}
-    else:
-        return None
+    return {"data": clients, "total_counts": total_counts, "filtered_counts": filtered_counts}
+   
 
 
 async def get_client_byid(db: _orm.Session, client_id: int) -> _schemas.ClientByID:

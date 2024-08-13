@@ -47,6 +47,14 @@ class CoachUpdate(CoachBase):
     updated_by: Optional[int] = None
     member_ids: Optional[List[int]] = []
 
+
+class CoachAppUpdate(CoachBase):
+    id: int
+    is_deleted: Optional[bool] = False
+    updated_by: Optional[int] = None
+    member_ids: Optional[List[int]] = []
+
+
 class CoachRead(CoachBase):
     id:int
     created_at: Optional[datetime.datetime] = None
@@ -63,9 +71,9 @@ class CoachDelete(pydantic.BaseModel):
 class CoachAppBase(pydantic.BaseModel):
     org_id: Optional[int] = None
     first_name: str
-    last_name: Optional[str] = None
+    last_name: str
     dob: datetime.date
-    gender: Optional[str] = None
+    gender: str
     email: str
     phone: Optional[str] = None
     mobile_number: Optional[str] = None

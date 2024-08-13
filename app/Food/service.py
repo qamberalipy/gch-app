@@ -73,7 +73,8 @@ async def get_food_by_org_id(db: _orm.Session,org_id: int,params: _schemas.FoodF
         "brand":text("foods.brand"),
         "total_nutrition": text("foods.total_nutrition"),
         "category" : text("foods.category"),
-        "fat":text("foods.fat")
+        "fat":text("foods.fat"),
+        "created_at":text("foods.created_at")
         }
 
     query = db.query(_models.Food).filter(_models.Food.org_id == org_id)
@@ -105,13 +106,15 @@ async def get_food_by_org_id(db: _orm.Session,org_id: int,params: _schemas.FoodF
         raise _fastapi.HTTPException(status_code=400, detail="Sorting column not found.")
     
     filtered_counts = db.query(func.count()).select_from(query.subquery()).scalar()
+    
+    query=query.limit(params.limit).offset(params.offset)
+    
     db_foods = query.all()
     
     foods = []
     for food in db_foods:
         foods.append(food)
 
-    if foods:
-        return {"data":foods,"total_counts":total_counts,"filtered_counts": filtered_counts}
-    else:
-        return None
+    
+    return {"data":foods,"total_counts":total_counts,"filtered_counts": filtered_counts}
+    
