@@ -9,7 +9,7 @@ from app.Food.models import FoodVisibleFor
 class FoodBase(pydantic.BaseModel):
     org_id: int
     name: str
-    visible_for:FoodVisibleFor
+    visible_for:str
     brand: Optional[str] = None
     category: str
     description: Optional[str] = None
@@ -74,7 +74,7 @@ class FoodUpdate(pydantic.BaseModel):
     id: int
     org_id: Optional[int] = None
     name: Optional[str] = None
-    visible_for:FoodVisibleFor
+    visible_for:Optional[str]
     brand: Optional[str] = None
     category: Optional[str] = None
     description: Optional[str] = None
