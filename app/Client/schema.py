@@ -257,10 +257,30 @@ class ClientList(pydantic.BaseModel):
 
 class ClientFilterRead(pydantic.BaseModel):
     id: int
+    profile_img: Optional[str] = None
     own_member_id: str
     first_name: str
     last_name: str
+    gender: Optional[str] = None
     org_id:int
+    dob: Optional[datetime.date] = None
+    email: str
+    notes: Optional[str] = None
+    source_id: Optional[int] = None
+    language: Optional[str] = None
+    business_id: Optional[int] = None
+    is_business: bool
+    country_id: Optional[int] = None
+    city: Optional[str] = None
+    zipcode: Optional[str] = None
+    address_1: Optional[str] = None
+    address_2: Optional[str] = None
+    height:Optional[float]= 0.0 
+    weight:Optional[float]= 0.0 
+    bmi:Optional[float]= 0.0     
+    circumference_waist_navel:Optional[float]=0.0
+    fat_percentage:Optional[float]=0.0
+    muscle_percentage:Optional[float]=0.0
     client_status:ClientStatus
     membership_plan_id:int
     phone: Optional[str]
@@ -270,6 +290,15 @@ class ClientFilterRead(pydantic.BaseModel):
     client_since: datetime.date
     business_name: Optional[str]
     coaches: Optional[List[Dict]] = []
+    activated_on: Optional[datetime.date] = None
+    check_in: Optional[datetime.datetime] = None
+    last_online: Optional[datetime.datetime] = None
+    client_since: datetime.date
+    created_at: Optional[datetime.datetime] = None
+    updated_at: Optional[datetime.datetime] = None
+    created_by: Optional[int] = None
+    updated_by: Optional[int] = None
+    is_deleted: bool
 
     class Config:
         from_attributes=True
