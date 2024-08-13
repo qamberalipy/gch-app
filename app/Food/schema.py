@@ -4,13 +4,16 @@ import datetime
 from datetime import date
 from typing import Optional
 from enum import Enum as PyEnum
+from app.Food.models import FoodVisibleFor
 
 class FoodBase(pydantic.BaseModel):
     org_id: int
     name: str
+    visible_for:FoodVisibleFor
     brand: Optional[str] = None
     category: str
     description: Optional[str] = None
+    img_url:Optional[str]=None
     other_name: Optional[str] = None
     total_nutrition: float
     kcal: float
@@ -67,14 +70,15 @@ class FoodRead(FoodBase):
     class Config:
         from_attribute = True
 
-
 class FoodUpdate(pydantic.BaseModel):
     id: int
     org_id: Optional[int] = None
     name: Optional[str] = None
+    visible_for:FoodVisibleFor
     brand: Optional[str] = None
     category: Optional[str] = None
     description: Optional[str] = None
+    img_url:Optional[str]=None
     other_name: Optional[str] = None
     total_nutrition: Optional[float] = None
     kcal: Optional[float] = None
