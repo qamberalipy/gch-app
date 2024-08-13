@@ -7,6 +7,12 @@ import sqlalchemy.ext.declarative as _declarative
 from enum import Enum as PyEnum
 
 
+class  FoodVisibleFor(PyEnum):
+    only_me="Only me"
+    members="Members in my gym"
+    coaches_and_staff="Coaches and Staff in my gym" 
+    everyone="Everyone in my gym"
+
 class CategoryEnum(PyEnum):
     baked_products = "Baked Products"
     beverages = "Beverages"
@@ -28,7 +34,6 @@ class WeightUnitEnum(PyEnum):
     ml = "ml"
     g_ml = "Gram/ML"
 
-
 class Food(_database.Base):
     __tablename__ = "foods"
 
@@ -38,6 +43,8 @@ class Food(_database.Base):
     brand = _sql.Column(_sql.String)
     category = _sql.Column(_sql.Enum(CategoryEnum))
     description = _sql.Column(_sql.String)
+    img_url=_sql.Column(_sql.String)
+    visible_for = _sql.Column(_sql.Enum(FoodVisibleFor))
     other_name = _sql.Column(_sql.String)
     total_nutrition = _sql.Column(_sql.Float)
     kcal = _sql.Column(_sql.Float)
