@@ -268,12 +268,6 @@ async def get_exercise(
     id: Optional[int] = None,
     db: _orm.Session = _fastapi.Depends(get_db)
 ):
-async def get_exercise(
-    params: Optional[_schemas.ExerciseFilterParams] = None,
-    org_id: Optional[int] = None,
-    id: Optional[int] = None,
-    db: _orm.Session = _fastapi.Depends(get_db)
-):
     sort_mapping = {
         "exercise_name": text("filtered_exercise.exercise_name"),
         "category_name": text("exercise_category.category_name"),
@@ -286,16 +280,13 @@ async def get_exercise(
     PrimaryJoint = aliased(_models.PrimaryJoint)
     Equipment = aliased(_models.Equipment)
     Exercise = aliased(_models.Exercise)
-    Exercise = aliased(_models.Exercise)
-
+    
     if id:
-        check_exercise = db.query(Exercise).filter(Exercise.id == id).first()
         check_exercise = db.query(Exercise).filter(Exercise.id == id).first()
         if not check_exercise:
             raise _fastapi.HTTPException(status_code=400, detail="Exercise Not Found")  
     
     if org_id:
-        check_organization = db.query(Exercise.org_id).filter(Exercise.org_id == org_id).first()
         check_organization = db.query(Exercise.org_id).filter(Exercise.org_id == org_id).first()
         if not check_organization:
             raise _fastapi.HTTPException(status_code=400, detail="Organization Not Found")
@@ -310,10 +301,6 @@ async def get_exercise(
         func.json_agg(
             func.json_build_object('id', Equipment.id, 'name', Equipment.equipment_name)
         ).label('equipments')
-        _models.ExerciseEquipment.exercise_id,
-        func.json_agg(
-            func.json_build_object('id', Equipment.id, 'name', Equipment.equipment_name)
-        ).label('equipments')
     ).join(
         Equipment, _models.ExerciseEquipment.equipment_id == Equipment.id
     ).group_by(_models.ExerciseEquipment.exercise_id)
@@ -322,7 +309,6 @@ async def get_exercise(
         _models.ExercisePrimaryMuscle.exercise_id,
         func.json_agg(
             func.json_build_object('id', func.coalesce(PrimaryMuscle.id, 0), 'name', func.coalesce(PrimaryMuscle.muscle_name, ""))
-            func.json_build_object('id', func.coalesce(PrimaryMuscle.id, 0), 'name', func.coalesce(PrimaryMuscle.muscle_name, ""))
         ).label('primary_muscles')
     ).join(
         PrimaryMuscle, _models.ExercisePrimaryMuscle.muscle_id == PrimaryMuscle.id
@@ -330,18 +316,14 @@ async def get_exercise(
 
     secondary_muscle_query = db.query(
         _models.ExerciseSecondaryMuscle.exercise_id,
-        _models.ExerciseSecondaryMuscle.exercise_id,
         func.json_agg(
-            func.json_build_object('id', func.coalesce(SecondaryMuscle.id, 0), 'name', func.coalesce(SecondaryMuscle.muscle_name, ""))
             func.json_build_object('id', func.coalesce(SecondaryMuscle.id, 0), 'name', func.coalesce(SecondaryMuscle.muscle_name, ""))
         ).label('secondary_muscles')
     ).join(
         SecondaryMuscle, _models.ExerciseSecondaryMuscle.muscle_id == SecondaryMuscle.id
     ).group_by(_models.ExerciseSecondaryMuscle.exercise_id).subquery()
-    ).group_by(_models.ExerciseSecondaryMuscle.exercise_id).subquery()
 
     primary_joint_query = db.query(
-        _models.ExercisePrimaryJoint.exercise_id,
         _models.ExercisePrimaryJoint.exercise_id,
         func.json_agg(
             func.json_build_object('id', func.coalesce(PrimaryJoint.id, 0), 'name', func.coalesce(PrimaryJoint.joint_name, ""))
@@ -410,13 +392,11 @@ async def get_exercise(
         primary_muscle_query, filtered_exercise_query.c.id == primary_muscle_query.c.exercise_id
     ).join(
         secondary_muscle_query, filtered_exercise_query.c.id == secondary_muscle_query.c.exercise_id
-        secondary_muscle_query, filtered_exercise_query.c.id == secondary_muscle_query.c.exercise_id
     ).join(
         primary_joint_query, filtered_exercise_query.c.id == primary_joint_query.c.exercise_id
     )
  
     if id:
-        query = query.filter(filtered_exercise_query.c.id == id)
         query = query.filter(filtered_exercise_query.c.id == id)
         return query.first()
 
