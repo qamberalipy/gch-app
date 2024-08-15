@@ -41,6 +41,7 @@ class ClientCreate(ClientBase):
     membership_plan_id: int
     status: ClientStatus="active"  # Corrected type annotation
     send_invitation: bool
+    auto_renewal:bool=False
     prolongation_period:Optional[int] = None
     auto_renew_days:Optional[int] = None
     inv_days_cycle:Optional[int] = None
@@ -193,6 +194,10 @@ class ClientByID(pydantic.BaseModel):
     coaches: Optional[List[Dict]] = []
     org_id: Optional[int] = None
     membership_plan_id: Optional[int] = None
+    auto_renewal:Optional[bool]=None
+    prolongation_period:Optional[int]	
+    auto_renew_days:Optional[int]	
+    inv_days_cycle:Optional[int]
 
     class Config:
         from_attributes = True
@@ -208,9 +213,11 @@ class CreateClientOrganization(ClientOrganization):
 class ClientMembership(pydantic.BaseModel):
     client_id: int
     membership_plan_id: int
+    auto_renewal:Optional[bool]=None
     prolongation_period:Optional[int] = None
     auto_renew_days:Optional[int] = None
     inv_days_cycle:Optional[int] = None
+
 
 class CreateClientMembership(ClientMembership):
     pass
@@ -239,7 +246,6 @@ class BusinessRead(BusinessBase):
 
     class Config:
         from_attributes=True
-
 
 class ClientBusinessRead(pydantic.BaseModel):
     id: int
@@ -333,6 +339,10 @@ class ClientUpdate(pydantic.BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     mobile_number: Optional[str] = None
+    prolongation_period:Optional[int] = None
+    auto_renew_days:Optional[int] = None
+    inv_days_cycle:Optional[int] = None
+    auto_renewal:Optional[bool]=None
     notes: Optional[str] = None
     source_id: Optional[int] = None
     language: Optional[str] = None
@@ -344,7 +354,7 @@ class ClientUpdate(pydantic.BaseModel):
     address_1: Optional[str] = None
     address_2: Optional[str] = None
     client_since: Optional[datetime.date] = None
-    updated_at: Optional[datetime.datetime] = None
+    updated_at: Optional[datetime.datetime] = datetime.datetime.now()
     updated_by: Optional[int] = None
     height:Optional[float]=0.0 
     weight:Optional[float]=0.0 
@@ -353,7 +363,7 @@ class ClientUpdate(pydantic.BaseModel):
     fat_percentage:Optional[float]=0.0
     muscle_percentage:Optional[float]=0.0
     coach_id: Optional[List[int]] = []
-    membership_id: Optional[int] = None
+    membership_plan_id: Optional[int] = None
     org_id: Optional[int] = None
     is_deleted:Optional[bool]=False
     status: Optional[ClientStatus] = None
@@ -361,3 +371,5 @@ class ClientUpdate(pydantic.BaseModel):
 
     class Config:
         from_attributes = True
+
+

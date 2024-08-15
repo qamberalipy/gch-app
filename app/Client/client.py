@@ -45,6 +45,8 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
         prolongation_period=client_data.pop('prolongation_period')
         auto_renew_days=client_data.pop('auto_renew_days')
         inv_days_cycle=client_data.pop('inv_days_cycle')
+        auto_renewal=client_data.pop('auto_renewal')
+
 
         new_client = await _services.create_client(_schemas.RegisterClient(**client_data), db)
         
@@ -53,7 +55,7 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
         )
 
         await _services.create_client_membership(
-            _schemas.CreateClientMembership(client_id=new_client.id, membership_plan_id=membership_id,prolongation_period=prolongation_period,auto_renew_days=auto_renew_days,inv_days_cycle=inv_days_cycle), db
+            _schemas.CreateClientMembership(client_id=new_client.id, membership_plan_id=membership_id,auto_renewal=auto_renewal,prolongation_period=prolongation_period,auto_renew_days=auto_renew_days,inv_days_cycle=inv_days_cycle), db
         )
 
         if coach_ids is not None:
@@ -80,11 +82,20 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
 @router.put("/member",response_model = _schemas.ClientUpdate, tags=["Member Router"])
 async def update_client(client: _schemas.ClientUpdate, db: _orm.Session = Depends(get_db)):
     try:
-        # Update client details
+
+        
         updated_client = await _services.update_client(client.id, client, db)
         
-        if client.membership_id is not None:
-            await _services.update_client_membership(client.id, client.membership_id, db)
+        if client.membership_plan_id is not None:
+            membership = _schemas.ClientMembership(
+            client_id=client.id,
+            membership_plan_id=client.membership_plan_id,
+            auto_renewal=client.auto_renewal,
+            prolongation_period=client.prolongation_period,
+            auto_renew_days=client.auto_renew_days,
+            inv_days_cycle=client.inv_days_cycle
+            )
+            await _services.update_client_membership(membership, db)
 
         if client.coach_id:
             await _services.update_client_coach(client.id, client.coach_id, db)

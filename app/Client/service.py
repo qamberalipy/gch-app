@@ -224,7 +224,6 @@ async def update_client(
         raise _fastapi.HTTPException(status_code=404, detail="Please enter correct organization of member")
         
     db_client_status.client_status = client.status
-        
     db_client.updated_at = datetime.datetime.now()
     db.commit()
     
@@ -235,21 +234,23 @@ async def update_client(
 
 
 async def update_client_membership(
-    client_id: int, membership_id: int, db: _orm.Session = _fastapi.Depends(get_db)
+    membership_data:_schemas.CreateClientMembership, db: _orm.Session = _fastapi.Depends(get_db)
 ):
     db_client_membership = (
         db.query(_models.ClientMembership)
-        .filter(_models.ClientMembership.client_id == client_id)
+        .filter(_models.ClientMembership.client_id == membership_data.client_id)
         .first()
     )
     if not db_client_membership:
         db_client_membership = _models.ClientMembership(
-            client_id=client_id, membership_plan_id=membership_id
+            client_id=membership_data.client_id, membership_plan_id=membership_data.membership_plan_id
         )
         db.add(db_client_membership)
     else:
-        db_client_membership.membership_plan_id = membership_id
-
+        for key, value in membership_data.model_dump(exclude_unset=True).items():
+            setattr(db_client_membership, key, value)
+        db_client_membership.updated_at = datetime.datetime.now()
+    
     db.commit()
     db.refresh(db_client_membership)
     return db_client_membership
@@ -259,21 +260,18 @@ async def update_client_coach(client_id: int, coach_ids: List[int], db: _orm.Ses
     existing_coaches = db.query(_models.ClientCoach).filter(_models.ClientCoach.client_id == client_id).all()
     existing_coach_ids = {coach.coach_id for coach in existing_coaches}
 
-    # Coaches to add
+
     new_coach_ids = set(coach_ids)
     coaches_to_add = new_coach_ids - existing_coach_ids
 
-    # Coaches to remove
     coaches_to_remove = existing_coach_ids - new_coach_ids
 
-    # Remove coaches
     if coaches_to_remove:
         db.query(_models.ClientCoach).filter(
             _models.ClientCoach.client_id == client_id,
             _models.ClientCoach.coach_id.in_(coaches_to_remove)
         ).delete(synchronize_session=False)
 
-    # Add new coaches
     for coach_id in coaches_to_add:
         db.add(_models.ClientCoach(client_id=client_id, coach_id=coach_id))
 
@@ -575,6 +573,10 @@ async def get_client_byid(db: _orm.Session, client_id: int) -> _schemas.ClientBy
             *_models.Client.__table__.columns,
             _models.ClientOrganization.org_id,
             _models.ClientMembership.membership_plan_id,
+            _models.ClientMembership.auto_renewal,
+            _models.ClientMembership.prolongation_period,	
+            _models.ClientMembership.auto_renew_days,
+            _models.ClientMembership.inv_days_cycle,
             func.array_agg(
             func.json_build_object(
                 'id', func.coalesce(_models.ClientCoach.coach_id, 0),
@@ -599,7 +601,7 @@ async def get_client_byid(db: _orm.Session, client_id: int) -> _schemas.ClientBy
         ).group_by(
             _models.Client.id,
             _models.ClientOrganization.org_id,
-            _models.ClientMembership.membership_plan_id
+            _models.ClientMembership.id
         )
     
 

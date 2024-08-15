@@ -273,7 +273,10 @@ async def get_exercise(
         "exercise_name": text("filtered_exercise.exercise_name"),
         "category_name": text("exercise_category.category_name"),
         "visible_for": text("filtered_exercise.visible_for"),
-        "created_at": text("filtered_exercise.created_at")
+        "created_at": text("filtered_exercise.created_at"),
+        "difficulty":text("filtered_exercise.difficulty"),
+        "exercise_type":text("filtered_exercise.exercise_type"),
+        "set":text("filtered_exercise.sets")
     }
     
     PrimaryMuscle = aliased(_models.Muscle)

@@ -113,8 +113,8 @@ async def create_exercise(exercise: _schemas.ExerciseCreate, db: _orm.Session = 
 @router.get("/exercise", response_model=Union[List[_schemas.ExerciseRead],_schemas.GetAllResponse])
 async def get_exercise(org_id:int,filters: Annotated[_schemas.ExerciseFilterParams, Depends(_services.get_filters)] = None,db: _orm.Session = Depends(get_db)):
     
-        exercises = await _services.get_exercise(org_id=org_id,params=filters,db=db)
-        return exercises   
+    exercises = await _services.get_exercise(org_id=org_id,params=filters,db=db)
+    return exercises   
 
 @router.get("/exercise/{id}", response_model=_schemas.ExerciseRead,summary="Get Exercise By ID")
 async def get_exercise(id:int,db: _orm.Session = Depends(get_db)):
