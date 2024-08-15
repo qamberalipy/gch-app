@@ -41,9 +41,9 @@ class Met(pydantic.BaseModel):
 class ExerciseFilterParams(pydantic.BaseModel):
     search_key: Optional[str] = None
     category : Optional[int] = None
-    equipment : Optional[List[int]] = []
-    primary_muscle: Optional[List[int]] = []
-    primary_joint: Optional[List[int]] = []
+    visible_for:Optional[VisibleFor]=None
+    difficulty:Optional[Difficulty]=None
+    exercise_type:Optional[ExerciseType]=None
     sort_key: Optional[str] = None
     sort_order: Optional[str] = 'desc'
     limit:Optional[int] = None

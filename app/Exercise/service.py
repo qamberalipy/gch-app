@@ -8,6 +8,7 @@ import app.Exercise.models as _models
 import app.Exercise.schema as _schemas
 from datetime import datetime
 from sqlalchemy.orm import aliased
+from app.Exercise.models import VisibleFor,ExerciseType,Difficulty
 
 def create_database():
     return _database.Base.metadata.create_all(bind=_database.engine)
@@ -224,9 +225,9 @@ def get_filters(
 
     search_key: Annotated[str, _fastapi.Query(title="Search Key")] = None,
     category: Annotated[int , _fastapi.Query(title="Category")] = None,
-    equipment: Annotated[list[int] , _fastapi.Query(title="Equipment")] = None,
-    primary_muscle: Annotated[list[int],_fastapi.Query(title="Primary Muscle")]=None,
-    primary_joint: Annotated[list[int],_fastapi.Query(title="Primary Joint")]=None,
+    visible_for:Annotated[VisibleFor, _fastapi.Query(title="Visible For")] = None,
+    difficulty:Annotated[Difficulty, _fastapi.Query(title="Visible For")] = None,
+    exercise_type:Annotated[ExerciseType, _fastapi.Query(title="Visible For")] = None,
     sort_key:Annotated[str, _fastapi.Query(title="Sort Key")] = None,
     sort_order:Annotated[str, _fastapi.Query(title="Sort Order")] = 'desc',
     limit: Annotated[int, _fastapi.Query(description="Pagination Limit")] = None,
@@ -235,9 +236,9 @@ def get_filters(
     return _schemas.ExerciseFilterParams(
         search_key=search_key,
         category=category,
-        equipment=equipment,
-        primary_muscle=primary_muscle,
-        primary_joint=primary_joint,
+        visible_for=visible_for,
+        exercise_type=exercise_type,
+        difficulty=difficulty,
         sort_key=sort_key,
         sort_order=sort_order,
         limit=limit,
@@ -293,8 +294,6 @@ async def get_exercise(
  
     query = db.query(Exercise).filter(Exercise.is_deleted == False)
 
-    if org_id:
-        query = query.filter(Exercise.org_id == org_id)
 
     equipment_query = db.query(
         _models.ExerciseEquipment.exercise_id,
@@ -303,7 +302,7 @@ async def get_exercise(
         ).label('equipments')
     ).join(
         Equipment, _models.ExerciseEquipment.equipment_id == Equipment.id
-    ).group_by(_models.ExerciseEquipment.exercise_id)
+    ).group_by(_models.ExerciseEquipment.exercise_id).subquery()
 
     primary_muscle_query = db.query(
         _models.ExercisePrimaryMuscle.exercise_id,
@@ -312,7 +311,7 @@ async def get_exercise(
         ).label('primary_muscles')
     ).join(
         PrimaryMuscle, _models.ExercisePrimaryMuscle.muscle_id == PrimaryMuscle.id
-    ).group_by(_models.ExercisePrimaryMuscle.exercise_id)
+    ).group_by(_models.ExercisePrimaryMuscle.exercise_id).subquery()
 
     secondary_muscle_query = db.query(
         _models.ExerciseSecondaryMuscle.exercise_id,
@@ -330,28 +329,29 @@ async def get_exercise(
         ).label('primary_joints')
     ).join(
         PrimaryJoint, _models.ExercisePrimaryJoint.primary_joint_id == PrimaryJoint.id
-    ).group_by(_models.ExercisePrimaryJoint.exercise_id)
+    ).group_by(_models.ExercisePrimaryJoint.exercise_id).subquery()
 
     if params:
-        if params.equipment:
-            equipment_query = equipment_query.filter(_models.ExerciseEquipment.equipment_id.in_(params.equipment))
-
-        if params.primary_muscle:
-            primary_muscle_query = primary_muscle_query.filter(_models.ExercisePrimaryMuscle.muscle_id.in_(params.primary_muscle))
-
-        if params.primary_joint:
-            primary_joint_query = primary_joint_query.filter(_models.ExercisePrimaryJoint.primary_joint_id.in_(params.primary_joint))
-
+       
         if params.search_key:
             search_pattern = f"%{params.search_key}%"
             query = query.filter(Exercise.exercise_name.ilike(search_pattern))
 
         if params.category:
             query = query.filter(Exercise.category_id == params.category)    
+
+        if params.difficulty:
+            query = query.filter(Exercise.difficulty == params.difficulty)
+
+        if params.visible_for:
+            query=query.filter(Exercise.visible_for == params.visible_for) 
+
+        if params.exercise_type:
+            query = query.filter(Exercise.exercise_type == params.exercise_type)      
+
+        query = query.filter(Exercise.org_id == org_id)     
+
         
-    equipment_query=equipment_query.subquery()
-    primary_muscle_query=primary_muscle_query.subquery()
-    primary_joint_query=primary_joint_query.subquery()
     filtered_exercise_query = query.subquery('filtered_exercise')
     
     query = db.query(
