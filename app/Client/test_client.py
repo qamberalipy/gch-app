@@ -146,6 +146,4 @@ def test_get_total_clients():
     org_id = 1
     result = get_total_clients(org_id, db)
     assert result is not None
-
-def test_get_filtered_clients():
-    db
+    

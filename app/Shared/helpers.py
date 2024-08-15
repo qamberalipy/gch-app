@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Annotated, Any, Dict
 from fastapi.exceptions import HTTPException
 import jwt, json, time, os, random, logging, bcrypt as _bcrypt
@@ -10,6 +10,8 @@ import fastapi as _fastapi
 import fastapi.security as _security
 import app.core.db.session as _database
 from .schema import UserBase, CoachBase
+from itsdangerous import URLSafeTimedSerializer as Serializer 
+from itsdangerous import SignatureExpired
 
 JWT_SECRET = os.getenv("JWT_SECRET", "")
 JWT_EXPIRY = os.getenv("JWT_EXPIRY", "")
@@ -63,3 +65,22 @@ def refresh_jwt(refresh_token: str):
     except jwt.InvalidTokenError:
         raise _fastapi.HTTPException(status_code=400, detail="Invalid refresh token")
     
+def generate_password_reset_token(user_data_json):
+    
+    serial = Serializer('LetsMove')
+    # token = serial.dumps({'user_id': f'{user_id}'})
+    token = serial.dumps(user_data_json)
+    print('Token:', token)
+    return token
+
+def verify_password_reset_token(token: str):
+    
+    serial = Serializer('LetsMove')
+    try:
+        data = serial.loads(token, max_age=1800)
+        return data
+    except SignatureExpired:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except Exception as e:
+        logging.error(f"Error verifying password reset token: {e}")
+        raise _fastapi.HTTPException(status_code=500, detail="Internal Server Error")
