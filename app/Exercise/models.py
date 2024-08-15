@@ -56,8 +56,8 @@ class Exercise(_database.Base):
     image_url_male = _sql.Column(_sql.String, nullable=True)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.now)
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = _sql.Column(_sql.DateTime, default=datetime.now())
+    updated_at = _sql.Column(_sql.DateTime, default=datetime.now(), onupdate=datetime.now())
     is_deleted= _sql.Column(_sql.Boolean, default=False)
     
 class Equipment(_database.Base):
@@ -67,8 +67,8 @@ class Equipment(_database.Base):
     equipment_name = _sql.Column(_sql.String, nullable=False)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.now)
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.now, onupdate=datetime.now)   
+    created_at = _sql.Column(_sql.DateTime, default=datetime.now())
+    updated_at = _sql.Column(_sql.DateTime, default=datetime.now(), onupdate=datetime.now())   
     is_deleted = _sql.Column(_sql.Boolean, default=False)
 
 class ExerciseEquipment(_database.Base):
@@ -79,8 +79,8 @@ class ExerciseEquipment(_database.Base):
     equipment_id=_sql.Column(_sql.Integer)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.now)
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = _sql.Column(_sql.DateTime, default=datetime.now())
+    updated_at = _sql.Column(_sql.DateTime, default=datetime.now(), onupdate=datetime.now())
     is_deleted= _sql.Column(_sql.Boolean, default=False)
 class ExerciseCategory(_database.Base):
     __tablename__ = 'exercise_category'
@@ -89,8 +89,8 @@ class ExerciseCategory(_database.Base):
     category_name = _sql.Column(_sql.String, nullable=False)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.now)
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = _sql.Column(_sql.DateTime, default=datetime.now())
+    updated_at = _sql.Column(_sql.DateTime, default=datetime.now(), onupdate=datetime.now())
     is_deleted = _sql.Column(_sql.Boolean, default=False)
 class Muscle(_database.Base):
     __tablename__ = 'muscle'
@@ -99,8 +99,8 @@ class Muscle(_database.Base):
     muscle_name = _sql.Column(_sql.String, nullable=False)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.now)
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = _sql.Column(_sql.DateTime, default=datetime.now())
+    updated_at = _sql.Column(_sql.DateTime, default=datetime.now(), onupdate=datetime.now())
     is_deleted = _sql.Column(_sql.Boolean, default=False)
     
 
@@ -111,8 +111,8 @@ class PrimaryJoint(_database.Base):
     joint_name = _sql.Column(_sql.String, nullable=False)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.now)
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = _sql.Column(_sql.DateTime, default=datetime.now())
+    updated_at = _sql.Column(_sql.DateTime, default=datetime.now(), onupdate=datetime.now())
     is_deleted = _sql.Column(_sql.Boolean, default=False)
 
 class ExercisePrimaryMuscle(_database.Base):
@@ -123,8 +123,8 @@ class ExercisePrimaryMuscle(_database.Base):
     muscle_id=_sql.Column(_sql.Integer)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.now)
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = _sql.Column(_sql.DateTime, default=datetime.now())
+    updated_at = _sql.Column(_sql.DateTime, default=datetime.now(), onupdate=datetime.now())
     is_deleted = _sql.Column(_sql.Boolean, default=False)
 
 class ExerciseSecondaryMuscle(_database.Base):
@@ -135,8 +135,8 @@ class ExerciseSecondaryMuscle(_database.Base):
     muscle_id=_sql.Column(_sql.Integer)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.now)
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = _sql.Column(_sql.DateTime, default=datetime.now())
+    updated_at = _sql.Column(_sql.DateTime, default=datetime.now(), onupdate=datetime.now())
     is_deleted = _sql.Column(_sql.Boolean, default=False)
 
 class ExercisePrimaryJoint(_database.Base):
@@ -147,8 +147,8 @@ class ExercisePrimaryJoint(_database.Base):
     primary_joint_id=_sql.Column(_sql.Integer)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.now)
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = _sql.Column(_sql.DateTime, default=datetime.now())
+    updated_at = _sql.Column(_sql.DateTime, default=datetime.now(), onupdate=datetime.now())
     is_deleted = _sql.Column(_sql.Boolean, default=False)
 
 class MET(_database.Base):
@@ -158,8 +158,8 @@ class MET(_database.Base):
     met_value = _sql.Column(_sql.String, nullable=False)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.now)
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = _sql.Column(_sql.DateTime, default=datetime.now())
+    updated_at = _sql.Column(_sql.DateTime, default=datetime.now(), onupdate=datetime.now())
     is_deleted = _sql.Column(_sql.Boolean, default=False)
 
 

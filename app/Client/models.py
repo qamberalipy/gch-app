@@ -1,11 +1,10 @@
-
 import sqlalchemy as _sql
 import sqlalchemy.orm as _orm
 import app.core.db.session as _database
 import bcrypt as _bcrypt
 import sqlalchemy.ext.declarative as _declarative
 from enum import Enum as PyEnum
-
+from datetime import datetime
 
 class ClientStatus(PyEnum):
     active='active'
@@ -46,8 +45,8 @@ class Client(_database.Base):
     check_in = _sql.Column(_sql.DateTime)
     last_online = _sql.Column(_sql.DateTime)
     client_since = _sql.Column(_sql.Date, nullable=False)
-    created_at = _sql.Column(_sql.DateTime)
-    updated_at = _sql.Column(_sql.DateTime)
+    created_at = _sql.Column(_sql.DateTime,default=datetime.now())
+    updated_at = _sql.Column(_sql.DateTime,default=datetime.now())
     created_by = _sql.Column(_sql.Integer)
     updated_by = _sql.Column(_sql.Integer)
     is_deleted = _sql.Column(_sql.Boolean, default=False)
@@ -58,11 +57,12 @@ class ClientMembership(_database.Base):
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
     client_id = _sql.Column(_sql.Integer)
     membership_plan_id = _sql.Column(_sql.Integer)
+    auto_renewal=_sql.Column(_sql.Boolean,default=False)
     prolongation_period = _sql.Column(_sql.Integer)
     auto_renew_days = _sql.Column(_sql.Integer)
     inv_days_cycle = _sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime)
-    updated_at = _sql.Column(_sql.DateTime)
+    created_at = _sql.Column(_sql.DateTime,default=datetime.now())
+    updated_at = _sql.Column(_sql.DateTime,default=datetime.now())
     created_by = _sql.Column(_sql.Integer)
     updated_by = _sql.Column(_sql.Integer)
     is_deleted= _sql.Column(_sql.Boolean, default=False)
@@ -73,6 +73,8 @@ class ClientOrganization(_database.Base):
     client_id = _sql.Column(_sql.Integer)
     org_id = _sql.Column(_sql.Integer)
     client_status=_sql.Column(_sql.Enum(ClientStatus))
+    created_at = _sql.Column(_sql.DateTime,default=datetime.now())
+    updated_at = _sql.Column(_sql.DateTime,default=datetime.now(),on_update=datetime.now())
     is_deleted= _sql.Column(_sql.Boolean, default=False)
     
     
@@ -81,4 +83,7 @@ class ClientCoach(_database.Base):
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     client_id = _sql.Column(_sql.Integer)
     coach_id = _sql.Column(_sql.Integer)
+    created_at = _sql.Column(_sql.DateTime,default=datetime.now())
+    updated_at = _sql.Column(_sql.DateTime,default=datetime.now(),on_update=datetime.now())
     is_deleted= _sql.Column(_sql.Boolean, default=False)
+    

@@ -477,6 +477,10 @@ def get_filtered_clients(
         _models.ClientOrganization.org_id,
         _models.ClientOrganization.client_status,
         _models.ClientMembership.membership_plan_id,
+        _models.ClientMembership.auto_renewal,
+        _models.ClientMembership.prolongation_period,	
+        _models.ClientMembership.auto_renew_days,	
+        _models.ClientMembership.inv_days_cycle,
         func.array_agg(
             func.json_build_object(
                 'id',func.coalesce(_models.ClientCoach.coach_id, 0),
@@ -502,7 +506,7 @@ def get_filtered_clients(
     ).group_by(
         _models.Client.id,
         _models.ClientOrganization.id,
-        _models.ClientMembership.membership_plan_id,
+        _models.ClientMembership.id,
         BusinessClient.id
     )
     

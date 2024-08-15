@@ -34,8 +34,8 @@ class MealPlan(_database.Base):
     protein=_sql.Column(_sql.Float)
     created_by = _sql.Column(_sql.Integer)
     updated_by =_sql.Column(_sql.Integer)
-    created_at =_sql.Column(_sql.DateTime, default=_dt.datetime.now)
-    updated_at =_sql.Column(_sql.DateTime, default=_dt.datetime.now)
+    created_at =_sql.Column(_sql.DateTime, default=_dt.datetime.now())
+    updated_at =_sql.Column(_sql.DateTime, default=_dt.datetime.now())
     is_deleted =_sql.Column(_sql.Boolean, default=False)
     
     
@@ -47,9 +47,9 @@ class Meal(_database.Base):
     food_id = _sql.Column(_sql.Integer)
     quantity = _sql.Column(_sql.Float)
     created_by = _sql.Column(_sql.Integer, nullable=True)
-    created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
+    created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now())
     updated_by = _sql.Column(_sql.Integer, nullable=True)
-    updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now, onupdate=_dt.datetime.now)
+    updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now(), onupdate=_dt.datetime.now())
     is_deleted = _sql.Column(_sql.Boolean, default=False)
     
 class MemberMealPlan(_database.Base):
