@@ -29,6 +29,10 @@ def get_db():
 
 @router.post("/coach", response_model=SharedCreateSchema,tags=["Coach API"])
 async def create_coach(coach: _schemas.CoachCreate, db: _orm.Session = Depends(get_db)):
+    
+    if not _helpers.validate_email(coach.email):
+        raise HTTPException(status_code=400, detail="Invalid email format")
+
     return await _services.create_coach(coach,db)
 
 @router.put("/coach",response_model = _schemas.CoachUpdate,tags=["Coach API"])
@@ -79,4 +83,3 @@ async def get_total_coaches(org_id: int, db: _orm.Session = Depends(get_db)):
         return {"total_coaches": total_coaches}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
-# 

@@ -33,6 +33,9 @@ def get_db():
 @router.post("/member",response_model=SharedCreateSchema, tags=["Member Router"])
 async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depends(get_db)):
     try:
+        if not _helpers.validate_email(client.email):
+            raise HTTPException(status_code=400, detail="Invalid email format")
+  
         db_client = await _services.get_client_by_email(client.email, db)
         if db_client:
             raise HTTPException(status_code=400, detail="Email already registered")

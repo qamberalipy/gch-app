@@ -35,6 +35,10 @@ def get_db():
 @router.post("/organizations", response_model=_schemas.OrganizationRead, tags=["Organizations API"])
 async def create_organization(org: _schemas.OrganizationCreate, db: _orm.Session = Depends(get_db)):
     try:
+        
+        if not _helpers.validate_email(org.email):
+            raise HTTPException(status_code=400, detail="Invalid email format")
+  
         new_org = await _services.create_organization(org, db)
         return new_org
     
@@ -58,6 +62,10 @@ async def get_organization(id: int, db: _orm.Session = Depends(get_db)):
 
 @router.put("/organizations", response_model=_schemas.OrganizationRead, tags=["Organizations API"])
 async def update_organization(org: _schemas.OrganizationUpdate, db: _orm.Session = Depends(get_db)):
+    
+    if not _helpers.validate_email(org.email):
+        raise HTTPException(status_code=400, detail="Invalid email format")
+
     updated_org = await _services.update_organization(org.id, org, db)
     if updated_org is None:
         raise HTTPException(status_code=404, detail="Organization not found")

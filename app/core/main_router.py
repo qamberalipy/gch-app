@@ -18,7 +18,7 @@ import app.user.schema as _schemas
 import app.user.models as _models
 import app.user.service as _services
 import app.core.db.session as _database
-
+import json
 import logging
 logger = logging.getLogger("uvicorn.error")
 logger.setLevel(logging.DEBUG)
@@ -61,6 +61,8 @@ async def register_user(user: _schemas.UserCreate, db: _orm.Session = Depends(ge
 
 @router.post("/login")
 async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_db)):
+    if not _helpers.validate_email(user.email):
+        raise HTTPException(status_code=400, detail="Invalid email format")
     
     print("user: ",user,"lockout_expiry: ",lockout_expiry,"login_attempts: ",login_attempts)
     if user.email in lockout_expiry and datetime.datetime.now() < lockout_expiry[user.email]:
@@ -87,6 +89,64 @@ async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_
         "user": user_data,
         "token": token
     }
+
+@router.post("/forget_password")
+async def forget_password(email: str, db: _orm.Session = Depends(get_db)):
+    try:
+        org_name,org_id, org_email, user = await _services.get_user_gym(email, db)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        user_data = {
+            "id": user.id,
+            "email": user.email,
+            "org_id" : org_id
+        }
+
+        # Convert to JSON
+        user_json = json.dumps(user_data)
+
+        # Generate a password reset token
+        token = _helpers.generate_password_reset_token(user_json)
+
+        html_body = _services.generate_password_reset_html(user.first_name, org_email, org_name, token)
+
+        # Send the password reset email
+        email_sent = _services.send_password_reset_email(user.email, "Password Reset Request", html_body)
+        if not email_sent:
+            raise HTTPException(status_code=500, detail="Failed to send email")
+
+        return JSONResponse(content={"message": "Password reset email sent successfully"}, status_code=200)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+@router.get("/reset_password/{token}")
+async def verify_token(token: str):
+    try:
+        payload = _helpers.verify_password_reset_token(token)
+        payload = json.loads(payload)
+
+        if payload:
+            return JSONResponse(content=payload, status_code=200)
+        else:
+            raise HTTPException(status_code=401, detail="Token has Expired.")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Invalid token.")
+     
+@router.post("/reset_password")
+async def reset_password(id: int, org_id : int, new_password: str, confirm_password: str ,db: _orm.Session = Depends(get_db)):
+    try:
+        if new_password != confirm_password:
+            raise HTTPException(status_code=400, detail="Passwords do not match")
+        
+        password = _services.hash_password(new_password)
+        # Update the user's password
+        user = await _services.update_user_password(id, org_id ,password, db)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return JSONResponse(content={"message": "Password reset successfully"}, status_code=200)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"{str(e)}")
 
 @router.post("/test_token")
 async def test_token(
@@ -115,6 +175,9 @@ async def read_sources(db: _orm.Session = Depends(get_db)):
 @router.post("/app/member/signup", response_model=ClientLoginResponse, tags=["App Router"])
 async def register_mobileclient(client: ClientCreateApp, db: _orm.Session = Depends(get_db)):
     try:
+        if not _helpers.validate_email(client.email):
+            raise HTTPException(status_code=400, detail="Invalid email format")
+        
         db_client = await _client_service.get_client_by_email(client.email, db)
        
         if db_client:
@@ -196,15 +259,22 @@ async def register_mobileclient(client: ClientCreateApp, db: _orm.Session = Depe
 @router.post("/app/member/login", response_model=ClientLoginResponse,  tags=["App Router"])
 async def login_client(client_data: ClientLogin, db: _orm.Session = Depends(get_db)):
     try:
+      if not _helpers.validate_email(client_data.email_address):
+        raise HTTPException(status_code=400, detail="Invalid email format")
       result = await _client_service.login_client(client_data.email_address, client_data.wallet_address, db)
       print("result",result)
       return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
-
+    except IntegrityError as e:
+        db.rollback()
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Duplicate entry or integrity constraint violation")
+      
 @router.post("/app/coach/signup", response_model=CoachLoginResponse,tags=["App Router"])
 async def create_mobilecoach(coach: CoachAppBase, db: _orm.Session = Depends(get_db)):
     try:
+        if not _helpers.validate_email(coach.email):
+            raise HTTPException(status_code=400, detail="Invalid email format")
+      
         db_coach =  await _coach_service.get_coach_by_email(coach.email, db)
         print("MY COACH",db_coach)
         if db_coach:
@@ -235,7 +305,14 @@ async def create_mobilecoach(coach: CoachAppBase, db: _orm.Session = Depends(get
 @router.post("/app/coach/login", response_model=CoachLoginResponse,  tags=["App Router"])
 async def login_coach(coach_data: CoachLogin, db: _orm.Session = Depends(get_db)):
     try:
+        if not _helpers.validate_email(coach_data.email_address):
+            raise HTTPException(status_code=400, detail="Invalid email format")
+      
         result = await _coach_service.login_coach(coach_data.email_address, coach_data.wallet_address, db)
         return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+   
+    except IntegrityError as e:
+        db.rollback()
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Duplicate entry or integrity constraint violation")
+  
