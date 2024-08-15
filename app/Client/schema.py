@@ -283,6 +283,10 @@ class ClientFilterRead(pydantic.BaseModel):
     muscle_percentage:Optional[float]=0.0
     client_status:ClientStatus
     membership_plan_id:int
+    auto_renewal:bool
+    prolongation_period:Optional[int]	
+    auto_renew_days:Optional[int]	
+    inv_days_cycle:Optional[int]
     phone: Optional[str]
     mobile_number: Optional[str]
     check_in: Optional[datetime.datetime]
