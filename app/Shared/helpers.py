@@ -55,9 +55,10 @@ def refresh_jwt(refresh_token: str):
         
         # if payload["user_type"] != "user":
         #     raise _fastapi.HTTPException(status_code=400, detail="Invalid user type")
-        
+        print("payload", payload)
         payload["token_time"] = time.time()
         token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+
         return dict(access_token=token, token_type="bearer")
     
     except jwt.ExpiredSignatureError:
