@@ -34,6 +34,9 @@ JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_EXPIRY = os.getenv("JWT_EXPIRY")
 LOCAL_BASE_URL = os.getenv("LOCAL_BASE_URL")
 BASE_URL = os.getenv("BASE_URL")
+SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
+SMTP_PORT = os.getenv("SMTP_PORT")
+SMTP_SERVER = os.getenv("SMTP_SERVER")
 
 oauth2schema = _security.OAuth2PasswordBearer(tokenUrl="api/login")
 def create_database():
@@ -423,9 +426,9 @@ def generate_password_reset_html(name: str ,email :str ,gym_name: str, token: st
 
 def send_password_reset_email(recipient_email: str, subject: str, html_body: str) -> bool:
     sender_email = "letsmove.project2024@gmail.com"
-    sender_password = "dtck chyi aasf ujod"
-    smtp_server = "smtp.gmail.com"
-    smtp_port = 587
+    sender_password = SENDER_PASSWORD
+    smtp_server = SMTP_SERVER
+    smtp_port = SMTP_PORT
 
     # Create a MIME multipart message
     msg = MIMEMultipart("alternative")
