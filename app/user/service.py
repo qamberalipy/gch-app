@@ -32,6 +32,7 @@ from email.mime.multipart import MIMEMultipart
 logger = logging.getLogger("uvicorn.error")
 JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_EXPIRY = os.getenv("JWT_EXPIRY")
+LOCAL_BASE_URL = os.getenv("LOCAL_BASE_URL")
 BASE_URL = os.getenv("BASE_URL")
 
 oauth2schema = _security.OAuth2PasswordBearer(tokenUrl="api/login")
@@ -385,7 +386,7 @@ def generate_password_reset_html(name: str ,email :str ,gym_name: str, token: st
                                                                             <tbody>
                                                                                 <tr>
                                                                                     <td align="center" style="border-radius: 3px;" bgcolor="#77DD77">
-                                                                                        <a href="{BASE_URL}/reset_password?token={token}" target="_blank" style="font-size: 20px; font-family: Helvetica, Arial, sans-serif; color: #ffffff; text-decoration: none; color: #ffffff; text-decoration: none; padding: 15px 25px; border-radius: 2px; border: 1px solid #77DD77; display: inline-block;">Reset Password</a>
+                                                                                        <a href="{LOCAL_BASE_URL}/reset_password?token={token}" target="_blank" style="font-size: 20px; font-family: Helvetica, Arial, sans-serif; color: #ffffff; text-decoration: none; color: #ffffff; text-decoration: none; padding: 15px 25px; border-radius: 2px; border: 1px solid #77DD77; display: inline-block;">Reset Password</a>
                                                                                     </td>
                                                                                 </tr>
                                                                             </tbody>
