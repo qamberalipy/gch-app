@@ -42,7 +42,7 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
 
         client_data = client.dict()
         organization_id = client_data.pop('org_id')
-        status = client_data.pop('status')
+        status = client_data.pop('client_status')
         coach_ids = client_data.pop('coach_id', [])
         membership_id = client_data.pop('membership_plan_id')
         prolongation_period=client_data.pop('prolongation_period')

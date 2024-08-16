@@ -39,7 +39,7 @@ class ClientCreate(ClientBase):
     org_id: int
     coach_id: Optional[List[int]] = []
     membership_plan_id: int
-    status: ClientStatus="active"  # Corrected type annotation
+    client_status: ClientStatus="active"  # Corrected type annotation
     send_invitation: bool
     auto_renewal:bool=False
     prolongation_period:Optional[int] = None
@@ -301,9 +301,6 @@ class ClientFilterRead(pydantic.BaseModel):
     business_name: Optional[str]
     coaches: Optional[List[Dict]] = []
     activated_on: Optional[datetime.date] = None
-    check_in: Optional[datetime.datetime] = None
-    last_online: Optional[datetime.datetime] = None
-    client_since: datetime.date
     created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
     created_by: Optional[int] = None
@@ -366,7 +363,7 @@ class ClientUpdate(pydantic.BaseModel):
     membership_plan_id: Optional[int] = None
     org_id: Optional[int] = None
     is_deleted:Optional[bool]=False
-    status: Optional[ClientStatus] = None
+    client_status: Optional[ClientStatus] = None
 
 
     class Config:

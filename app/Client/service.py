@@ -223,7 +223,7 @@ async def update_client(
     if not db_client_status:
         raise _fastapi.HTTPException(status_code=404, detail="Please enter correct organization of member")
         
-    db_client_status.client_status = client.status
+    db_client_status.client_status = client.client_status
     db_client.updated_at = datetime.datetime.now()
     db.commit()
     
