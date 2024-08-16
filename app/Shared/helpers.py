@@ -53,8 +53,8 @@ def refresh_jwt(refresh_token: str):
     try:
         payload = jwt.decode(refresh_token, JWT_SECRET, algorithms=["HS256"])
         
-        if payload["user_type"] != "user":
-            raise _fastapi.HTTPException(status_code=400, detail="Invalid user type")
+        # if payload["user_type"] != "user":
+        #     raise _fastapi.HTTPException(status_code=400, detail="Invalid user type")
         
         payload["token_time"] = time.time()
         token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
