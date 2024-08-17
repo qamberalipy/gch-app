@@ -92,33 +92,28 @@ async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_
 
 @router.post("/forget_password")
 async def forget_password(email: str, db: _orm.Session = Depends(get_db)):
-    try:
-        org_name,org_id, org_email, user = await _services.get_user_gym(email, db)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+    
+    org_name,org_id, org_email, user = await _services.get_user_gym(email, db)
+    
+    user_data = {
+        "id": user.id,
+        "email": user.email,
+        "org_id" : org_id
+    }
+    # Convert to JSON
+    user_json = json.dumps(user_data)
 
-        user_data = {
-            "id": user.id,
-            "email": user.email,
-            "org_id" : org_id
-        }
+    # Generate a password reset token
+    token = _helpers.generate_password_reset_token(user_json)
+    
+    html_body = _services.generate_password_reset_html(user.first_name, org_email, org_name, token)
 
-        # Convert to JSON
-        user_json = json.dumps(user_data)
+    # Send the password reset email
+    email_sent = _services.send_password_reset_email(user.email, "Password Reset Request", html_body)
+    if not email_sent:
+        raise HTTPException(status_code=500, detail="Failed to send email")
 
-        # Generate a password reset token
-        token = _helpers.generate_password_reset_token(user_json)
-
-        html_body = _services.generate_password_reset_html(user.first_name, org_email, org_name, token)
-
-        # Send the password reset email
-        email_sent = _services.send_password_reset_email(user.email, "Password Reset Request", html_body)
-        if not email_sent:
-            raise HTTPException(status_code=500, detail="Failed to send email")
-
-        return JSONResponse(content={"message": "Password reset email sent successfully"}, status_code=200)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+    return JSONResponse(content={"message": "Password reset email sent successfully"}, status_code=200)
 
 @router.get("/reset_password/{token}")
 async def verify_token(token: str):

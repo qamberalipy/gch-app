@@ -177,6 +177,13 @@ def generate_otp():
 async def get_user_by_email(email: str, db: _orm.Session = _fastapi.Depends(get_db)):
     return db.query(models.User).filter(models.User.email == email).first()
 
+async def get_filtered_user_by_email(email: str, db: _orm.Session = _fastapi.Depends(get_db)):
+    user =  db.query(models.User).filter(models.User.email == email, _models.User.is_deleted == False).first()
+    if user:
+        return user
+    else: 
+        raise HTTPException(status_code=404, detail="User not found")
+
 async def get_user_by_email_and_org(email: str, org_id: int,db: _orm.Session = _fastapi.Depends(get_db)):
     return db.query(models.User).filter(
         models.User.email == email,
@@ -184,11 +191,10 @@ async def get_user_by_email_and_org(email: str, org_id: int,db: _orm.Session = _
     ).first()
 
 async def get_user_gym(user_email: str, db: _orm.Session = _fastapi.Depends(get_db)):
-    user = await get_user_by_email(user_email, db)
+    user = await get_filtered_user_by_email(user_email, db)
     if user:
         org_name, org_id, org_email = db.query(_models.Organization.name, _models.Organization.id , models.Organization.email).filter(and_(_models.Organization.id == user.org_id, _models.User.is_deleted == False)).first()
         return org_name, org_id, org_email, user
-    return None
 
 async def get_alluser_data(email: str, db: _orm.Session = _fastapi.Depends(get_db)):
     # Retrieve a user by email from the database
