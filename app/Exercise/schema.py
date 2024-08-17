@@ -40,8 +40,8 @@ class Met(pydantic.BaseModel):
 
 class ExerciseFilterParams(pydantic.BaseModel):
     search_key: Optional[str] = None
-    category : Optional[int] = None
-    visible_for:Optional[VisibleFor]=None
+    category : Optional[List[int]] = None
+    visible_for:Optional[List[VisibleFor]]=None
     difficulty:Optional[Difficulty]=None
     exercise_type:Optional[ExerciseType]=None
     sort_key: Optional[str] = None

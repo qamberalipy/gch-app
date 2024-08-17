@@ -224,8 +224,8 @@ async def get_primary_joints(db: _orm.Session = _fastapi.Depends(get_db)):
 def get_filters(
 
     search_key: Annotated[str, _fastapi.Query(title="Search Key")] = None,
-    category: Annotated[int , _fastapi.Query(title="Category")] = None,
-    visible_for:Annotated[VisibleFor, _fastapi.Query(title="Visible For")] = None,
+    category: Annotated[list[int] , _fastapi.Query(title="Category")] = None,
+    visible_for:Annotated[list[VisibleFor], _fastapi.Query(title="Visible For")] = None,
     difficulty:Annotated[Difficulty, _fastapi.Query(title="Visible For")] = None,
     exercise_type:Annotated[ExerciseType, _fastapi.Query(title="Visible For")] = None,
     sort_key:Annotated[str, _fastapi.Query(title="Sort Key")] = None,
@@ -341,13 +341,13 @@ async def get_exercise(
             query = query.filter(Exercise.exercise_name.ilike(search_pattern))
 
         if params.category:
-            query = query.filter(Exercise.category_id == params.category)    
+            query = query.filter(Exercise.category_id.in_(params.category))    
 
         if params.difficulty:
             query = query.filter(Exercise.difficulty == params.difficulty)
 
         if params.visible_for:
-            query=query.filter(Exercise.visible_for == params.visible_for) 
+            query=query.filter(Exercise.visible_for.in_(params.visible_for)) 
 
         if params.exercise_type:
             query = query.filter(Exercise.exercise_type == params.exercise_type)      
