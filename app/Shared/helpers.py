@@ -84,4 +84,4 @@ def verify_password_reset_token(token: str):
         raise HTTPException(status_code=401, detail="Token has expired")
     except Exception as e:
         logging.error(f"Error verifying password reset token: {e}")
-        raise _fastapi.HTTPException(status_code=500, detail="Internal Server Error")
+        raise _fastapi.HTTPException(status_code=400, detail="Invalid Token.")
