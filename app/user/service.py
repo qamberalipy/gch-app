@@ -536,9 +536,9 @@ def get_filtered_staff(org_id: int, params: _schemas.StaffFilterParams,db:_orm.S
             models.User.last_name.ilike(f"%{params.staff_name}%")
         ))
 
-    if params.role_name:
-        query = query.filter(models.Role.name.ilike(f"%{params.role_name}%"))
-
+    if params.role_id:
+        query = query.filter(models.Role.id.in_(params.role_id))
+        
     if params.status:
         query = query.filter(models.User.status == params.status)    
 
@@ -847,7 +847,7 @@ def get_filters(
 
     search_key: Annotated[str, _fastapi.Query(title="Search Key")] = None,
     staff_name: Annotated[str , _fastapi.Query(title="Staff Name")] = None,
-    role_name: Annotated[str,_fastapi.Query(title="Role Name")]=None,
+    role_id: Annotated[list[int],_fastapi.Query(title="Role Name")]=None,
     sort_key: Annotated[str,_fastapi.Query(title="Sort Key")]=None,
     status: Annotated[StaffStatus,_fastapi.Query(title="Status")]=None,
     sort_order: Annotated[str,_fastapi.Query(title="Sort Order")]="desc",
@@ -860,7 +860,7 @@ def get_filters(
         sort_order=sort_order,
         status=status,
         staff_name=staff_name,
-        role_name=role_name,
+        role_id=role_id,
         limit=limit,
         offset = offset
     )

@@ -69,7 +69,7 @@ async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_
     
     print("user: ",user,"lockout_expiry: ",lockout_expiry,"login_attempts: ",login_attempts)
     if user.email in lockout_expiry and datetime.datetime.now() < lockout_expiry[user.email]:
-        raise HTTPException(status_code=403, detail="Account locked. Try again later.")
+        raise HTTPException(status_code=403, detail="Your account has been locked due to multiple unsuccessful sign-in attempts. Please reset your password.")
 
     authenticated_user = await _services.authenticate_user(user.email, user.password, db)
     if not authenticated_user:
@@ -79,7 +79,7 @@ async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_
             # Lock the account if maximum attempts are reached
             lockout_expiry[user.email] = datetime.datetime.now() + LOCKOUT_TIME
             login_attempts[user.email] = 0
-            raise HTTPException(status_code=403, detail="Account locked. Try again later.")
+            raise HTTPException(status_code=403, detail="Your account has been locked due to multiple unsuccessful sign-in attempts. Please reset your password.")
 
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
@@ -94,9 +94,9 @@ async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_
     }
 
 @router.post("/forget_password")
-async def forget_password(email: str, db: _orm.Session = Depends(get_db)):
+async def forget_password(staff : _schemas.ForgetPasswordRequest ,db: _orm.Session = Depends(get_db)):
     
-    org_name,org_id, org_email, user = await _services.get_user_gym(email, db)
+    org_name,org_id, org_email, user = await _services.get_user_gym(staff.email, db)
     
     user_data = {
         "id": user.id,
@@ -120,31 +120,32 @@ async def forget_password(email: str, db: _orm.Session = Depends(get_db)):
 
 @router.get("/reset_password/{token}")
 async def verify_token(token: str):
-    try:
-        payload = _helpers.verify_password_reset_token(token)
-        payload = json.loads(payload)
 
-        if payload:
-            return JSONResponse(content=payload, status_code=200)
-        else:
-            raise HTTPException(status_code=401, detail="Token has Expired.")
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Invalid token.")
+    payload = _helpers.verify_password_reset_token(token)
+    payload = json.loads(payload)
+
+    if payload:
+        return JSONResponse(content=payload, status_code=200)
+    else:
+        raise HTTPException(status_code=401, detail="Token has Expired.")
      
 @router.post("/reset_password")
-async def reset_password(id: int, org_id : int, new_password: str, confirm_password: str ,db: _orm.Session = Depends(get_db)):
-    try:
-        if new_password != confirm_password:
-            raise HTTPException(status_code=400, detail="Passwords do not match")
-        
-        password = _services.hash_password(new_password)
-        # Update the user's password
-        user = await _services.update_user_password(id, org_id ,password, db)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        return JSONResponse(content={"message": "Password reset successfully"}, status_code=200)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"{str(e)}")
+async def reset_password(user : _schemas.ResetPasswordRequest, db: _orm.Session = Depends(get_db)):
+
+    data = _helpers.verify_password_reset_token(user.token)
+    if data is None:
+        raise HTTPException(status_code=400, detail="Invalid Token.")
+    
+    if user.new_password != user.confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
+    
+    password = _services.hash_password(user.new_password)
+    # Update the user's password
+    user = await _services.update_user_password(user.id, user.org_id ,password, db)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return JSONResponse(content={"message": "Password reset successfully"}, status_code=200)
+
 
 @router.post("/test_token")
 async def test_token(

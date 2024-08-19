@@ -42,7 +42,17 @@ class GenerateOtp(pydantic.BaseModel):
 class VerifyOtp(pydantic.BaseModel):
     email: str
     otp: int
-        
+
+class ForgetPasswordRequest(pydantic.BaseModel):
+    email : str
+    
+class ResetPasswordRequest(pydantic.BaseModel):
+    id : int
+    org_id : int
+    new_password : str
+    confirm_password : str
+    token : str
+    
 class BankAccountCreate(pydantic.BaseModel):
     bank_account_number: str
     bic_swift_code: str
@@ -249,7 +259,7 @@ class UpdateStaff(pydantic.BaseModel):
 class StaffFilterParams(pydantic.BaseModel):
     search_key: Optional[str] = None
     staff_name: Optional[str] = None
-    role_name: Optional[str] = None
+    role_id: Optional[List[int]] = None
     sort_key:Optional[str]=None
     status:Optional[StaffStatus]=None
     sort_order: Optional[str] = "desc"
