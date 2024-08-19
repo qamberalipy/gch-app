@@ -128,7 +128,8 @@ class getPrivileges(pydantic.BaseModel):
     id:int
     name:str
     
-    
+class verify_token(pydantic.BaseModel):
+    token:str
     
 class CountryRead(pydantic.BaseModel):
     id: int

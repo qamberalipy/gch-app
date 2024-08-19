@@ -51,20 +51,20 @@ def verify_jwt(token: str, obj_type: str = "User"):
 
 def refresh_jwt(refresh_token: str):
     try:
-        payload = jwt.decode(refresh_token, JWT_SECRET, algorithms=["HS256"])
         
+        payload = jwt.decode(refresh_token, JWT_SECRET, algorithms=["HS256"])
         # if payload["user_type"] != "user":
         #     raise _fastapi.HTTPException(status_code=400, detail="Invalid user type")
         print("payload", payload)
-        payload["token_time"] = time.time()
+        payload['token_time'] = time.time()
         token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
 
         return dict(access_token=token, token_type="bearer")
     
     except jwt.ExpiredSignatureError:
-        raise _fastapi.HTTPException(status_code=400, detail="Refresh token expired")
+        raise _fastapi.HTTPException(status_code=400, detail=f'Refresh token expired {refresh_token}')
     except jwt.InvalidTokenError:
-        raise _fastapi.HTTPException(status_code=400, detail="Invalid refresh token")
+        raise _fastapi.HTTPException(status_code=400, detail=f'Invalid refresh token {refresh_token}')
     
 def generate_password_reset_token(user_data_json):
     

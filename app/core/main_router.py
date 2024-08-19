@@ -1,5 +1,6 @@
 import datetime
 from typing import Dict, List
+from urllib import request
 from fastapi import APIRouter, Depends, HTTPException, Header
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
@@ -35,8 +36,10 @@ def healthcheck():
     return JSONResponse(content=jsonable_encoder({"status": "Healthy yayy!"}))
 
 @router.post("/refresh_token", tags=["Auth"])
-async def refresh_token(refresh_token: str = Header(None, alias="refresh_token")):
-    return _helpers.refresh_jwt(refresh_token)
+async def refresh_token(token_body:_schemas.verify_token):
+ 
+    print("This is my refresh token:", token_body.token)
+    return _helpers.refresh_jwt(token_body.token)
 
 @router.post("/register/admin")
 async def register_user(user: _schemas.UserCreate, db: _orm.Session = Depends(get_db)):
