@@ -36,6 +36,7 @@ def healthcheck():
 
 @router.post("/refresh_token", tags=["Auth"])
 async def refresh_token(refresh_token: str = Header(None, alias="refresh_token")):
+    print("This is my refresh token: ",refresh_token)
     return _helpers.refresh_jwt(refresh_token)
 
 @router.post("/register/admin")
