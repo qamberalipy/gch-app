@@ -5,9 +5,19 @@ from app.MealPlan.models import VisibleForEnum, MealTimeEnum
 
 
 class MealBase(BaseModel):
-    meal_time: Optional[MealTimeEnum] = None
+    meal_time: str
     food_id: Optional[int] = None
     quantity: Optional[float] = None
+    
+    @field_validator('meal_time', mode='before')
+    def map_visible_for(cls, value):
+        if value == 'Afternoon Snack':
+            return MealTimeEnum.Afternoon_Snack
+        elif value == 'Evening Snack':
+            return MealTimeEnum.Evening_Snack
+        elif value == 'Morning Snack':
+            return MealTimeEnum.Morning_Snack
+        return value
 
 class CreateMeal(MealBase):
     pass
