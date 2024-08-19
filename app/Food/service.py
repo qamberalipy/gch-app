@@ -62,7 +62,7 @@ async def delete_food(food_id: int, db: _orm.Session):
     return db_food
 
 async def get_all_foods(db: _orm.Session,org_id:int):
-    return db.query(_models.Food.id,_models.Food.name).filter(
+    return db.query(_models.Food.id,_models.Food.name,_models.Food.img_url,_models.Food.is_validated).filter(
             _models.Food.org_id == org_id).order_by(
             desc(_models.Food.created_at)).all()
 
