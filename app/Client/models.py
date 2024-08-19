@@ -44,7 +44,7 @@ class Client(_database.Base):
     muscle_percentage= _sql.Column(_sql.Float)
     check_in = _sql.Column(_sql.DateTime)
     last_online = _sql.Column(_sql.DateTime)
-    client_since = _sql.Column(_sql.Date, nullable=False)
+    client_since = _sql.Column(_sql.Date)
     created_at = _sql.Column(_sql.DateTime,default=datetime.now())
     updated_at = _sql.Column(_sql.DateTime,default=datetime.now())
     created_by = _sql.Column(_sql.Integer)
