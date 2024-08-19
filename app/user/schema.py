@@ -248,7 +248,7 @@ class UpdateStaff(pydantic.BaseModel):
 class StaffFilterParams(pydantic.BaseModel):
     search_key: Optional[str] = None
     staff_name: Optional[str] = None
-    role_name: Optional[str] = None
+    role_id: Optional[List[int]] = None
     sort_key:Optional[str]=None
     status:Optional[StaffStatus]=None
     sort_order: Optional[str] = "desc"
