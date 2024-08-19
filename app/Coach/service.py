@@ -256,7 +256,7 @@ async def create_coach(coach: _schemas.CoachCreate, db: _orm.Session=_fastapi.De
 
 
 def get_coach_list(org_id:int,db: _orm.Session = _fastapi.Depends(get_db)):
-    query=db.query(_models.Coach.id,func.concat(_models.Coach.first_name,' ',_models.Coach.last_name).label('name')).join(_models.CoachOrganization,_models.Coach.id == _models.CoachOrganization.coach_id and _models.CoachOrganization.is_deleted == False).filter(and_(_models.CoachOrganization.org_id == org_id, _models.Coach.is_deleted == False))
+    query=db.query(_models.Coach.id,func.concat(_models.Coach.first_name,' ',_models.Coach.last_name).label('name')).outerjoin(_models.CoachOrganization,_models.Coach.id == _models.CoachOrganization.coach_id and _models.CoachOrganization.is_deleted == False).filter(and_(_models.CoachOrganization.org_id == org_id, _models.Coach.is_deleted == False))
     return query
 
 def update_bank_detail(coach: _schemas.CoachUpdate, db: _orm.Session, db_coach):
@@ -537,15 +537,14 @@ def get_all_coaches_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Co
         func.array_agg(func.coalesce(ClientCoach.client_id, 0)).label('members')
     ).select_from(_models.Coach).join(
         CoachOrg, _models.Coach.id == CoachOrg.coach_id
-    ).join(
+    ).outerjoin(
         BankDetail, _models.Coach.bank_detail_id == BankDetail.id
-    ).join(
+    ).outerjoin(
         ClientCoach, ClientCoach.coach_id == _models.Coach.id
-    ).join(
-        Client, Client.id == ClientCoach.client_id
+    ).outerjoin(
+        Client,and_(Client.id == ClientCoach.client_id,Client.is_deleted==False)
     ).filter(
         _models.Coach.is_deleted == False,
-        Client.is_deleted == False,
         CoachOrg.org_id == org_id
     ).group_by(
         _models.Coach.id,
