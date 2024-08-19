@@ -62,9 +62,9 @@ def refresh_jwt(refresh_token: str):
         return dict(access_token=token, token_type="bearer")
     
     except jwt.ExpiredSignatureError:
-        raise _fastapi.HTTPException(status_code=400, detail=f'Refresh token expired {refresh_token}')
+        raise _fastapi.HTTPException(status_code=400, detail='Refresh token expired. ')
     except jwt.InvalidTokenError:
-        raise _fastapi.HTTPException(status_code=400, detail=f'Invalid refresh token {refresh_token}')
+        raise _fastapi.HTTPException(status_code=400, detail='Invalid refresh token. ')
     
 def generate_password_reset_token(user_data_json):
     
