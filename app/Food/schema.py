@@ -153,6 +153,8 @@ class FoodFilterParams(pydantic.BaseModel):
 class FoodListResponse(pydantic.BaseModel):
     id: Optional[int] = 0
     name: Optional[str] = None
+    img_url : Optional[str] = None
+    is_validated : Optional[bool] = False
 
 class FoodCreateResponse(pydantic.BaseModel):
     id: int

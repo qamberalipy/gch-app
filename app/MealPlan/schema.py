@@ -29,17 +29,23 @@ class MealPlanBase(BaseModel):
     profile_img: Optional[str]
     visible_for: VisibleForEnum
     description: Optional[str]
-
+    
 class CreateMealPlan(MealPlanBase):
     meals: List[CreateMeal]
     member_ids: List[int]
     created_at: Optional[datetime.datetime] = datetime.datetime.now()
-
+    carbs: float
+    protein: float
+    fats: float
+    
     class Config:
         from_attributes = True
 
 class ReadMealPlan(MealPlanBase):
     id: int
+    carbs : float
+    protein: float
+    fats : float
 
 class UpdateMealPlan(BaseModel):
     id: int
@@ -48,6 +54,9 @@ class UpdateMealPlan(BaseModel):
     profile_img: Optional[str] = None
     visible_for: Optional[VisibleForEnum] = None
     description: Optional[str] = None
+    carbs : Optional[float] = None
+    protein : Optional[float] = None
+    fats : Optional[float] = None
     meals: Optional[List[CreateMeal]] = []
     member_id : Optional[List[int]] = []
     updated_by: Optional[int] = None
@@ -88,6 +97,9 @@ class ShowMealPlan(BaseModel):
     description: Optional[str] = None
     meals: Optional[List[CreateMeal]] = []
     member_id : Optional[List[int]] = []
+    carbs : Optional[float] = None
+    protein : Optional[float] = None
+    fats : Optional[float] = None
     created_by: Optional[int] = None
     created_at: Optional[datetime.datetime] = None
     updated_by: Optional[int] = None

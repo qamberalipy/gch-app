@@ -40,6 +40,13 @@ def get_meal_plan_by_id(id: int, db: _orm.Session):
         _models.MealPlan.visible_for,
         _models.MealPlan.description,
         _models.MealPlan.org_id,
+        _models.MealPlan.carbs,
+        _models.MealPlan.protein,
+        _models.MealPlan.fats,
+        _models.MealPlan.created_by,
+        _models.MealPlan.created_at,
+        _models.MealPlan.updated_by,
+        _models.MealPlan.updated_at,
         func.array_agg(
             func.json_build_object(
                 'id', _models.Meal.id,
@@ -49,7 +56,7 @@ def get_meal_plan_by_id(id: int, db: _orm.Session):
             )
         ).label('meals'),
         member_ids_subquery.label('member_id')
-    ).join(
+    ).outerjoin(
         _models.Meal, _models.MealPlan.id == _models.Meal.meal_plan_id
     ).filter(
         _models.MealPlan.id == id,
@@ -82,6 +89,13 @@ def get_meal_plans_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Mea
         _models.MealPlan.visible_for,
         _models.MealPlan.description,
         _models.MealPlan.org_id,
+        _models.MealPlan.carbs,
+        _models.MealPlan.protein,
+        _models.MealPlan.fats,
+        _models.MealPlan.created_by,
+        _models.MealPlan.created_at,
+        _models.MealPlan.updated_by,
+        _models.MealPlan.updated_at,
         func.array_agg(
             func.json_build_object(
                 'id', _models.Meal.id,
@@ -111,8 +125,6 @@ def get_meal_plans_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Mea
             sort_order = desc(params.sort_key) if params.sort_order == "desc" else asc(params.sort_key)
             query=query.order_by(sort_order)    
     
-            
-            
     if params.visible_for:
         query = query.filter(_models.MealPlan.visible_for == params.visible_for)
 
@@ -133,6 +145,7 @@ def get_meal_plans_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Mea
 def create_meal_plan(meal_plan: _schemas.CreateMealPlan, db: _orm.Session):
     # Remove the 'meals' field from the meal plan dictionary if it exists
     meal_plan_dict = meal_plan.dict(exclude={'meals','member_ids'})
+    print("meal_plan_dict",meal_plan_dict)
     db_meal_plan = _models.MealPlan(**meal_plan_dict)
     db.add(db_meal_plan)
     db.commit()
@@ -162,59 +175,62 @@ def update_meal_plan(meal_plan_id: int, meal_plan: _schemas.UpdateMealPlan, db: 
         for key, value in meal_plan.dict(exclude={'meals', 'member_id'}, exclude_unset=True).items():
             setattr(db_meal_plan, key, value)
 
-        # Retrieve existing meals and member meal plans
-        existing_meals = db.query(_models.Meal).filter(_models.Meal.meal_plan_id == meal_plan_id).all()
-        existing_member_meal_plans = db.query(_models.MemberMealPlan).filter(_models.MemberMealPlan.meal_plan_id == meal_plan_id).all()
+        if meal_plan.meals:
+            # Retrieve existing meals and member meal plans
+            existing_meals = db.query(_models.Meal).filter(_models.Meal.meal_plan_id == meal_plan_id).all()
+        
+            # Create dictionaries for easy lookup
+            existing_meal_map = {(meal.meal_time, meal.food_id): meal for meal in existing_meals}
+            new_meal_map = {(meal.meal_time, meal.food_id): meal for meal in meal_plan.meals}
 
-        # Create dictionaries for easy lookup
-        existing_meal_map = {(meal.meal_time, meal.food_id): meal for meal in existing_meals}
-        new_meal_map = {(meal.meal_time, meal.food_id): meal for meal in meal_plan.meals}
+            # Identify meals to be deleted and added/updated
+            meals_to_delete = [meal for key, meal in existing_meal_map.items() if key not in new_meal_map]
+            meals_to_add_or_update = []
 
-        # Identify meals to be deleted and added/updated
-        meals_to_delete = [meal for key, meal in existing_meal_map.items() if key not in new_meal_map]
-        meals_to_add_or_update = []
+            for key, new_meal in new_meal_map.items():
+                if key in existing_meal_map:
+                    existing_meal = existing_meal_map[key]
+                    if existing_meal.quantity != new_meal.quantity:
+                        existing_meal.quantity = new_meal.quantity
+                else:
+                    meals_to_add_or_update.append(_models.Meal(
+                        meal_time=new_meal.meal_time,
+                        food_id=new_meal.food_id,
+                        quantity=new_meal.quantity,
+                        meal_plan_id=meal_plan_id
+                    ))
 
-        for key, new_meal in new_meal_map.items():
-            if key in existing_meal_map:
-                existing_meal = existing_meal_map[key]
-                if existing_meal.quantity != new_meal.quantity:
-                    existing_meal.quantity = new_meal.quantity
-            else:
-                meals_to_add_or_update.append(_models.Meal(
-                    meal_time=new_meal.meal_time,
-                    food_id=new_meal.food_id,
-                    quantity=new_meal.quantity,
-                    meal_plan_id=meal_plan_id
-                ))
+            if meals_to_delete:
+                db.query(_models.Meal).filter(
+                    _models.Meal.meal_plan_id == meal_plan_id,
+                    _models.Meal.food_id.in_([meal.food_id for meal in meals_to_delete]),
+                    _models.Meal.meal_time.in_([meal.meal_time for meal in meals_to_delete])
+                ).delete(synchronize_session=False)
 
-        if meals_to_delete:
-            db.query(_models.Meal).filter(
-                _models.Meal.meal_plan_id == meal_plan_id,
-                _models.Meal.food_id.in_([meal.food_id for meal in meals_to_delete]),
-                _models.Meal.meal_time.in_([meal.meal_time for meal in meals_to_delete])
-            ).delete(synchronize_session=False)
+            if meals_to_add_or_update:
+                db.bulk_save_objects(meals_to_add_or_update)
 
-        if meals_to_add_or_update:
-            db.bulk_save_objects(meals_to_add_or_update)
-
+        if meal_plan.member_id: 
         # Update member meal plans
-        existing_member_ids = {mmp.member_id for mmp in existing_member_meal_plans}
-        new_member_ids = set(meal_plan.member_id)
+            existing_member_meal_plans = db.query(_models.MemberMealPlan).filter(_models.MemberMealPlan.meal_plan_id == meal_plan_id).all()
+        
+            existing_member_ids = {mmp.member_id for mmp in existing_member_meal_plans}
+            new_member_ids = set(meal_plan.member_id)
 
-        members_to_delete = existing_member_ids - new_member_ids
-        members_to_add = new_member_ids - existing_member_ids
+            members_to_delete = existing_member_ids - new_member_ids
+            members_to_add = new_member_ids - existing_member_ids
 
-        if members_to_delete:
-            db.query(_models.MemberMealPlan).filter(
-                _models.MemberMealPlan.meal_plan_id == meal_plan_id,
-                _models.MemberMealPlan.member_id.in_(members_to_delete)
-            ).delete(synchronize_session=False)
+            if members_to_delete:
+                db.query(_models.MemberMealPlan).filter(
+                    _models.MemberMealPlan.meal_plan_id == meal_plan_id,
+                    _models.MemberMealPlan.member_id.in_(members_to_delete)
+                ).delete(synchronize_session=False)
 
-        if members_to_add:
-            db.bulk_save_objects([_models.MemberMealPlan(
-                meal_plan_id=meal_plan_id,
-                member_id=member_id
-            ) for member_id in members_to_add])
+            if members_to_add:
+                db.bulk_save_objects([_models.MemberMealPlan(
+                    meal_plan_id=meal_plan_id,
+                    member_id=member_id
+                ) for member_id in members_to_add])
 
         db.commit()
         db.refresh(db_meal_plan)
