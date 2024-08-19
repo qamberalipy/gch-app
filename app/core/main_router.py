@@ -65,7 +65,7 @@ async def register_user(user: _schemas.UserCreate, db: _orm.Session = Depends(ge
 @router.post("/login")
 async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_db)):
     if not _helpers.validate_email(user.email):
-        raise HTTPException(status_code=400, detail="Invalid email format")
+        raise HTTPException(status_code=400, detail="Incorrect email format")
     
     print("user: ",user,"lockout_expiry: ",lockout_expiry,"login_attempts: ",login_attempts)
     if user.email in lockout_expiry and datetime.datetime.now() < lockout_expiry[user.email]:
@@ -81,7 +81,7 @@ async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_
             login_attempts[user.email] = 0
             raise HTTPException(status_code=403, detail="Your account has been locked due to multiple unsuccessful sign-in attempts. Please reset your password.")
 
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(status_code=401, detail="Incorrect email or password.")
 
     login_attempts[user.email] = 0
     user_obj = UserBase.model_validate(authenticated_user)
