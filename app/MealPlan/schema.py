@@ -9,16 +9,6 @@ class MealBase(BaseModel):
     food_id: Optional[int] = None
     quantity: Optional[float] = None
     
-    @field_validator('meal_time', mode='before')
-    def map_visible_for(cls, value):
-        if value == 'Afternoon Snack':
-            return MealTimeEnum.Afternoon_Snack
-        elif value == 'Evening Snack':
-            return MealTimeEnum.Evening_Snack
-        elif value == 'Morning Snack':
-            return MealTimeEnum.Morning_Snack
-        return value
-
 class CreateMeal(MealBase):
     pass
 
