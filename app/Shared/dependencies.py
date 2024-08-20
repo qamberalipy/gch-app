@@ -18,7 +18,7 @@ def get_db():
         db.close()
 
 
-async def get_user(request: Request):  # , db: Annotated[Session, Depends(get_db)]):
+async def get_user(request: Request, db: Annotated[Session, Depends(get_db)]):
     return request.state.user
 
 

@@ -33,6 +33,7 @@ class ClientBase(pydantic.BaseModel):
     client_since: Optional[datetime.date] = None
     created_at: Optional[datetime.datetime] = None
     created_by: Optional[int] = None
+    updated_by:Optional[int]=None
 
 
 class ClientCreate(ClientBase):

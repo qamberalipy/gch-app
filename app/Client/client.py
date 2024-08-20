@@ -6,6 +6,7 @@ import sqlalchemy.orm as _orm
 import app.Client.models as _models
 import app.Client.service as _services
 import app.Client.schema as _schemas
+from app.Shared.dependencies import get_user
 import app.user.service as _user_service
 import app.Shared.helpers as _helpers
 # from main import logger
@@ -31,11 +32,11 @@ def get_db():
         db.close()
         
 @router.post("/member",response_model=SharedCreateSchema, tags=["Member Router"])
-async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depends(get_db)):
+async def register_client(client: _schemas.ClientCreate,request:Request,db: _orm.Session = Depends(get_db)):
     try:
         if not _helpers.validate_email(client.email):
             raise HTTPException(status_code=400, detail="Invalid email format")
-  
+        user_id=request.state.user.get('id')
         db_client = await _services.get_client_by_email(client.email, db)
         if db_client:
             raise HTTPException(status_code=400, detail="Email already registered")
@@ -49,6 +50,8 @@ async def register_client(client: _schemas.ClientCreate, db: _orm.Session = Depe
         auto_renew_days=client_data.pop('auto_renew_days')
         inv_days_cycle=client_data.pop('inv_days_cycle')
         auto_renewal=client_data.pop('auto_renewal')
+        client_data['created_by']=user_id
+        client_data['updated_by']=user_id
 
 
         new_client = await _services.create_client(_schemas.RegisterClient(**client_data), db)
@@ -136,7 +139,6 @@ async def delete_client(id:int, db: _orm.Session = Depends(get_db)):
 @router.get("/member/{id}", response_model=_schemas.ClientByID, tags=["Member Router"])
 async def get_client_by_id(id: int, db:  _orm.Session = Depends(get_db)):
     try:    
-        
         client = await _services.get_client_byid(db=db, client_id=id)
         if not client:
             raise HTTPException(status_code=404, detail="Client not found")

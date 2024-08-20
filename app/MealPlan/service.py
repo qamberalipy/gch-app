@@ -111,8 +111,7 @@ def get_meal_plans_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Mea
         _models.MealPlan.org_id == org_id,
         _models.MealPlan.is_deleted == False
     ).order_by(sort_order).group_by(
-        _models.MealPlan.id
-    )
+        _models.MealPlan.id)
     if params.search_key:
         search_pattern = f"%{params.search_key}%"
         query = query.filter(or_(
