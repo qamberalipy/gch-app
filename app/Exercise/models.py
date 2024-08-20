@@ -77,10 +77,6 @@ class ExerciseEquipment(_database.Base):
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     exercise_id=_sql.Column(_sql.Integer, index=True)
     equipment_id=_sql.Column(_sql.Integer)
-    created_by=_sql.Column(_sql.Integer)
-    updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.now())
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.now(), onupdate=datetime.now())
     is_deleted= _sql.Column(_sql.Boolean, default=False)
 class ExerciseCategory(_database.Base):
     __tablename__ = 'exercise_category'
@@ -97,10 +93,6 @@ class Muscle(_database.Base):
 
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     muscle_name = _sql.Column(_sql.String, nullable=False)
-    created_by=_sql.Column(_sql.Integer)
-    updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.now())
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.now(), onupdate=datetime.now())
     is_deleted = _sql.Column(_sql.Boolean, default=False)
     
 
@@ -109,10 +101,6 @@ class PrimaryJoint(_database.Base):
 
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     joint_name = _sql.Column(_sql.String, nullable=False)
-    created_by=_sql.Column(_sql.Integer)
-    updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.now())
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.now(), onupdate=datetime.now())
     is_deleted = _sql.Column(_sql.Boolean, default=False)
 
 class ExercisePrimaryMuscle(_database.Base):
@@ -121,10 +109,6 @@ class ExercisePrimaryMuscle(_database.Base):
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     exercise_id=_sql.Column(_sql.Integer)
     muscle_id=_sql.Column(_sql.Integer)
-    created_by=_sql.Column(_sql.Integer)
-    updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.now())
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.now(), onupdate=datetime.now())
     is_deleted = _sql.Column(_sql.Boolean, default=False)
 
 class ExerciseSecondaryMuscle(_database.Base):
@@ -133,10 +117,6 @@ class ExerciseSecondaryMuscle(_database.Base):
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     exercise_id=_sql.Column(_sql.Integer)
     muscle_id=_sql.Column(_sql.Integer)
-    created_by=_sql.Column(_sql.Integer)
-    updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.now())
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.now(), onupdate=datetime.now())
     is_deleted = _sql.Column(_sql.Boolean, default=False)
 
 class ExercisePrimaryJoint(_database.Base):
@@ -145,10 +125,6 @@ class ExercisePrimaryJoint(_database.Base):
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     exercise_id=_sql.Column(_sql.Integer)
     primary_joint_id=_sql.Column(_sql.Integer)
-    created_by=_sql.Column(_sql.Integer)
-    updated_by=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=datetime.now())
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.now(), onupdate=datetime.now())
     is_deleted = _sql.Column(_sql.Boolean, default=False)
 
 class MET(_database.Base):

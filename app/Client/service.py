@@ -208,6 +208,7 @@ async def get_business_clients(
 async def update_client(
     client_id: int,
     client: _schemas.ClientUpdate,
+    user_id,
     db: _orm.Session = _fastapi.Depends(get_db),
 ):
     db_client = db.query(_models.Client).filter(and_(_models.Client.id == client_id,_models.Client.is_deleted == False)).first()
@@ -224,6 +225,7 @@ async def update_client(
         raise _fastapi.HTTPException(status_code=404, detail="Please enter correct organization of member")
         
     db_client_status.client_status = client.client_status
+    db_client.updated_by=user_id
     db_client.updated_at = datetime.datetime.now()
     db.commit()
     

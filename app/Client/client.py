@@ -86,11 +86,11 @@ async def register_client(client: _schemas.ClientCreate,request:Request,db: _orm
 
     
 @router.put("/member",response_model = _schemas.ClientUpdate, tags=["Member Router"])
-async def update_client(client: _schemas.ClientUpdate, db: _orm.Session = Depends(get_db)):
+async def update_client(client: _schemas.ClientUpdate,request:Request, db: _orm.Session = Depends(get_db)):
     try:
 
-        
-        updated_client = await _services.update_client(client.id, client, db)
+        user_id=request.state.user.get('id')
+        updated_client = await _services.update_client(client.id, client,user_id,db)
         
         if client.membership_plan_id is not None:
             membership = _schemas.ClientMembership(
