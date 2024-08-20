@@ -91,7 +91,7 @@ def get_filters(
     status: Annotated[str | None, Query(title="Status")] = None,
     sort_key: Annotated[str | None, Query(title="Sort Key")] = None,
     sort_order: Annotated[str,Query(title="Sorting Order")] = 'desc',
-    food_nutrients: Annotated[str, Query(description="Food/Category")] = None,
+    # food_nutrients: Annotated[str, Query(description="Food/Category")] = None,
     limit: Annotated[int, Query(description="Pagination Limit")] = None,
     offset: Annotated[int, Query(description="Pagination offset")] = None
 ):
@@ -101,7 +101,7 @@ def get_filters(
         status=status,
         sort_key=sort_key,
         sort_order=sort_order,
-        food_nutrients = food_nutrients,
+        # food_nutrients = food_nutrients,
         limit=limit,
         offset = offset
     )

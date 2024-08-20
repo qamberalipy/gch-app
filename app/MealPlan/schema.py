@@ -5,10 +5,10 @@ from app.MealPlan.models import VisibleForEnum, MealTimeEnum
 
 
 class MealBase(BaseModel):
-    meal_time: Optional[MealTimeEnum] = None
+    meal_time: str
     food_id: Optional[int] = None
     quantity: Optional[float] = None
-
+    
 class CreateMeal(MealBase):
     pass
 

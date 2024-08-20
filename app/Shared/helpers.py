@@ -12,6 +12,7 @@ import app.core.db.session as _database
 from .schema import UserBase, CoachBase
 from itsdangerous import URLSafeTimedSerializer as Serializer 
 from itsdangerous import SignatureExpired
+import base64
 
 JWT_SECRET = os.getenv("JWT_SECRET", "")
 JWT_EXPIRY = os.getenv("JWT_EXPIRY", "")
@@ -72,13 +73,16 @@ def generate_password_reset_token(user_data_json):
     # token = serial.dumps({'user_id': f'{user_id}'})
     token = serial.dumps(user_data_json)
     print('Token:', token)
-    return token
+    b64Val = base64.b64encode(token.encode()).decode()
+    return b64Val
 
 def verify_password_reset_token(token: str):
     
     serial = Serializer('LetsMove')
     try:
-        data = serial.loads(token, max_age=1800)
+        decoded_val = base64.b64decode(token).decode()
+        print("decoded val: ", decoded_val)
+        data = serial.loads(decoded_val, max_age=1800)
         return data
     except SignatureExpired:
         raise HTTPException(status_code=401, detail="Token has expired")

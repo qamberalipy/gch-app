@@ -130,8 +130,8 @@ def get_meal_plans_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Mea
 
     # if params.assign_to:
     #     query = query.filter(_models.MealPlan.assign_to.ilike(f"%{params.assign_to}%"))
-    if params.food_nutrients:
-        query = query.filter(_foodmodel.Food.name.ilike(params.food_nutrients))
+    # if params.food_nutrients:
+    #     query = query.filter(_foodmodel.Food.name.ilike(params.food_nutrients))
     
     query = query.offset(params.offset).limit(params.limit)
 

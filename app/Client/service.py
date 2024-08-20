@@ -592,9 +592,9 @@ async def get_client_byid(db: _orm.Session, client_id: int) -> _schemas.ClientBy
             _models.ClientCoach, _models.Client.id == _models.ClientCoach.client_id
         ).outerjoin(
             _coach_models.Coach, _coach_models.Coach.id == _models.ClientCoach.coach_id
-        ).join(
+        ).outerjoin(
             _models.ClientOrganization, _models.Client.id == _models.ClientOrganization.client_id
-        ).join(
+        ).outerjoin(
             _models.ClientMembership, _models.Client.id == _models.ClientMembership.client_id
         ).filter(
             _models.Client.id == client_id,
