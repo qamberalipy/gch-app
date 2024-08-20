@@ -78,8 +78,12 @@ def hash_password(password):
 async def get_user_by_email(email: str, db: _orm.Session):
     # Retrieve a user by email from the database
     print("Email: ", email)
-    return db.query(_models.User).filter(_models.User.email == email).first()
-
+    return db.query(_models.User).filter(
+        and_(
+            _models.User.email == email,
+            _models.User.is_deleted == False
+        )
+    ).first()
 async def create_organization(org: _schemas.OrganizationCreate, db: _orm.Session) -> models.Organization:
     db_org = models.Organization(**org.dict())
     db.add(db_org)
@@ -176,7 +180,12 @@ def generate_otp():
     return str(random.randint(100000, 999999))
 
 async def get_user_by_email(email: str, db: _orm.Session = _fastapi.Depends(get_db)):
-    return db.query(models.User).filter(models.User.email == email).first()
+    return db.query(_models.User).filter(
+        and_(
+            _models.User.email == email,
+            _models.User.is_deleted == False
+        )
+    ).first()
 
 async def get_filtered_user_by_email(email: str, db: _orm.Session = _fastapi.Depends(get_db)):
     user =  db.query(models.User).filter(models.User.email == email, _models.User.is_deleted == False).first()
@@ -254,11 +263,10 @@ async def authenticate_user(email: str, password: str, db: _orm.Session):
     user = await get_user_by_email(email=email, db=db)
 
     if not user:
-        return False
+       raise HTTPException(status_code=400, detail="No account found associated with the provided email.")
 
     if not user.verify_password(password):
         return False
-
     return user
 
 def generate_password_reset_html(name: str ,email :str ,gym_name: str, token: str) -> str:
