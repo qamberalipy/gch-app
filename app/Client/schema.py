@@ -69,7 +69,7 @@ class ClientCreateApp(pydantic.BaseModel):
     client_since: Optional[datetime.date] = None
     org_id: Optional[int] = 0
     coach_id: Optional[int] = 0
-    status: Optional[ClientStatus] = None
+    status: Optional[str] = "pending"
     membership_plan_id: Optional[int] = 0
     is_deleted:Optional[bool]=False
 
