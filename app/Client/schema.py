@@ -298,7 +298,7 @@ class ClientFilterRead(pydantic.BaseModel):
     mobile_number: Optional[str]
     check_in: Optional[datetime.datetime]
     last_online: Optional[datetime.datetime]
-    client_since: datetime.date
+    client_since: Optional[datetime.date]
     business_name: Optional[str]
     coaches: Optional[List[Dict]] = []
     activated_on: Optional[datetime.date] = None
