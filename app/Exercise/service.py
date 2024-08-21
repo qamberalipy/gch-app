@@ -401,9 +401,9 @@ async def get_exercise(
         _models.ExerciseCategory, filtered_exercise_query.c.category_id == _models.ExerciseCategory.id
     ).join(
         primary_muscle_query, filtered_exercise_query.c.id == primary_muscle_query.c.exercise_id
-    ).join(
+    ).outerjoin(
         secondary_muscle_query, filtered_exercise_query.c.id == secondary_muscle_query.c.exercise_id
-    ).join(
+    ).outerjoin(
         primary_joint_query, filtered_exercise_query.c.id == primary_joint_query.c.exercise_id
     )
  
