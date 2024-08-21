@@ -86,7 +86,7 @@ async def create_organization(org: _schemas.OrganizationCreate,user_id,db: _orm.
     org['updated_by']=user_id
     org['created_at']=datetime.now()
     org['updated_at']=datetime.now()
-    db_org = models.Organization(**org.dict())
+    db_org = models.Organization(**org)
     db.add(db_org)
     db.commit()
     db.refresh(db_org)

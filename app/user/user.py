@@ -38,8 +38,9 @@ async def create_organization(org: _schemas.OrganizationCreate,request:Request,d
         
         if not _helpers.validate_email(org.email):
             raise HTTPException(status_code=400, detail="Invalid email format")
-
-        new_org = await _services.create_organization(org,db)
+        
+        user_id=request.state.user.get('id')
+        new_org = await _services.create_organization(org,user_id,db)
         return new_org
     
     except IntegrityError as e:
