@@ -7,7 +7,7 @@ import app.MealPlan.models as _models
 import app.Shared.helpers as _helpers
 import app.Food.models as _foodmodel
 from typing import List
-from sqlalchemy import func, or_ ,asc, desc, cast, String
+from sqlalchemy import func, or_ ,asc, desc, cast, String, text
 from sqlalchemy.sql import and_  
 from sqlalchemy.orm import aliased
 from fastapi import FastAPI, Header,APIRouter, Depends, HTTPException, Request, status
@@ -74,12 +74,29 @@ def get_meal_plan_by_id(id: int, db: _orm.Session):
 
 def get_meal_plans_by_org_id(org_id: int, db: _orm.Session, params: _schemas.MealPlanFilterParams):
     
-    print("visible_for",params.visible_for)
+    sort_mapping = {
+        "name": text("meal_plan.name"),
+        "visible_for": text("meal_plan.visible_for"),
+        "fats": text("meal_plan.fats"),
+        "protein":text("meal_plan.protein"),
+        "carbs":text("meal_plan.carbs"),
+        "created_at": text("meal_plan.created_at")
+    }
+    
     member_ids_subquery = db.query(
         func.array_agg(_models.MemberMealPlan.member_id)
     ).filter(
         _models.MemberMealPlan.meal_plan_id == _models.MealPlan.id
-    ).scalar_subquery()
+    )
+
+    # Apply the member_id filter only if params.member_ids exists
+    if params.member_id:
+        member_ids_subquery = member_ids_subquery.filter(
+            _models.MemberMealPlan.member_id.in_(params.member_id)
+        )
+
+    member_ids_subquery = member_ids_subquery.scalar_subquery()
+    
     sort_order = desc(_models.MealPlan.created_at) if params.sort_order == "desc" else asc(_models.MealPlan.created_at)
 
     # Main query to get the meal plan details and associated meals
@@ -111,8 +128,11 @@ def get_meal_plans_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Mea
     ).filter(
         _models.MealPlan.org_id == org_id,
         _models.MealPlan.is_deleted == False
-    ).order_by(sort_order).group_by(
+    ).group_by(
         _models.MealPlan.id)
+    
+    total_counts = db.query(func.count()).select_from(query.subquery()).scalar()
+    
     if params.search_key:
         search_pattern = f"%{params.search_key}%"
         query = query.filter(or_(
@@ -121,26 +141,47 @@ def get_meal_plans_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Mea
             # cast(_models.Meal.meal_time,String).ilike(search_pattern)
         ))
 
-    if params.sort_key in extract_columns(query):       
-            sort_order = desc(params.sort_key) if params.sort_order == "desc" else asc(params.sort_key)
-            query=query.order_by(sort_order)    
+    if params.sort_key in sort_mapping.keys():
+        sort_order = desc(sort_mapping.get(params.sort_key)) if params.sort_order == "desc" else asc(sort_mapping.get(params.sort_key))
+        query = query.order_by(sort_order)
+    elif params.sort_key is not None:
+        raise _fastapi.HTTPException(status_code=400, detail="Sorting column not found.")    
     
     if params.visible_for:
         query = query.filter(_models.MealPlan.visible_for == params.visible_for)
-
-    # if params.assign_to:
-    #     query = query.filter(_models.MealPlan.assign_to.ilike(f"%{params.assign_to}%"))
-    # if params.food_nutrients:
-    #     query = query.filter(_foodmodel.Food.name.ilike(params.food_nutrients))
     
+    if params.food_id:
+        query = query.filter(_models.Meal.food_id.in_(params.food_id))
+    
+    filtered_counts = db.query(func.count()).select_from(query.subquery()).scalar()
     query = query.offset(params.offset).limit(params.limit)
 
     db_meal_plan = query.all()
     
+    result = []
+    for meal_plan in db_meal_plan:
+        result.append({
+            "meal_plan_id": meal_plan.meal_plan_id,
+            "name": meal_plan.name,
+            "profile_img": meal_plan.profile_img,
+            "visible_for": meal_plan.visible_for,
+            "description": meal_plan.description,
+            "org_id": meal_plan.org_id,
+            "carbs": meal_plan.carbs,
+            "protein": meal_plan.protein,
+            "fats": meal_plan.fats,
+            "created_by": meal_plan.created_by,
+            "created_at": meal_plan.created_at,
+            "updated_by": meal_plan.updated_by,
+            "updated_at": meal_plan.updated_at,
+            "meals": meal_plan.meals,
+            "member_id": meal_plan.member_id
+        })
+    
     if not db_meal_plan:
-        raise HTTPException(status_code=404, detail="Meal plan not found")    
-    else:
-        return db_meal_plan
+        result = []    
+    
+    return {"data":result,"total_counts":total_counts,"filtered_counts": filtered_counts}
    
 def create_meal_plan(meal_plan: _schemas.CreateMealPlan,user_id,db: _orm.Session):
 

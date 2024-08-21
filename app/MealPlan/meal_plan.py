@@ -90,25 +90,25 @@ def get_filters(
 
     search_key: Annotated[str | None, Query(title="Search Key")] = None,
     visible_for: Annotated[_model.VisibleForEnum | None, Query(title="visible for Enum")] = None,
-    status: Annotated[str | None, Query(title="Status")] = None,
     sort_key: Annotated[str | None, Query(title="Sort Key")] = None,
     sort_order: Annotated[str,Query(title="Sorting Order")] = 'desc',
-    # food_nutrients: Annotated[str, Query(description="Food/Category")] = None,
     limit: Annotated[int, Query(description="Pagination Limit")] = None,
-    offset: Annotated[int, Query(description="Pagination offset")] = None
+    offset: Annotated[int, Query(description="Pagination offset")] = None,
+    member_id : Annotated[list[int], Query(description="Member Ids")] = [],
+    food_id : Annotated[list[int], Query(description="Food Ids")] = []
 ):
     return _schemas.MealPlanFilterParams(
         search_key=search_key,
         visible_for=visible_for,
-        status=status,
         sort_key=sort_key,
         sort_order=sort_order,
-        # food_nutrients = food_nutrients,
+        member_id= member_id,
+        food_id =food_id,
         limit=limit,
         offset = offset
     )
     
-@router.get("/meal_plans", response_model=List[_schemas.ShowMealPlan])
+@router.get("/meal_plans")
 async def get_all_meal_plans(
     request:Request,
     org_id: Annotated[int, Query(title="Organization id")],
