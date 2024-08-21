@@ -80,7 +80,12 @@ async def get_user_by_email(email: str, db: _orm.Session):
     print("Email: ", email)
     return db.query(_models.User).filter(_models.User.email == email).first()
 
-async def create_organization(org: _schemas.OrganizationCreate, db: _orm.Session) -> models.Organization:
+async def create_organization(org: _schemas.OrganizationCreate,user_id,db: _orm.Session) -> models.Organization:
+    org=org.dict()
+    org['created_by']=user_id
+    org['updated_by']=user_id
+    org['created_at']=datetime.now()
+    org['updated_at']=datetime.now()
     db_org = models.Organization(**org.dict())
     db.add(db_org)
     db.commit()
@@ -91,33 +96,38 @@ async def create_organization(org: _schemas.OrganizationCreate, db: _orm.Session
 async def get_organization(org_id: int, db: _orm.Session) -> models.Organization:
     return db.query(models.Organization).filter(models.Organization.id == org_id, models.Organization.is_deleted == False).first()
 
-async def update_organization(org_id: int, org: _schemas.OrganizationUpdate, db: _orm.Session) -> models.Organization:
+async def update_organization(org_id: int,user_id,org: _schemas.OrganizationUpdate, db: _orm.Session) -> models.Organization:
     db_org = db.query(models.Organization).filter(models.Organization.id == org_id, models.Organization.is_deleted == False).first()
     if not db_org:
         return None
     for key, value in org.dict(exclude_unset=True).items():
         setattr(db_org, key, value)
+    db_org.updated_by=user_id
+    db_org.updated_at=datetime.now()    
     db.commit()
     db.refresh(db_org)
     return db_org
 
-async def delete_organization(org_id: int, db: _orm.Session):
+async def delete_organization(org_id: int,user_id,db: _orm.Session):
     db_org = db.query(models.Organization).filter(models.Organization.id == org_id, models.Organization.is_deleted == False).first()
     if not db_org:
         return None
     db_org.is_deleted = True
+    db_org.updated_by=user_id
+    db_org.updated_at=datetime.now()
     db.commit()
     return db_org
 
 async def get_opening_hours(org_id: int, db: _orm.Session) -> _models.Organization:
     return db.query(_models.Organization).filter(_models.Organization.id == org_id).first()
 
-async def update_opening_hours(org_id: int, opening_hours_data: _schemas.OpeningHoursUpdate, db: _orm.Session):
+async def update_opening_hours(org_id: int,user_id:int,opening_hours_data: _schemas.OpeningHoursUpdate, db: _orm.Session):
     organization = db.query(_models.Organization).filter(_models.Organization.id == org_id).first()
     if organization:
         organization.opening_hours = opening_hours_data.opening_hours
         organization.opening_hours_notes = opening_hours_data.opening_hours_notes
-        organization.updated_at = datetime.datetime.now()
+        organization.updated_at = datetime.now()
+        organization.updated_by=user_id
         db.commit()
         db.refresh(organization)
         return organization
@@ -235,9 +245,13 @@ async def create_bank_account(bank_account:_schemas.BankAccountCreate,db: _orm.S
     db.refresh(db_bank_account)
     return db_bank_account
 
-async def create_staff(staff: _schemas.CreateStaff, db: _orm.Session = _fastapi.Depends(get_db)):
+async def create_staff(staff: _schemas.CreateStaff,user_id,db: _orm.Session = _fastapi.Depends(get_db)):
     staff_data = staff.dict()
-    
+    staff_data['created_by']=user_id
+    staff_data['updated_by']=user_id
+    staff_data['created_at']=datetime.now()
+    staff_data['updated_at']=datetime.now()
+
     print(staff_data.pop("send_invitation"))
     db_staff = _models.User(**staff_data)
     db.add(db_staff)
@@ -484,8 +498,10 @@ async def get_one_staff(staff_id: int, db: _orm.Session):
         return None
     
 
-async def update_staff(staff_id: int, staff_update: _schemas.UpdateStaff, db: _orm.Session):
+async def update_staff(staff_id: int,user_id,staff_update: _schemas.UpdateStaff, db: _orm.Session):
+    
     staff = db.query(_models.User).filter(and_(_models.User.id == staff_id,_models.User.is_deleted == False)).first()
+    
     if staff is None:
         raise _fastapi.HTTPException(status_code=404, detail="Staff not found")
     
@@ -494,17 +510,20 @@ async def update_staff(staff_id: int, staff_update: _schemas.UpdateStaff, db: _o
         setattr(staff, key, value)
     
     staff.updated_at = datetime.now()
+    staff.updated_by=user_id
     db.commit()
     db.refresh(staff)
     return staff
 
 
-async def delete_staff(staff_id: int, db: _orm.Session):
+async def delete_staff(staff_id: int,user_id,db: _orm.Session):
     staff = db.query(_models.User).filter(and_(_models.User.id == staff_id,_models.User.is_deleted == False)).first()
     if staff is None:
         raise _fastapi.HTTPException(status_code=404, detail="Staff not found")
     
     staff.is_deleted = True
+    staff.updated_by=user_id
+    staff.updated_at=datetime.now()
     db.commit()
     return {"status":"201","detail":"Staff deleted successfully"}
 
@@ -586,11 +605,15 @@ async def check_role(role: _schemas.RoleCreate, db: _orm.Session = _fastapi.Depe
 
     return True
 
-async def create_role(role: _schemas.RoleCreate, db: _orm.Session = _fastapi.Depends(get_db)):
+async def create_role(role: _schemas.RoleCreate,user_id,db: _orm.Session = _fastapi.Depends(get_db)):
     db_role = _models.Role(
         name=role.name,
         org_id=role.org_id,
         status = role.status,
+        created_by=user_id,
+        updated_by=user_id,
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
         is_deleted=0
     )
     db.add(db_role)
@@ -602,8 +625,10 @@ async def create_role(role: _schemas.RoleCreate, db: _orm.Session = _fastapi.Dep
             role_id=db_role.id,
             resource_id=role.resource_id[i],
             access_type=role.access_type[i],
-            created_by=role.created_by,
-            updated_by=role.created_by,
+            created_by=user_id,
+            updated_by=user_id,
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
             is_deleted=0
         )
         db.add(db_permission)
@@ -765,7 +790,7 @@ async def get_role(role_id: int, db: _orm.Session):
     return all_roles
 
 
-async def edit_role(role: _schemas.RoleUpdate, db: _orm.Session):
+async def edit_role(role: _schemas.RoleUpdate,user_id,db: _orm.Session):
     db_role = db.query(_models.Role).filter(_models.Role.id == role.id, _models.Role.is_deleted == False).first()
     
     if db_role is None:
@@ -775,7 +800,6 @@ async def edit_role(role: _schemas.RoleUpdate, db: _orm.Session):
     for key, value in update_data.items():
         setattr(db_role, key, value)
     
-    db_role.updated_at = datetime.now()
     db.commit()
     db.refresh(db_role)
 
@@ -790,6 +814,7 @@ async def edit_role(role: _schemas.RoleUpdate, db: _orm.Session):
     print("Check Permissions: ", permissions)
     for permission in permissions:
         permission.is_deleted = 1
+        permission.updated_at=datetime.now()
     db.commit()
 
     for i in range(len(role.resource_id)):
@@ -799,8 +824,8 @@ async def edit_role(role: _schemas.RoleUpdate, db: _orm.Session):
                 role_id=role.id,
                 resource_id=role.resource_id[i],
                 access_type=role.access_type[i],
-                created_by=role.created_by,
-                updated_by=role.created_by,
+                created_by=user_id,
+                updated_by=user_id,
                 is_deleted=0
             )
             db.add(db_permission)
@@ -827,6 +852,7 @@ async def delete_role(role_id: int, db: _orm.Session):
     permissions = db.query(_models.Permission).filter(_models.Permission.role_id == role_id).all()
     for permission in permissions:
         permission.is_deleted = 1
+        permission.updated_at=datetime.now()
     db.commit()
     return {"detail": "Role deleted successfully"}
 

@@ -27,22 +27,24 @@ def get_db():
         db.close()
         
 @router.post("/membership_plan", tags=["Membership Plans"])
-def create_membership_plan(membership_plan: _schemas.MembershipPlanCreate,db: _orm.Session = Depends(get_db)):
-
-    return _services.create_membership_plan(membership_plan, db)
+def create_membership_plan(membership_plan: _schemas.MembershipPlanCreate,request:Request,db: _orm.Session = Depends(get_db)):
+    user_id=request.state.user.get('id')
+    return _services.create_membership_plan(membership_plan,user_id,db)
 
 @router.put("/membership_plan",response_model= _schemas.MembershipPlanUpdate,tags=["Membership Plans"])
-def update_membership_plan(membership_plan: _schemas.MembershipPlanUpdate, db: _orm.Session = Depends(get_db)):
+def update_membership_plan(membership_plan: _schemas.MembershipPlanUpdate,request:Request,db: _orm.Session = Depends(get_db)):
     
-    db_membership_plan = _services.update_membership_plan(membership_plan.id, membership_plan,db)
+    user_id=request.state.user.get('id')
+    db_membership_plan = _services.update_membership_plan(membership_plan.id,user_id,membership_plan,db)
     if db_membership_plan is None:
         raise HTTPException(status_code=404, detail="Membership plan not found")
     return db_membership_plan
 
 @router.delete("/membership_plan/{id}", tags=["Membership Plans"])
-def delete_membership_plan(id:int,db: _orm.Session = Depends(get_db)):
+def delete_membership_plan(id:int,request:Request,db: _orm.Session = Depends(get_db)):
     
-    db_membership_plan = _services.delete_membership_plan(id,db)
+    user_id=request.state.user.get('id')
+    db_membership_plan = _services.delete_membership_plan(id,user_id,db)
     if db_membership_plan is None:
         raise HTTPException(status_code=404, detail="Membership plan not found")
     return {
@@ -96,18 +98,20 @@ def get_membership_plans_by_org_id(
 
     
 @router.post("/facilities", tags=["Facility APIs"])
-def create_facility(facility: _schemas.FacilityCreate, db: _orm.Session = Depends(get_db)):
+def create_facility(facility: _schemas.FacilityCreate,request:Request,db: _orm.Session = Depends(get_db)):
     try:    
-        return _services.create_facility(facility, db)
+        user_id=request.state.user.get('id')
+        return _services.create_facility(facility,user_id,db)
     except IntegrityError as e:
         raise HTTPException(status_code=400, detail="Integrity error occurred")
     except DataError as e:
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 @router.put("/facilities", response_model=_schemas.FacilityUpdate ,tags=["Facility APIs"])
-def update_facility(facility: _schemas.FacilityUpdate, db: _orm.Session = Depends(get_db)):
+def update_facility(facility: _schemas.FacilityUpdate,request:Request,db: _orm.Session = Depends(get_db)):
     try:    
-        db_facility = _services.update_facility(facility, db)
+        user_id=request.state.user.get('id')
+        db_facility = _services.update_facility(facility,user_id,db)
         if db_facility is None:
             raise HTTPException(status_code=404, detail="Facility not found")
         return db_facility
@@ -117,9 +121,10 @@ def update_facility(facility: _schemas.FacilityUpdate, db: _orm.Session = Depend
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 @router.delete("/facilities/{id}", tags=["Facility APIs"])
-def delete_facility(id:int, db: _orm.Session = Depends(get_db)):
+def delete_facility(id:int,request:Request,db: _orm.Session = Depends(get_db)):
     try:    
-        db_facility = _services.delete_facility(id, db)
+        user_id=request.state.user.get('id')
+        db_facility = _services.delete_facility(id,user_id,db)
         if db_facility is None:
             raise HTTPException(status_code=404, detail="Facility not found")
         return db_facility
@@ -173,9 +178,10 @@ def get_facility_by_id(id: int, db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
 @router.post("/income_category", tags=["Income Category APIs"])
-def create_income_category(income_category: _schemas.IncomeCategoryCreate, db: _orm.Session = Depends(get_db)):
+def create_income_category(income_category: _schemas.IncomeCategoryCreate,request:Request,db: _orm.Session = Depends(get_db)):
     try:    
-        return _services.create_income_category(income_category=income_category, db=db)
+        user_id=request.state.user.get('id')
+        return _services.create_income_category(income_category=income_category,user_id=user_id, db=db)
     except IntegrityError as e:
         raise HTTPException(status_code=400, detail="Integrity error occurred")
     except DataError as e:
@@ -224,9 +230,10 @@ def get_income_category(id: int, db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 @router.put("/income_category", response_model=_schemas.IncomeCategoryUpdate ,tags=["Income Category APIs"])
-def update_income_category(income_category: _schemas.IncomeCategoryUpdate, db: _orm.Session = Depends(get_db)):
+def update_income_category(income_category: _schemas.IncomeCategoryUpdate,request:Request,db: _orm.Session = Depends(get_db)):
     try:    
-        db_income_category = _services.update_income_category(income_category=income_category, db=db)
+        user_id=request.state.user.get('id')
+        db_income_category = _services.update_income_category(income_category=income_category,user_id=user_id,db=db)
         if db_income_category is None:
             raise HTTPException(status_code=404, detail="Income category not found")
         return db_income_category
@@ -237,9 +244,11 @@ def update_income_category(income_category: _schemas.IncomeCategoryUpdate, db: _
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 @router.delete("/income_category/{id}", tags=["Income Category APIs"])
-def delete_income_category(id:int, db: _orm.Session = Depends(get_db)):
+def delete_income_category(id:int,request:Request,db: _orm.Session = Depends(get_db)):
     try:    
-        db_income_category = _services.delete_income_category(income_category_id=id, db=db)
+
+        user_id=request.state.user.get('id')
+        db_income_category = _services.delete_income_category(income_category_id=id,user_id=user_id,db=db)
         if db_income_category is None:
             raise HTTPException(status_code=404, detail="Income category not found")
         return db_income_category  
@@ -251,9 +260,10 @@ def delete_income_category(id:int, db: _orm.Session = Depends(get_db)):
     
     
 @router.post("/sale_taxes", tags=["Sale_tax APIs"])
-def create_sale_tax(sale_tax: _schemas.SaleTaxCreate, db: _orm.Session = Depends(get_db)):
+def create_sale_tax(sale_tax: _schemas.SaleTaxCreate,request:Request,db: _orm.Session = Depends(get_db)):
     try:    
-        return _services.create_sale_tax(sale_tax=sale_tax,db=db)
+        user_id=request.state.user.get('id')
+        return _services.create_sale_tax(sale_tax=sale_tax,user_id=user_id,db=db)
     
     except IntegrityError as e:
         raise HTTPException(status_code=400, detail="Integrity error occurred")
@@ -289,10 +299,11 @@ def get_sale_tax(id: int, db: _orm.Session = Depends(get_db)):
     
 
 @router.put("/sale_taxes", response_model=_schemas.SaleTaxUpdate ,tags=["Sale_tax APIs"])
-def update_sale_tax(sale_tax: _schemas.SaleTaxUpdate, db: _orm.Session = Depends(get_db)):
+def update_sale_tax(sale_tax: _schemas.SaleTaxUpdate,request:Request, db: _orm.Session = Depends(get_db)):
     
     try:    
-        db_sale_tax = _services.update_sale_tax(sale_tax=sale_tax,db=db)
+        user_id=request.state.user.get('id')
+        db_sale_tax = _services.update_sale_tax(sale_tax=sale_tax,user_id=user_id,db=db)
         if db_sale_tax is None:
             raise HTTPException(status_code=404, detail="Sale tax not found")
         return db_sale_tax
@@ -303,9 +314,10 @@ def update_sale_tax(sale_tax: _schemas.SaleTaxUpdate, db: _orm.Session = Depends
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 @router.delete("/sale_taxes/{id}", tags=["Sale_tax APIs"])
-def delete_sale_tax(id:int, db: _orm.Session = Depends(get_db)):
+def delete_sale_tax(id:int,request:Request,db: _orm.Session = Depends(get_db)):
     try:    
-        db_sale_tax = _services.delete_sale_tax(sale_tax_id=id,db=db)
+        user_id=request.state.user.get('id')
+        db_sale_tax = _services.delete_sale_tax(sale_tax_id=id,user_id=user_id,db=db)
         if db_sale_tax is None:
             raise HTTPException(status_code=404, detail="Sale tax not found")
         return db_sale_tax
@@ -317,9 +329,10 @@ def delete_sale_tax(id:int, db: _orm.Session = Depends(get_db)):
 
 
 @router.post("/group", tags=["Group API"])
-def create_group(group:_schemas.GroupCreate,db: _orm.Session = Depends(get_db)): 
+def create_group(group:_schemas.GroupCreate,request:Request,db: _orm.Session = Depends(get_db)): 
     try:    
-        return _services.create_group(group=group,db=db)
+        user_id=request.state.user.get('id')
+        return _services.create_group(group=group,user_id=user_id,db=db)
     except IntegrityError as e:
         raise HTTPException(status_code=400, detail="Integrity error occurred")
     except DataError as e:
@@ -417,10 +430,11 @@ async def get_categories(org_id,db: _orm.Session = Depends(get_db)):
 
 
 @router.put("/group",tags=["Group API"])
-def update_group(group:_schemas.GroupUpdate,db: _orm.Session = Depends(get_db)):
+def update_group(group:_schemas.GroupUpdate,request:Request,db: _orm.Session = Depends(get_db)):
     
-    try:    
-        db_group=_services.update_group(group,db)
+    try:
+        user_id=request.state.user.get('id')    
+        db_group=_services.update_group(group,user_id,db)
         if db_group is None:
             raise HTTPException(status_code=404, detail="Group not found")
         return db_group    
@@ -430,7 +444,8 @@ def update_group(group:_schemas.GroupUpdate,db: _orm.Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
 
 @router.delete("/group/{id}",tags=["Group API"])
-async def delete_group(id:int, db: _orm.Session = Depends(get_db)):
-    db_group = await _services.delete_group(id,db)
+async def delete_group(id:int,request:Request,db: _orm.Session = Depends(get_db)):
+    user_id=request.state.user.get('id')
+    db_group = await _services.delete_group(id,user_id,db)
     return db_group   
 

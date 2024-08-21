@@ -28,23 +28,25 @@ def get_db():
         db.close()
 
 @router.post("/coach", response_model=SharedCreateSchema,tags=["Coach API"])
-async def create_coach(coach: _schemas.CoachCreate, db: _orm.Session = Depends(get_db)):
-    
+async def create_coach(coach: _schemas.CoachCreate,request:Request, db: _orm.Session = Depends(get_db)):
+    user_id=request.state.user.get('id')
     if not _helpers.validate_email(coach.email):
         raise HTTPException(status_code=400, detail="Invalid email format")
 
-    return await _services.create_coach(coach,db)
+    return await _services.create_coach(coach,user_id,db)
 
 @router.put("/coach",response_model = _schemas.CoachUpdate,tags=["Coach API"])
-async def update_coach(coach: _schemas.CoachUpdate, db: _orm.Session = Depends(get_db)):
-    db_coach = await _services.update_coach(coach.id,coach,"web",db)
+async def update_coach(coach: _schemas.CoachUpdate,request:Request,db: _orm.Session = Depends(get_db)):
+    user_id=request.state.user.get('id')
+    db_coach = await _services.update_coach(coach.id,coach,"web",user_id,db)
     if db_coach is None:
         raise HTTPException(status_code=404, detail="Coach not found")
     return db_coach
 
 @router.delete("/coach/{id}",response_model=SharedModifySchema, tags=["Coach API"])
-def delete_coach(id:int, db: _orm.Session = Depends(get_db)):
-    db_coach = _services.delete_coach(id,db)
+def delete_coach(id:int,request:Request,db: _orm.Session = Depends(get_db)):
+    user_id=request.state.user.get('id')
+    db_coach = _services.delete_coach(id,user_id,db)
     if db_coach is None:
         raise HTTPException(status_code=404, detail="Coach not found")
     return db_coach

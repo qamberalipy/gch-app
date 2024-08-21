@@ -38,7 +38,7 @@ def get_db():
         db.close()
         
         
-def create_membership_plan(membership_plan: _schemas.MembershipPlanCreate, db: _orm.Session):
+def create_membership_plan(membership_plan: _schemas.MembershipPlanCreate,user_id, db: _orm.Session):
     
     existing_plan = db.query(models.MembershipPlan).filter(
         models.MembershipPlan.name == membership_plan.name,
@@ -64,8 +64,9 @@ def create_membership_plan(membership_plan: _schemas.MembershipPlanCreate, db: _
         billing_cycle=membership_plan.billing_cycle,
         auto_renewal=membership_plan.auto_renewal,
         renewal_details=membership_plan.renewal_details,
-        created_by=membership_plan.created_by,
-    )
+        created_by=user_id,
+        updated_by=user_id)
+    
     db.add(db_membership_plan)
     db.commit()
     db.refresh(db_membership_plan)
@@ -111,7 +112,7 @@ def update_facility_membership_plans(membership_plan_id: int, facilities: List[_
 
     db.commit()
 
-def update_membership_plan(membership_plan_id: int, membership_plan: _schemas.MembershipPlanUpdate, db: _orm.Session):
+def update_membership_plan(membership_plan_id: int,user_id:int,membership_plan: _schemas.MembershipPlanUpdate, db: _orm.Session):
     db_membership_plan = db.query(models.MembershipPlan).filter(models.MembershipPlan.id == membership_plan_id).first()
     if not db_membership_plan:
         return None  # Return None if the membership plan does not exist
@@ -120,6 +121,9 @@ def update_membership_plan(membership_plan_id: int, membership_plan: _schemas.Me
     update_data = membership_plan.dict(exclude_unset=True, exclude={"facilities"})
     for key, value in update_data.items():
         setattr(db_membership_plan, key, value)
+    
+    db_membership_plan.updated_by=user_id
+    db_membership_plan.updated_at=datetime.datetime.now()    
 
     db.commit()
     db.refresh(db_membership_plan)
@@ -130,7 +134,7 @@ def update_membership_plan(membership_plan_id: int, membership_plan: _schemas.Me
 
     return db_membership_plan
 
-def delete_membership_plan( membership_plan_id: int,db: _orm.Session):
+def delete_membership_plan( membership_plan_id: int,user_id,db: _orm.Session):
     db_membership_plan = db.query(models.MembershipPlan).filter(and_(models.MembershipPlan.id == membership_plan_id,_models.MembershipPlan.is_deleted == False)).first()
     
     if not db_membership_plan:
@@ -138,6 +142,8 @@ def delete_membership_plan( membership_plan_id: int,db: _orm.Session):
     
     if db_membership_plan:
         db_membership_plan.is_deleted = True
+        db_membership_plan.updated_by=user_id
+        db_membership_plan.updated_at=datetime.datetime.now()
         db.commit()
         db.refresh(db_membership_plan)
     return {"status":"201","detail":"Membership Plan deleted successfully"}
@@ -304,7 +310,7 @@ def get_membership_plans_by_org_id(
     return {"data":membership_plan,"total_counts":total_counts,"filtered_counts": filtered_counts}
   
 
-def create_facility(facility: _schemas.FacilityCreate,db: _orm.Session):
+def create_facility(facility: _schemas.FacilityCreate,user_id,db: _orm.Session):
     
     existing_facility = db.query(_models.Facility
     ).filter(_models.Facility.name == facility.name, _models.Facility.org_id == facility.org_id).first()
@@ -317,7 +323,10 @@ def create_facility(facility: _schemas.FacilityCreate,db: _orm.Session):
         org_id=facility.org_id,
         status=facility.status,
         min_limit=facility.min_limit,
-        created_by=facility.created_by
+        created_by=user_id,
+        updated_by=user_id,
+        created_at=datetime.datetime.now(),
+        updated_at=datetime.datetime.now()
     )
     db.add(db_facility)
     db.commit()
@@ -328,7 +337,7 @@ def create_facility(facility: _schemas.FacilityCreate,db: _orm.Session):
             "message": "Facility created successfully"
         }
 
-def update_facility(facility_update: _schemas.FacilityUpdate, db: _orm.Session):
+def update_facility(facility_update: _schemas.FacilityUpdate,user_id, db: _orm.Session):
     db_facility = db.query(_models.Facility).filter(_models.Facility.id == facility_update.id).first()
     if not db_facility:
         return None
@@ -341,20 +350,23 @@ def update_facility(facility_update: _schemas.FacilityUpdate, db: _orm.Session):
         db_facility.min_limit = facility_update.min_limit
     if facility_update.status is not None:
         db_facility.status = facility_update.status
-    if facility_update.updated_by is not None:
-        db_facility.updated_by = facility_update.updated_by
+    
+    db_facility.updated_by=user_id
+    db_facility.updated_at=datetime.datetime.now()
 
     db.commit()
     db.refresh(db_facility)
     return db_facility
 
 
-def delete_facility(facility_id: int,db: _orm.Session):
+def delete_facility(facility_id: int,user_id,db: _orm.Session):
     db_facility = db.query(_models.Facility).filter(and_(_models.Facility.id == facility_id,_models.Facility.is_deleted == False)).first()
     if not db_facility:
         raise _fastapi.HTTPException(status_code=404, detail="Facility not found")
     
     db_facility.is_deleted = True
+    db_facility.deleted_by=user_id
+    db_facility.updated_at=datetime.datetime.now()
     db.commit()
     return {"status":"201","detail":"Facility deleted successfully"}
 
@@ -399,8 +411,14 @@ def get_facility_by_org_id(org_id : int , params : _schemas.FacilityFilterParams
 def get_facility_by_id(facility_id: int,db: _orm.Session):
     return db.query(_models.Facility).filter(_models.Facility.id == facility_id, _models.Facility.is_deleted == False).first()
 
-def create_income_category(income_category: _schemas.IncomeCategoryCreate, db: _orm.Session):
-    db_income_category = _models.Income_category(**income_category.dict())
+def create_income_category(income_category: _schemas.IncomeCategoryCreate,user_id,db: _orm.Session):
+    income_category=income_category.dict()
+    income_category['created_by']=user_id
+    income_category['updated_by']=user_id
+    income_category['created_at']=datetime.datetime.now()
+    income_category['updated_at']=datetime.datetime.now()
+    
+    db_income_category = _models.Income_category(**income_category)
     db.add(db_income_category)
     db.commit()
     db.refresh(db_income_category)
@@ -449,7 +467,7 @@ def get_all_income_categories_by_org_id(org_id : int, params : _schemas.IncomeCa
 def get_income_category_by_id(income_category_id: int, db: _orm.Session):
     return db.query(_models.Income_category).filter(_models.Income_category.id == income_category_id, _models.Income_category.is_deleted == False).first()
 
-def update_income_category(income_category: _schemas.IncomeCategoryUpdate, db: _orm.Session):
+def update_income_category(income_category: _schemas.IncomeCategoryUpdate,user_id,db: _orm.Session):
     db_income_category = db.query(_models.Income_category).filter(_models.Income_category.id == income_category.id).first()
     if not db_income_category:
         return None
@@ -462,29 +480,34 @@ def update_income_category(income_category: _schemas.IncomeCategoryUpdate, db: _
         db_income_category.sale_tax_id = income_category.sale_tax_id
     if income_category.org_id is not None:
         db_income_category.org_id = income_category.org_id
-    if income_category.updated_by is not None:
-        db_income_category.updated_by = income_category.updated_by
 
     db_income_category.updated_at = datetime.datetime.now()
+    db_income_category.update_by=user_id
 
     db.commit()
     db.refresh(db_income_category)
     return db_income_category
 
-def delete_income_category(income_category_id: int, db: _orm.Session):
+def delete_income_category(income_category_id: int,user_id,db: _orm.Session):
     db_income_category = db.query(_models.Income_category).filter(and_(_models.Income_category.id == income_category_id,_models.Income_category.is_deleted == False)).first()
     
     if not db_income_category:
         raise _fastapi.HTTPException(status_code=404, detail="Income Category not found")
     
     db_income_category.is_deleted = True
+    db_income_category.updated_by=user_id
     db_income_category.updated_at = datetime.datetime.now()
     db.commit()
     db.refresh(db_income_category)
     return {"status":"201","detail":"Income Category deleted successfully"}
 
-def create_sale_tax(sale_tax: _schemas.SaleTaxCreate,db: _orm.Session):
-    db_sale_tax = _models.Sale_tax(**sale_tax.dict())
+def create_sale_tax(sale_tax: _schemas.SaleTaxCreate,user_id,db: _orm.Session):
+    sale_tax=sale_tax.dict()
+    sale_tax['updated_by']=user_id
+    sale_tax['created_by']=user_id
+    sale_tax['updated_at']=datetime.datetime.now()
+    sale_tax['created_at']=datetime.datetime.now()
+    db_sale_tax = _models.Sale_tax(**sale_tax)
     db.add(db_sale_tax)
     db.commit()
     db.refresh(db_sale_tax)
@@ -533,7 +556,7 @@ def get_sale_tax_by_id(sale_tax_id: int,db: _orm.Session):
     return db.query(_models.Sale_tax).filter(_models.Sale_tax.id == sale_tax_id, _models.Sale_tax.is_deleted == False).first()
 
 
-def update_sale_tax(sale_tax: _schemas.SaleTaxUpdate, db: _orm.Session):
+def update_sale_tax(sale_tax: _schemas.SaleTaxUpdate,user_id,db: _orm.Session):
     db_sale_tax = db.query(_models.Sale_tax).filter(_models.Sale_tax.id == sale_tax.id).first()
     if not db_sale_tax:
         return None
@@ -544,17 +567,17 @@ def update_sale_tax(sale_tax: _schemas.SaleTaxUpdate, db: _orm.Session):
         db_sale_tax.percentage = sale_tax.percentage
     if sale_tax.org_id is not None:
         db_sale_tax.org_id = sale_tax.org_id
-    if sale_tax.updated_by is not None:
-        db_sale_tax.updated_by = sale_tax.updated_by
+   
 
     db_sale_tax.updated_at = datetime.datetime.now()
+    db_sale_tax.updated_by=user_id
 
     db.commit()
     db.refresh(db_sale_tax)
     return db_sale_tax
 
 
-def delete_sale_tax(sale_tax_id: int,db: _orm.Session):
+def delete_sale_tax(sale_tax_id: int,user_id,db: _orm.Session):
     
     db_sale_tax = db.query(_models.Sale_tax).filter(and_(_models.Sale_tax.id == sale_tax_id,_models.Sale_tax.is_deleted == False)).first()
     
@@ -563,13 +586,24 @@ def delete_sale_tax(sale_tax_id: int,db: _orm.Session):
     
     db_sale_tax.is_deleted = True
     db_sale_tax.updated_at = datetime.datetime.now()
+    db_sale_tax.updated_by=user_id
     db.commit()
     db.refresh(db_sale_tax)
     return {"status":"201","detail":"Sale Tax deleted successfully"}
 
 
-def create_group(group: _schemas.GroupCreate,db: _orm.Session):
-    db_group = _models.Membership_group(**group.model_dump())
+def create_group(group: _schemas.GroupCreate,user_id,db: _orm.Session):
+
+    check_group=db.query(_models.Membership_group.id).filter(and_(_models.Membership_group.org_id==group.org_id,_models.Membership_group.name==group.name))
+    if check_group:
+        raise _fastapi.HTTPException(status_code=404, detail="Group already exists")
+
+    group=group.model_dump()
+    group["created_by"]=user_id
+    group["updated_by"]=user_id
+    group["created_at"]=datetime.datetime.now()
+    group["updated_at"]=datetime.datetime.now()
+    db_group = _models.Membership_group(**group)
     db.add(db_group)
     db.commit()
     db.refresh(db_group)
@@ -613,7 +647,7 @@ def get_all_groups_by_org_id(db: _orm.Session, params: _schemas.StandardParams):
     return groups_query.all()
 
 
-def update_group(group:_schemas.GroupUpdate,db:_orm.Session):
+def update_group(group:_schemas.GroupUpdate,user_id,db:_orm.Session):
     db_group = db.query(_models.Membership_group).filter(_models.Membership_group.id == group.id).first()
     
     if not db_group:
@@ -623,18 +657,20 @@ def update_group(group:_schemas.GroupUpdate,db:_orm.Session):
         db_group.name = group.name
 
     db_group.updated_at = datetime.datetime.now()
+    db_group.updated_by=user_id
     db.commit()
     db.refresh(db_group)
     return db_group    
     
     
-async def delete_group(id:int,db:_orm.Session=Depends(get_db)):
+async def delete_group(id:int,user_id,db:_orm.Session=Depends(get_db)):
     db_group=db.query(_models.Membership_group).filter(and_(_models.Membership_group.id == id,_models.Membership_group.is_deleted == False)).first()
     
     if not db_group:
         raise _fastapi.HTTPException(status_code=404, detail="Group not found")
 
     db_group.is_deleted=True
+    db_group.updated_by=user_id
     db_group.updated_at = datetime.datetime.now()
     db.commit()
     return {"status":"201","detail":"Group deleted successfully"}

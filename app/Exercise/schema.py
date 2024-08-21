@@ -8,8 +8,8 @@ class ExerciseBase(pydantic.BaseModel):
     exercise_name:str
     visible_for:VisibleFor
     org_id:int
-    exercise_type :ExerciseType
-    exercise_intensity:Intensity
+    exercise_type:ExerciseType
+    exercise_intensity:Optional[Intensity]=None
     intensity_value:Optional[float]
     difficulty:Difficulty
     sets :Optional[int]
@@ -55,8 +55,6 @@ class ExerciseCreate(ExerciseBase):
     primary_muscle_ids:Optional[List[int]]
     secondary_muscle_ids:Optional[List[int]]
     primary_joint_ids:Optional[List[int]]   
-    created_by:int
-    updated_by:int
 
 class ExerciseRead(ExerciseBase):
     id:int
@@ -75,7 +73,7 @@ class ExerciseUpdate(pydantic.BaseModel):
     org_id:int
     category_id :int
     exercise_type :ExerciseType
-    exercise_intensity:Intensity
+    exercise_intensity:Optional[Intensity]
     intensity_value:Optional[float]
     difficulty:Difficulty
     sets :Optional[int]
@@ -96,7 +94,6 @@ class ExerciseUpdate(pydantic.BaseModel):
     primary_muscle_ids:Optional[List[int]]
     secondary_muscle_ids:Optional[List[int]]
     primary_joint_ids:Optional[List[int]]   
-    updated_by:int
     class Config:
         from_attributes = True
 

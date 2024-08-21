@@ -33,13 +33,13 @@ def get_db():
         db.close()
 
 @router.post("/organizations", response_model=_schemas.OrganizationRead, tags=["Organizations API"])
-async def create_organization(org: _schemas.OrganizationCreate, db: _orm.Session = Depends(get_db)):
+async def create_organization(org: _schemas.OrganizationCreate,request:Request,db: _orm.Session = Depends(get_db)):
     try:
         
         if not _helpers.validate_email(org.email):
             raise HTTPException(status_code=400, detail="Invalid email format")
-  
-        new_org = await _services.create_organization(org, db)
+
+        new_org = await _services.create_organization(org,db)
         return new_org
     
     except IntegrityError as e:
@@ -61,19 +61,20 @@ async def get_organization(id: int, db: _orm.Session = Depends(get_db)):
     return org
 
 @router.put("/organizations", response_model=_schemas.OrganizationRead, tags=["Organizations API"])
-async def update_organization(org: _schemas.OrganizationUpdate, db: _orm.Session = Depends(get_db)):
+async def update_organization(org: _schemas.OrganizationUpdate,request:Request,db: _orm.Session = Depends(get_db)):
     
     if not _helpers.validate_email(org.email):
         raise HTTPException(status_code=400, detail="Invalid email format")
-
-    updated_org = await _services.update_organization(org.id, org, db)
+    user_id=request.state.user.get('id')
+    updated_org = await _services.update_organization(org.id,user_id,org, db)
     if updated_org is None:
         raise HTTPException(status_code=404, detail="Organization not found")
     return updated_org
 
 @router.delete("/organizations/{id}", response_model=_schemas.OrganizationRead, tags=["Organizations API"])
-async def delete_organization(id: int, db: _orm.Session = Depends(get_db)):
-    deleted_org = await _services.delete_organization(id, db)
+async def delete_organization(id: int,request:Request,db: _orm.Session = Depends(get_db)):
+    user_id=request.state.user.get('id')
+    deleted_org = await _services.delete_organization(id,user_id,db)
     if deleted_org is None:
         raise HTTPException(status_code=404, detail="Organization not found")
     return deleted_org
@@ -86,8 +87,10 @@ async def read_opening_hours(id: int, db: _orm.Session = Depends(get_db)):
     raise HTTPException(status_code=404, detail="Organization not found")
 
 @router.put("/opening-hours", response_model=_schemas.OpeningHoursRead, tags=["Organizations API"])
-async def update_opening_hours(opening_hours_data: _schemas.OpeningHoursUpdate, db: _orm.Session = Depends(get_db)):
-    updated_organization = await _services.update_opening_hours(opening_hours_data.id, opening_hours_data, db)
+async def update_opening_hours(opening_hours_data: _schemas.OpeningHoursUpdate,request:Request,db: _orm.Session = Depends(get_db)):
+    
+    user_id=request.state.user.get('id')
+    updated_organization = await _services.update_opening_hours(opening_hours_data.id,user_id,opening_hours_data, db)
     if updated_organization:
         return updated_organization
     raise HTTPException(status_code=404, detail="Organization not found")
@@ -108,14 +111,14 @@ async def get_privileges(org_id:int, db: _orm.Session= Depends(get_db)):
 
 
 @router.post("/staff", tags=["Staff APIs"])
-async def register_staff(staff: _schemas.CreateStaff, db: _orm.Session = Depends(get_db)):
+async def register_staff(staff: _schemas.CreateStaff,request:Request,db: _orm.Session = Depends(get_db)):
     try:
-        
-        db_staff = await _services.get_user_by_email(staff.email, db)
+        user_id=request.state.user.get('id')
+        db_staff = await _services.get_user_by_email(staff.email,db)
         if db_staff:
             raise HTTPException(status_code=400, detail="Email already registered")
 
-        new_staff = await _services.create_staff(staff, db)
+        new_staff = await _services.create_staff(staff,user_id,db)
         return new_staff
 
     except IntegrityError as e:
@@ -168,9 +171,10 @@ async def get_all_staff(org_id: int, db: _orm.Session = Depends(get_db)):
    
 
 @router.put("/staff", response_model= _schemas.UpdateStaff ,tags=["Staff APIs"])
-async def update_staff(staff_update: _schemas.UpdateStaff, db: _orm.Session = Depends(get_db)):
+async def update_staff(staff_update: _schemas.UpdateStaff,request:Request,db: _orm.Session = Depends(get_db)):
     try:
-        updated_staff = await _services.update_staff(staff_update.id, staff_update, db)
+        user_id=request.state.user.get('id')
+        updated_staff = await _services.update_staff(staff_update.id,user_id,staff_update, db)
         return updated_staff
     except IntegrityError as e:
         logger.error(f"IntegrityError: {e}")
@@ -181,10 +185,10 @@ async def update_staff(staff_update: _schemas.UpdateStaff, db: _orm.Session = De
 
 
 @router.delete("/staff/{id}", tags=["Staff APIs"])
-async def delete_staff(id:int, db: _orm.Session = Depends(get_db)):
+async def delete_staff(id:int,request:Request,db: _orm.Session = Depends(get_db)):
     try:
-        
-        return await _services.delete_staff(id, db)
+        user_id=request.state.user.get('id')
+        return await _services.delete_staff(id,user_id,db)
     except IntegrityError as e:
         logger.error(f"IntegrityError: {e}")
         raise HTTPException(status_code=400, detail="Integrity error occurred")
@@ -215,11 +219,12 @@ async def get_staff(
 
 ## Roles and Permissions
 @router.post("/role", tags=["Roles and Permissions"])
-async def create_role(role: _schemas.RoleCreate, db: _orm.Session = Depends(get_db)):
+async def create_role(role: _schemas.RoleCreate,request:Request,db: _orm.Session = Depends(get_db)):
     try:
-    
+
         await _services.check_role(role, db)
-        new_role = await _services.create_role(role, db)
+        user_id=request.state.user.get('id')
+        new_role = await _services.create_role(role,user_id,db)
         print("New Role: ", new_role)
         return {
             "status_code": "201",
@@ -235,11 +240,11 @@ async def create_role(role: _schemas.RoleCreate, db: _orm.Session = Depends(get_
 
 
 @router.put("/role", tags=["Roles and Permissions"])
-async def edit_role(role: _schemas.RoleUpdate, db: _orm.Session = Depends(get_db)):
+async def edit_role(role: _schemas.RoleUpdate,request:Request,db: _orm.Session = Depends(get_db)):
     try:
-        
+        user_id=request.state.user.get('id')
         print("Role: ", role)
-        new_role = await _services.edit_role(role, db)
+        new_role = await _services.edit_role(role,user_id,db)
         print("New Role: ", new_role)
         return {
             "status_code": "201",

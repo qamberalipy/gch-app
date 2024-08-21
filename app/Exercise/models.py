@@ -33,13 +33,13 @@ class Exercise(_database.Base):
 
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     org_id=_sql.Column(_sql.Integer)
-    exercise_name = _sql.Column(_sql.String, nullable=False)
-    visible_for = _sql.Column(_sql.Enum(VisibleFor), nullable=False)
-    category_id = _sql.Column(_sql.Integer, nullable=False) 
-    exercise_intensity= _sql.Column(_sql.Enum(Intensity), nullable=False)  
+    exercise_name = _sql.Column(_sql.String, nullable=True)
+    visible_for = _sql.Column(_sql.Enum(VisibleFor), nullable=True)
+    category_id = _sql.Column(_sql.Integer, nullable=True) 
+    exercise_intensity= _sql.Column(_sql.Enum(Intensity), nullable=True)  
     intensity_value=_sql.Column(_sql.Float, nullable=True)
-    exercise_type = _sql.Column(_sql.String, nullable=False)  
-    difficulty= _sql.Column(_sql.Enum(Difficulty), nullable=False)
+    exercise_type = _sql.Column(_sql.String, nullable=True)  
+    difficulty= _sql.Column(_sql.Enum(Difficulty), nullable=True)
     sets = _sql.Column(_sql.Integer, nullable=True) 
     seconds_per_set = _sql.Column(_sql.ARRAY(_sql.Integer), nullable=True) 
     repetitions_per_set = _sql.Column(_sql.ARRAY(_sql.Integer), nullable=True) 
@@ -57,14 +57,14 @@ class Exercise(_database.Base):
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
     created_at = _sql.Column(_sql.DateTime, default=datetime.now())
-    updated_at = _sql.Column(_sql.DateTime, default=datetime.now(), onupdate=datetime.now())
+    updated_at = _sql.Column(_sql.DateTime, default=datetime.now())
     is_deleted= _sql.Column(_sql.Boolean, default=False)
     
 class Equipment(_database.Base):
     __tablename__ = 'equipments'
 
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
-    equipment_name = _sql.Column(_sql.String, nullable=False)
+    equipment_name = _sql.Column(_sql.String, nullable=True)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
     created_at = _sql.Column(_sql.DateTime, default=datetime.now())
@@ -82,7 +82,7 @@ class ExerciseCategory(_database.Base):
     __tablename__ = 'exercise_category'
 
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
-    category_name = _sql.Column(_sql.String, nullable=False)
+    category_name = _sql.Column(_sql.String, nullable=True)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
     created_at = _sql.Column(_sql.DateTime, default=datetime.now())
@@ -92,7 +92,7 @@ class Muscle(_database.Base):
     __tablename__ = 'muscle'
 
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
-    muscle_name = _sql.Column(_sql.String, nullable=False)
+    muscle_name = _sql.Column(_sql.String, nullable=True)
     is_deleted = _sql.Column(_sql.Boolean, default=False)
     
 
@@ -100,7 +100,7 @@ class PrimaryJoint(_database.Base):
     __tablename__ = 'primary_joint'
 
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
-    joint_name = _sql.Column(_sql.String, nullable=False)
+    joint_name = _sql.Column(_sql.String, nullable=True)
     is_deleted = _sql.Column(_sql.Boolean, default=False)
 
 class ExercisePrimaryMuscle(_database.Base):
@@ -131,7 +131,7 @@ class MET(_database.Base):
     __tablename__ = 'met'
 
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
-    met_value = _sql.Column(_sql.String, nullable=False)
+    met_value = _sql.Column(_sql.String, nullable=True)
     created_by=_sql.Column(_sql.Integer)
     updated_by=_sql.Column(_sql.Integer)
     created_at = _sql.Column(_sql.DateTime, default=datetime.now())

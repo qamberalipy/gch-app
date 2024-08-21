@@ -24,10 +24,14 @@ from . import models, schema
 from sqlalchemy.orm import aliased
 
 
-async def create_food(food: _schemas.FoodCreate, db: _orm.Session):
+async def create_food(food: _schemas.FoodCreate,user_id,db: _orm.Session):
     print(food)
-    db_food = _models.Food(**food.dict())
-    print("Db Food", db_food)
+    food=food.dict()
+    food['updated_by']=user_id
+    food['created_by']=user_id
+    food['updated_at']=datetime.datetime.now()
+    food['created_at']=datetime.datetime.now()
+    db_food = _models.Food(**food)
     db.add(db_food)
     db.commit()
     db.refresh(db_food)
@@ -38,7 +42,7 @@ async def create_food(food: _schemas.FoodCreate, db: _orm.Session):
 async def get_food_by_id(food_id: int, db: _orm.Session):
     return db.query(_models.Food).filter(_models.Food.id == food_id).first()
 
-async def update_food(food: _schemas.FoodUpdate, db: _orm.Session):
+async def update_food(food: _schemas.FoodUpdate,user_id, db: _orm.Session):
     db_food = db.query(_models.Food).filter(_models.Food.id == food.id).first()
     if db_food is None:
         return _fastapi.HTTPException(status_code=404, detail="Food not found")
@@ -47,6 +51,7 @@ async def update_food(food: _schemas.FoodUpdate, db: _orm.Session):
     for key, value in update_data.items():
         setattr(db_food, key, value)
     db_food.updated_at = datetime.datetime.now()
+    db_food.updated_by=user_id
     db.commit()
     db.refresh(db_food)
     

@@ -39,12 +39,10 @@ class CoachBase(pydantic.BaseModel):
     swift_code: Optional[str] = None
 
 class CoachCreate(CoachBase):
-    created_by: int
     member_ids: Optional[List[int]] = None
 
 class CoachUpdate(CoachBase):
     id: int
-    updated_by: Optional[int] = None
     member_ids: Optional[List[int]] = []
 
 
