@@ -10,22 +10,22 @@ class ExerciseBase(pydantic.BaseModel):
     org_id:int
     exercise_type:ExerciseType
     exercise_intensity:Optional[Intensity]=None
-    intensity_value:Optional[float]
+    intensity_value:Optional[float]= None
     difficulty:Difficulty
-    sets :Optional[int]
-    seconds_per_set:Optional[List[int]]
-    repetitions_per_set:Optional[List[int]] 
-    rest_between_set:Optional[List[int]]  
-    distance:Optional[float]
-    speed:Optional[float]
-    met_id :Optional[int]
-    gif_url :str
-    video_url_male :Optional[str] 
-    video_url_female :Optional[str]
-    thumbnail_male :Optional[str] 
-    thumbnail_female :Optional[str]
-    image_url_female :Optional[str]
-    image_url_male :Optional[str] 
+    sets :Optional[int]= None
+    seconds_per_set:Optional[List[int]]=[]
+    repetitions_per_set:Optional[List[int]]=[]
+    rest_between_set:Optional[List[int]] =[]
+    distance:Optional[float] = None
+    speed:Optional[float] = None
+    met_id :Optional[int] = None
+    gif_url :str = None
+    video_url_male :Optional[str] = None
+    video_url_female :Optional[str] = None
+    thumbnail_male :Optional[str] = None
+    thumbnail_female :Optional[str]= None
+    image_url_female :Optional[str]= None
+    image_url_male :Optional[str] = None
 
     class Config:
             from_attributes = True
@@ -50,21 +50,21 @@ class ExerciseFilterParams(pydantic.BaseModel):
     offset:Optional[int] = None
 
 class ExerciseCreate(ExerciseBase):
-    category_id:int
-    equipment_ids:Optional[List[int]]
-    primary_muscle_ids:Optional[List[int]]
-    secondary_muscle_ids:Optional[List[int]]
-    primary_joint_ids:Optional[List[int]]   
+    category_id:int 
+    equipment_ids:Optional[List[int]] =[]
+    primary_muscle_ids:Optional[List[int]] =[]
+    secondary_muscle_ids:Optional[List[int]] =[]
+    primary_joint_ids:Optional[List[int]]= []
 
 class ExerciseRead(ExerciseBase):
     id:int
     category_id:int
     created_at:datetime
     category_name:str
-    equipments:Optional[List[Dict]]
-    primary_muscles:Optional[List[Dict]]
-    secondary_muscles:Optional[List[Dict]]
-    primary_joints:Optional[List[Dict]]   
+    equipments:Optional[List[Dict]] = []
+    primary_muscles:Optional[List[Dict]]=[]
+    secondary_muscles:Optional[List[Dict]]=[]
+    primary_joints:Optional[List[Dict]]=[]
 
 class ExerciseUpdate(pydantic.BaseModel):
     id:int
@@ -73,27 +73,27 @@ class ExerciseUpdate(pydantic.BaseModel):
     org_id:int
     category_id :int
     exercise_type :ExerciseType
-    exercise_intensity:Optional[Intensity]
-    intensity_value:Optional[float]
+    exercise_intensity:Optional[Intensity]=None
+    intensity_value:Optional[float]= None
     difficulty:Difficulty
-    sets :Optional[int]
-    seconds_per_set:Optional[List[int]]
-    repetitions_per_set:Optional[List[int]] 
-    rest_between_set:Optional[List[int]]  
-    distance:Optional[float]
-    speed:Optional[float]
-    met_id :Optional[int]
+    sets :Optional[int]= None
+    seconds_per_set:Optional[List[int]]=[]
+    repetitions_per_set:Optional[List[int]]=[] 
+    rest_between_set:Optional[List[int]]=[]
+    distance:Optional[float]=None
+    speed:Optional[float]=None
+    met_id :Optional[int]=None
     gif_url :str
-    video_url_male :Optional[str] 
-    video_url_female :Optional[str]
-    thumbnail_male :Optional[str] 
-    thumbnail_female :Optional[str]
-    image_url_female :Optional[str]
-    image_url_male :Optional[str] 
-    equipment_ids:Optional[List[int]]
-    primary_muscle_ids:Optional[List[int]]
-    secondary_muscle_ids:Optional[List[int]]
-    primary_joint_ids:Optional[List[int]]   
+    video_url_male :Optional[str]=None
+    video_url_female :Optional[str]=None
+    thumbnail_male :Optional[str]=None
+    thumbnail_female :Optional[str]=None
+    image_url_female :Optional[str]=None
+    image_url_male :Optional[str]=None 
+    equipment_ids:Optional[List[int]]=[]
+    primary_muscle_ids:Optional[List[int]]=[]
+    secondary_muscle_ids:Optional[List[int]]=[]
+    primary_joint_ids:Optional[List[int]]=[]   
     class Config:
         from_attributes = True
 
