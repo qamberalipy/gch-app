@@ -294,6 +294,7 @@ def update_coach_record(coach: _schemas.CoachUpdate, db: _orm.Session,user_id,db
             setattr(db_coach, field, value)
     
     db_coach.updated_by = user_id
+    db_coach.updated_at=dt.now()
     db.add(db_coach)
     db.commit()
     db.refresh(db_coach)
