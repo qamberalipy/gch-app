@@ -28,10 +28,10 @@ def get_db():
         db.close()
 
 @router.post("/food", response_model=_schemas.FoodCreateResponse)
-async def create_food(food: _schemas.FoodCreate, db: _orm.Session = Depends(get_db)):
+async def create_food(food: _schemas.FoodCreate,request:Request,db: _orm.Session = Depends(get_db)):
     try:
-        
-        return await _services.create_food(food, db)
+        user_id=request.state.user.get('id')
+        return await _services.create_food(food,user_id, db)
     except IntegrityError as e:
         raise HTTPException(status_code=400, detail="Food already exists")
     except DataError as e:
@@ -86,10 +86,10 @@ async def get_food_by_id(id: int, db: _orm.Session = Depends(get_db)):
 
 
 @router.put("/food", response_model=_schemas.FoodCreateResponse)
-async def update_food(food: _schemas.FoodUpdate, db: _orm.Session = Depends(get_db)):
+async def update_food(food: _schemas.FoodUpdate,request:Request,db: _orm.Session = Depends(get_db)):
     try:
-        
-        return await _services.update_food(food, db)
+        user_id=request.state.user.get('id')
+        return await _services.update_food(food,user_id,db)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

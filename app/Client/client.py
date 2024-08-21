@@ -52,7 +52,8 @@ async def register_client(client: _schemas.ClientCreate,request:Request,db: _orm
         auto_renewal=client_data.pop('auto_renewal')
         client_data['created_by']=user_id
         client_data['updated_by']=user_id
-
+        client_data['created_at']=datetime.datetime.now()
+        client_data['updated_at']=datetime.datetime.now()
 
         new_client = await _services.create_client(_schemas.RegisterClient(**client_data), db)
         
@@ -120,10 +121,10 @@ async def update_client(client: _schemas.ClientUpdate,request:Request, db: _orm.
     
 
 @router.delete("/member/{id}",response_model=SharedModifySchema, tags=["Member Router"])
-async def delete_client(id:int, db: _orm.Session = Depends(get_db)):
+async def delete_client(id:int,request:Request,db: _orm.Session = Depends(get_db)):
     try:
-        
-        deleted_client = await _services.delete_client(id, db)
+        user_id=request.state.user.get('id')
+        deleted_client = await _services.delete_client(id,user_id,db)
         return deleted_client
 
     except IntegrityError as e:

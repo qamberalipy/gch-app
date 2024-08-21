@@ -12,6 +12,7 @@ from sqlalchemy.sql import and_
 from sqlalchemy.orm import aliased
 from fastapi import FastAPI, Header,APIRouter, Depends, HTTPException, Request, status
 from app.Exercise.service import extract_columns
+from datetime import datetime
 
 
 def create_database():
@@ -141,10 +142,14 @@ def get_meal_plans_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Mea
     else:
         return db_meal_plan
    
-def create_meal_plan(meal_plan: _schemas.CreateMealPlan, db: _orm.Session):
-    # Remove the 'meals' field from the meal plan dictionary if it exists
+def create_meal_plan(meal_plan: _schemas.CreateMealPlan,user_id,db: _orm.Session):
+
     meal_plan_dict = meal_plan.dict(exclude={'meals','member_ids'})
-    print("meal_plan_dict",meal_plan_dict)
+    meal_plan_dict['created_by']=user_id
+    meal_plan_dict['updated_by']=user_id
+    meal_plan_dict['created_at']=datetime.now()
+    meal_plan_dict['updated_at']=datetime.now()
+    
     db_meal_plan = _models.MealPlan(**meal_plan_dict)
     db.add(db_meal_plan)
     db.commit()

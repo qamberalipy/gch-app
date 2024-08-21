@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date,datetime as dt
 from app.Exercise.service import extract_columns
 from typing import Annotated,Any, List
 import jwt
@@ -169,7 +169,7 @@ async def get_coach_by_email(
     return query.first()
 
 
-def create_bank_detail(coach: _schemas.CoachCreate, db: _orm.Session):
+def create_bank_detail(coach: _schemas.CoachCreate,user_id,db: _orm.Session):
     db_bank_detail = _usermodels.Bank_detail(
         org_id=coach.org_id,
         user_type="coach", 
@@ -177,14 +177,14 @@ def create_bank_detail(coach: _schemas.CoachCreate, db: _orm.Session):
         iban_no=coach.iban_no,
         acc_holder_name=coach.acc_holder_name,
         swift_code=coach.swift_code,
-        created_by=coach.created_by
-    )
+        created_by=user_id,
+        updated_by=user_id)
     db.add(db_bank_detail)
     db.commit()
     db.refresh(db_bank_detail)
     return db_bank_detail
 
-def create_coach_record(coach: _schemas.CoachCreate, db: _orm.Session, bank_detail_id: int):
+def create_coach_record(coach: _schemas.CoachCreate, db: _orm.Session,user_id,bank_detail_id: int):
     db_coach = _models.Coach(
         wallet_address=coach.wallet_address,
         own_coach_id=coach.own_coach_id,
@@ -205,12 +205,13 @@ def create_coach_record(coach: _schemas.CoachCreate, db: _orm.Session, bank_deta
         address_1=coach.address_1,
         address_2=coach.address_2,
         coach_since=coach.coach_since,
-        created_by=coach.created_by,
         bank_detail_id=bank_detail_id,
         check_in=coach.check_in,
-        last_online=coach.last_online
-        
-    )
+        last_online=coach.last_online,
+        created_by=user_id,
+        updated_by=user_id,
+        created_at=dt.now(),
+        updated_at=dt.now())
     db.add(db_coach)
     db.commit()
     db.refresh(db_coach)
@@ -236,13 +237,13 @@ def create_client_coach_mappings(coach_id: int, member_ids: List[int], db: _orm.
         db.add(db_client_coach)
     db.commit()
 
-async def create_coach(coach: _schemas.CoachCreate, db: _orm.Session=_fastapi.Depends(get_db)):
+async def create_coach(coach: _schemas.CoachCreate,user_id, db: _orm.Session=_fastapi.Depends(get_db)):
     coach_db = await get_coach_by_email(coach.email,db=db)
     if coach_db:
             raise _fastapi.HTTPException(status_code=400, detail="Email already registered")
         
-    db_bank_detail = create_bank_detail(coach, db)
-    db_coach = create_coach_record(coach, db, db_bank_detail.id)
+    db_bank_detail = create_bank_detail(coach,user_id,db)
+    db_coach = create_coach_record(coach, db,user_id,db_bank_detail.id)
     create_coach_organization(db_coach.id, coach.org_id, coach.coach_status ,db)
 
     if coach.member_ids:
@@ -259,7 +260,7 @@ def get_coach_list(org_id:int,db: _orm.Session = _fastapi.Depends(get_db)):
     query=db.query(_models.Coach.id,func.concat(_models.Coach.first_name,' ',_models.Coach.last_name).label('name')).outerjoin(_models.CoachOrganization,_models.Coach.id == _models.CoachOrganization.coach_id and _models.CoachOrganization.is_deleted == False).filter(and_(_models.CoachOrganization.org_id == org_id, _models.Coach.is_deleted == False))
     return query
 
-def update_bank_detail(coach: _schemas.CoachUpdate, db: _orm.Session, db_coach):
+def update_bank_detail(coach: _schemas.CoachUpdate,user_id,db: _orm.Session, db_coach):
     db_bank_detail = db.query(_usermodels.Bank_detail).filter(
         _usermodels.Bank_detail.id == db_coach.bank_detail_id
     ).first()
@@ -269,7 +270,8 @@ def update_bank_detail(coach: _schemas.CoachUpdate, db: _orm.Session, db_coach):
             db_bank_detail = _usermodels.Bank_detail(
                 org_id=coach.org_id,
                 user_type="coach",
-                created_by=coach.updated_by
+                created_by=user_id,
+                updated_by=user_id
             )
             db.add(db_bank_detail)
         else:
@@ -278,7 +280,7 @@ def update_bank_detail(coach: _schemas.CoachUpdate, db: _orm.Session, db_coach):
             db_bank_detail.iban_no = coach.iban_no if coach.iban_no else db_bank_detail.iban_no
             db_bank_detail.acc_holder_name = coach.acc_holder_name if coach.acc_holder_name else db_bank_detail.acc_holder_name
             db_bank_detail.swift_code = coach.swift_code if coach.swift_code else db_bank_detail.swift_code
-            db_bank_detail.updated_by = coach.updated_by
+            db_bank_detail.updated_by = user_id
         
         db.add(db_bank_detail)
         db.commit()
@@ -286,12 +288,12 @@ def update_bank_detail(coach: _schemas.CoachUpdate, db: _orm.Session, db_coach):
 
     return db_bank_detail
 
-def update_coach_record(coach: _schemas.CoachUpdate, db: _orm.Session, db_coach):
+def update_coach_record(coach: _schemas.CoachUpdate, db: _orm.Session,user_id,db_coach):
     for field, value in coach.dict(exclude_unset=True).items():
         if hasattr(db_coach, field):
             setattr(db_coach, field, value)
     
-    db_coach.updated_by = coach.updated_by
+    db_coach.updated_by = user_id
     db.add(db_coach)
     db.commit()
     db.refresh(db_coach)
@@ -326,7 +328,7 @@ def update_client_coach_mappings(coach_id: int, member_ids: List[int], db: _orm.
         db.add(db_client_coach)
     db.commit()
 
-def update_coach_organization(coach_id: int, org_id: int, coach_status: str, updated_by: int, db: _orm.Session):
+def update_coach_organization(coach_id: int, org_id: int, coach_status: str, db: _orm.Session):
     db_coach_org = db.query(_models.CoachOrganization).filter(
         _models.CoachOrganization.coach_id == coach_id,
         _models.CoachOrganization.is_deleted == False
@@ -337,15 +339,12 @@ def update_coach_organization(coach_id: int, org_id: int, coach_status: str, upd
             coach_id=coach_id,
             org_id=org_id,
             coach_status=coach_status,
-            is_deleted=False,
-            created_by=updated_by,
-            updated_by=updated_by
+            is_deleted=False
         )
         db.add(db_coach_org)
     else:
         db_coach_org.org_id = org_id if org_id else db_coach_org.org_id
         db_coach_org.coach_status = coach_status if coach_status else db_coach_org.coach_status
-        db_coach_org.updated_by = updated_by
 
         db.add(db_coach_org)
 
@@ -355,7 +354,7 @@ def update_coach_organization(coach_id: int, org_id: int, coach_status: str, upd
     return db_coach_org
 
 
-async def update_coach(coach_id:int , coach: _schemas.CoachUpdate,Type:str,db: _orm.Session):
+async def update_coach(coach_id:int , coach: _schemas.CoachUpdate,Type:str,user_id,db: _orm.Session):
 
     db_coach = db.query(_models.Coach).filter(
         _models.Coach.id == coach_id, _models.Coach.is_deleted == False
@@ -364,9 +363,9 @@ async def update_coach(coach_id:int , coach: _schemas.CoachUpdate,Type:str,db: _
     if not db_coach:
         return None
 
-    db_bank_detail = update_bank_detail(coach, db, db_coach)
+    db_bank_detail = update_bank_detail(coach,user_id,db, db_coach)
     db_coach.bank_detail_id = db_bank_detail.id if db_bank_detail else db_coach.bank_detail_id
-    db_coach = update_coach_record(coach, db, db_coach)
+    db_coach = update_coach_record(coach, db,user_id, db_coach)
     
     if coach.member_ids:
         update_client_coach_mappings(db_coach.id, coach.member_ids, db)
@@ -375,19 +374,18 @@ async def update_coach(coach_id:int , coach: _schemas.CoachUpdate,Type:str,db: _
         coach_id=coach_id,
         org_id=coach.org_id,
         coach_status=coach.coach_status,
-        updated_by=coach.updated_by,
         db=db
     )
     if Type=="app":
         return db_coach
     return db_coach
 
-
-
-def delete_coach(coach_id: int,db: _orm.Session):
+def delete_coach(coach_id: int,user_id,db: _orm.Session):
     db_coach = db.query(models.Coach).filter(models.Coach.id == coach_id).first()
     if db_coach:
         db_coach.is_deleted = True
+        db_coach.updated_by=user_id
+        db_coach.updated_at=dt.now()
         db.commit()
         db.refresh(db_coach)
 
@@ -395,8 +393,6 @@ def delete_coach(coach_id: int,db: _orm.Session):
 
 def get_coach_by_id(coach_id: int, db: _orm.Session):
     
-    
-    # Aliases for joined tables
     CoachOrg = aliased(_models.CoachOrganization)
     BankDetail = aliased(_usermodels.Bank_detail)
     ClientCoach = aliased(_client_models.ClientCoach)

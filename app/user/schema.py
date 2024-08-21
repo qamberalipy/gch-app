@@ -187,8 +187,7 @@ class StaffBase(pydantic.BaseModel):
         from_attributes = True
 
 class CreateStaff(StaffBase):
-    created_at: Optional[datetime.datetime] = datetime.datetime.now()
-    created_by: Optional[int] = None
+    pass
 
 class ReadStaff(StaffBase):
     id:int
@@ -250,8 +249,6 @@ class UpdateStaff(pydantic.BaseModel):
     status: Optional[StaffStatus] = None
     activated_on: Optional[datetime.date] = None
     last_online: Optional[datetime.datetime] = None
-    updated_by: Optional[int] = None
-    updated_at: Optional[datetime.datetime] = None
     
     class Config:
         from_attributes = True
@@ -293,8 +290,6 @@ class RoleBase(pydantic.BaseModel):
 class RoleCreate(RoleBase):
     resource_id: List[int]
     access_type: List[str]
-    created_at: Optional[datetime.datetime] = datetime.datetime.now()
-    created_by: Optional[int] = None
 
 class RoleDelete(pydantic.BaseModel):
     id: int
@@ -339,10 +334,6 @@ class RoleUpdate(pydantic.BaseModel):
     status: Optional[RoleStatus] = []
     resource_id: Optional[List[int]] = None
     access_type: Optional[List[str]] = None
-    created_at: Optional[datetime.datetime] = None
-    created_by: Optional[int] = None
-    updated_by: Optional[int] = None
-    updated_at: Optional[datetime.datetime] = None
 
     class Config:
         from_attributes = True

@@ -27,12 +27,10 @@ class FacilityMembershipPlan(pydantic.BaseModel):
 
 class MembershipPlanCreate(MembershipPlanBase):
     facilities: Optional[List[FacilityMembershipPlan]]=[]
-    created_by: int
 
 class MembershipPlanUpdate(MembershipPlanBase):
     id:int
     facilities: Optional[List[FacilityMembershipPlan]]=[]
-    updated_by: Optional[int]=None 
 
 class MembershipPlanDelete(pydantic.BaseModel):
     id:int
@@ -54,17 +52,14 @@ class FacilityBase(pydantic.BaseModel):
 
 class FacilityDelete(pydantic.BaseModel):
     id: int  # Correctly annotated with the type int
-
     class Config:
         from_attributes = True
     
 class FacilityCreate(FacilityBase):
-    created_by: Optional[int] = None
+    pass
 
 class FacilityUpdate(FacilityBase):
     id:int
-    updated_by: Optional[int] = None
-
 class FacilityRead(FacilityBase):
     id: int
     is_deleted: bool
@@ -117,12 +112,10 @@ class IncomeCategoryBase(pydantic.BaseModel):
     org_id: Optional[int] = None
 
 class IncomeCategoryCreate(IncomeCategoryBase):
-    created_by: Optional[int] = None
+    pass
 
 class IncomeCategoryUpdate(IncomeCategoryBase):
     id: Optional[int] = None
-    updated_by: Optional[int] = None
-
 class IncomeCategoryDelete(pydantic.BaseModel):
     id: int 
     class Config:
@@ -154,11 +147,10 @@ class SaleTaxBase(pydantic.BaseModel):
     org_id: Optional[int] = None
 
 class SaleTaxCreate(SaleTaxBase):
-    created_by: Optional[int] = None
+    pass
 
 class SaleTaxUpdate(SaleTaxBase):
     id: Optional[int] = None
-    updated_by: Optional[int] = None
 
 class SaleTaxRead(SaleTaxBase):
     id: Optional[int] = None
@@ -181,8 +173,6 @@ class SaleTaxDelete(pydantic.BaseModel):
 class GroupCreate(pydantic.BaseModel):
     org_id: int
     name: str
-    created_by: Optional[int] = None
-    updated_by: Optional[int] = None
 
 class GroupRead(pydantic.BaseModel):
     id: int

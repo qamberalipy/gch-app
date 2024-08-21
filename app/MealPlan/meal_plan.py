@@ -23,9 +23,10 @@ def get_db():
 
 
 @router.post("/meal_plans", response_model=_schemas.ReadMealPlan)
-async def create_meal_plan(meal_plan: _schemas.CreateMealPlan, db: _orm.Session = Depends(get_db)):
+async def create_meal_plan(meal_plan: _schemas.CreateMealPlan,request:Request,db: _orm.Session = Depends(get_db)):
     try:
-        new_meal_plan = _service.create_meal_plan(meal_plan, db)
+        user_id=request.state.user.get('id')
+        new_meal_plan = _service.create_meal_plan(meal_plan,user_id,db)
 
         _service.create_meal(new_meal_plan.id,meal_plan.meals, db)
         _service.create_member_meal_plan(new_meal_plan.id, meal_plan.member_ids,db)

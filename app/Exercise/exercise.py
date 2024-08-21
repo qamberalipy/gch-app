@@ -1,5 +1,5 @@
 from typing import Annotated, List, Optional, Union
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header,Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.exc import IntegrityError, DataError
 import app.Exercise.schema as _schemas
@@ -95,10 +95,10 @@ async def get_muscle(db: _orm.Session = Depends(get_db)):
 
 
 @router.post("/exercise")
-async def create_exercise(exercise: _schemas.ExerciseCreate, db: _orm.Session = Depends(get_db)):
+async def create_exercise(exercise: _schemas.ExerciseCreate,request:Request,db: _orm.Session = Depends(get_db)):
     try:
-        
-        new_exercise = await _services.create_exercise(exercise,db)
+        user_id=request.state.user.get('id')
+        new_exercise = await _services.create_exercise(exercise,user_id,db)
         return {
             "status_code": "201",
             "id": new_exercise,
@@ -123,11 +123,13 @@ async def get_exercise(id:int,db: _orm.Session = Depends(get_db)):
     return exercises   
 
 @router.put("/exercise")
-async def update_exercise(data:_schemas.ExerciseUpdate,db: _orm.Session = Depends(get_db)):
-    exercises = await _services.exercise_update(data,db)
+async def update_exercise(data:_schemas.ExerciseUpdate,request:Request,db: _orm.Session = Depends(get_db)):
+    user_id=request.state.user.get('id')
+    exercises = await _services.exercise_update(data,user_id,db)
     return exercises
 
 @router.delete("/exercise/{id}",summary="Delete Exercise")
-async def delete_coach(id:int, db: _orm.Session = Depends(get_db)):
-    db_exercise = await _services.delete_exercise(id,db)
+async def delete_exercise(id:int,request:Request,db: _orm.Session = Depends(get_db)):
+    user_id=request.state.user.get('id')
+    db_exercise = await _services.delete_exercise(id,user_id,db)
     return db_exercise

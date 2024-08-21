@@ -30,7 +30,7 @@ async def get_met(db: _orm.Session = _fastapi.Depends(get_db)):
 async def get_category(db: _orm.Session = _fastapi.Depends(get_db)):
     return db.query(*_models.ExerciseCategory.__table__.columns)
 
-async def create_exercise(exercise: _schemas.ExerciseCreate, db: _orm.Session):
+async def create_exercise(exercise: _schemas.ExerciseCreate,user_id,db: _orm.Session):
 
     existing_exercise = db.query(_models.Exercise).filter(
         _models.Exercise.exercise_name == exercise.exercise_name,
@@ -63,7 +63,11 @@ async def create_exercise(exercise: _schemas.ExerciseCreate, db: _orm.Session):
         thumbnail_female=exercise.thumbnail_female,
         image_url_female=exercise.image_url_female,
         image_url_male=exercise.image_url_male,
-        updated_by=exercise.updated_by)
+        updated_by=user_id,
+        created_by=user_id,
+        created_at=datetime.now(),
+        updated_at=datetime.now()
+        )
     
     db.add(db_exercise)
     db.commit()
@@ -95,12 +99,14 @@ def create_exercise_primary_muscle(exercise_id,primary_muscle_ids,db: _orm.Sessi
     
     return db_exercise_primary_muscle
 
-async def exercise_update(data:_schemas.ExerciseUpdate,db: _orm.Session = _fastapi.Depends(get_db)):
+async def exercise_update(data:_schemas.ExerciseUpdate,user_id,db: _orm.Session = _fastapi.Depends(get_db)):
     data_update=[]
     db_exercise=db.query(_models.Exercise).filter(_models.Exercise.id==data.id).first()
     if db_exercise:
         for key, value in data.dict(exclude_unset=True).items():
             setattr(db_exercise, key, value)
+        db_exercise.updated_by=user_id    
+        db_exercise.updated_at=datetime.now()
         db.commit()
         db.refresh(db_exercise)
 
@@ -245,10 +251,12 @@ def get_filters(
         offset = offset
     )
 
-async def delete_exercise(id:int,db: _orm.Session = _fastapi.Depends(get_db)):
+async def delete_exercise(id:int,user_id,db: _orm.Session = _fastapi.Depends(get_db)):
     db_exercise=db.query(_models.Exercise).filter(and_(_models.Exercise.id==id,_models.Exercise.is_deleted==False)).first()
 
     if db_exercise:
+        db_exercise.updated_at=datetime.now()
+        db_exercise.updated_by=user_id
         db_exercise.is_deleted = True
         db.commit()    
     else :

@@ -31,9 +31,6 @@ class ClientBase(pydantic.BaseModel):
     fat_percentage: Optional[float]=0.0
     muscle_percentage: Optional[float]=0.0
     client_since: Optional[datetime.date] = None
-    created_at: Optional[datetime.datetime] = None
-    created_by: Optional[int] = None
-    updated_by:Optional[int]=None
 
 
 class ClientCreate(ClientBase):
@@ -244,7 +241,6 @@ class BusinessBase(pydantic.BaseModel):
 class BusinessRead(BusinessBase):
     id: int
     date_created: datetime.date
-    date_created: datetime.date
 
     class Config:
         from_attributes=True
@@ -353,8 +349,6 @@ class ClientUpdate(pydantic.BaseModel):
     address_1: Optional[str] = None
     address_2: Optional[str] = None
     client_since: Optional[datetime.date] = None
-    updated_at: Optional[datetime.datetime] = datetime.datetime.now()
-    updated_by: Optional[int] = None
     height:Optional[float]=0.0 
     weight:Optional[float]=0.0 
     bmi:Optional[float]=0.0     
