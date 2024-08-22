@@ -90,6 +90,7 @@ def get_filters(
 
     search_key: Annotated[str | None, Query(title="Search Key")] = None,
     visible_for: Annotated[_model.VisibleForEnum | None, Query(title="visible for Enum")] = None,
+    meal_time : Annotated[str | None, Query(title="Meal time")] = None,
     sort_key: Annotated[str | None, Query(title="Sort Key")] = None,
     sort_order: Annotated[str,Query(title="Sorting Order")] = 'desc',
     limit: Annotated[int, Query(description="Pagination Limit")] = None,
@@ -100,6 +101,7 @@ def get_filters(
     return _schemas.MealPlanFilterParams(
         search_key=search_key,
         visible_for=visible_for,
+        meal_time = meal_time,
         sort_key=sort_key,
         sort_order=sort_order,
         member_id= member_id,

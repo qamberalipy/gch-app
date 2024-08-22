@@ -67,6 +67,7 @@ class DeleteMealPlan(BaseModel):
 
 class MealPlanFilterParams(BaseModel):
     visible_for : Optional[VisibleForEnum] = None
+    meal_time : Optional[str] = None
     assign_to : Optional[str] = None
     carbs : Optional[str] = None
     protein: Optional[str] = None

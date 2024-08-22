@@ -153,6 +153,9 @@ def get_meal_plans_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Mea
     if params.food_id:
         query = query.filter(_models.Meal.food_id.in_(params.food_id))
     
+    if params.meal_time:
+        query = query.filter(_models.Meal.meal_time == params.meal_time)
+    
     filtered_counts = db.query(func.count()).select_from(query.subquery()).scalar()
     query = query.offset(params.offset).limit(params.limit)
 
