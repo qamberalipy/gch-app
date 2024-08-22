@@ -30,6 +30,7 @@ class User(_database.Base):
     email = _sql.Column(_sql.String(100), index=True)
     phone = _sql.Column(_sql.String(11))
     activated_on = _sql.Column(_sql.Date)
+    reset_token=_sql.Column(_sql.String)
     last_checkin = _sql.Column(_sql.DateTime)
     last_online = _sql.Column(_sql.DateTime)
     status = _sql.Column(_sql.Enum(StaffStatus))

@@ -30,7 +30,7 @@ async def get_met(db: _orm.Session = _fastapi.Depends(get_db)):
 async def get_category(db: _orm.Session = _fastapi.Depends(get_db)):
     return db.query(*_models.ExerciseCategory.__table__.columns)
 
-async def create_exercise(exercise: _schemas.ExerciseCreate,user_id,db: _orm.Session):
+async def create_exercise(exercise: _schemas.ExerciseCreate,user_id,user_type,db: _orm.Session):
 
     existing_exercise = db.query(_models.Exercise).filter(
         _models.Exercise.exercise_name == exercise.exercise_name,
@@ -66,7 +66,9 @@ async def create_exercise(exercise: _schemas.ExerciseCreate,user_id,db: _orm.Ses
         updated_by=user_id,
         created_by=user_id,
         created_at=datetime.now(),
-        updated_at=datetime.now()
+        updated_at=datetime.now(),
+        created_by_type=user_type,
+        updated_by_type=user_type
         )
     
     db.add(db_exercise)
@@ -99,7 +101,7 @@ def create_exercise_primary_muscle(exercise_id,primary_muscle_ids,db: _orm.Sessi
     
     return db_exercise_primary_muscle
 
-async def exercise_update(data: _schemas.ExerciseUpdate, user_id, db: _orm.Session = _fastapi.Depends(get_db)):
+async def exercise_update(data: _schemas.ExerciseUpdate, user_id,user_type,db: _orm.Session = _fastapi.Depends(get_db)):
     
     secondary_muscles = None
     db_exercise = db.query(_models.Exercise).filter(_models.Exercise.id == data.id).first()
@@ -109,6 +111,7 @@ async def exercise_update(data: _schemas.ExerciseUpdate, user_id, db: _orm.Sessi
         for key, value in update_data.items():
             setattr(db_exercise, key, value)
         db_exercise.updated_by = user_id    
+        db_exercise.updated_by_type=user_type
         db_exercise.updated_at = datetime.now()
         db.commit()
         db.refresh(db_exercise)
@@ -228,7 +231,8 @@ def get_filters(
     sort_key:Annotated[str, _fastapi.Query(title="Sort Key")] = None,
     sort_order:Annotated[str, _fastapi.Query(title="Sort Order")] = 'desc',
     limit: Annotated[int, _fastapi.Query(description="Pagination Limit")] = None,
-    offset: Annotated[int, _fastapi.Query(description="Pagination offset")] = None
+    offset: Annotated[int, _fastapi.Query(description="Pagination offset")] = None,
+    user_id: Annotated[int, _fastapi.Query(description="User ID")] = None
 ):
     return _schemas.ExerciseFilterParams(
         search_key=search_key,
@@ -239,15 +243,17 @@ def get_filters(
         sort_key=sort_key,
         sort_order=sort_order,
         limit=limit,
-        offset = offset
+        offset = offset,
+        user_id=user_id
     )
 
-async def delete_exercise(id:int,user_id,db: _orm.Session = _fastapi.Depends(get_db)):
+async def delete_exercise(id:int,user_id,user_type,db: _orm.Session = _fastapi.Depends(get_db)):
     db_exercise=db.query(_models.Exercise).filter(and_(_models.Exercise.id==id,_models.Exercise.is_deleted==False)).first()
 
     if db_exercise:
         db_exercise.updated_at=datetime.now()
         db_exercise.updated_by=user_id
+        db_exercise.updated_by_type=user_type
         db_exercise.is_deleted = True
         db.commit()    
     else :
@@ -266,6 +272,7 @@ async def get_exercise(
     params: Optional[_schemas.ExerciseFilterParams] = None,
     org_id: Optional[int] = None,
     id: Optional[int] = None,
+    user_type:Optional[str]=None,
     db: _orm.Session = _fastapi.Depends(get_db)
 ):
     sort_mapping = {
@@ -351,9 +358,11 @@ async def get_exercise(
         if params.exercise_type:
             query = query.filter(Exercise.exercise_type == params.exercise_type)      
 
-        query = query.filter(Exercise.org_id == org_id)     
+        if params.user_id:
+            query=query.filter(and_(Exercise.created_by == params.user_id,Exercise.created_by_type == user_type))    
 
-        
+        query = query.filter(Exercise.org_id == org_id)     
+  
     filtered_exercise_query = query.subquery('filtered_exercise')
     
     query = db.query(

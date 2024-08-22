@@ -58,6 +58,8 @@ class Exercise(_database.Base):
     updated_by=_sql.Column(_sql.Integer)
     created_at = _sql.Column(_sql.DateTime, default=datetime.now())
     updated_at = _sql.Column(_sql.DateTime, default=datetime.now())
+    created_by_type=_sql.Column(_sql.String)
+    updated_by_type=_sql.Column(_sql.String)
     is_deleted= _sql.Column(_sql.Boolean, default=False)
     
 class Equipment(_database.Base):

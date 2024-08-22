@@ -48,6 +48,7 @@ class ExerciseFilterParams(pydantic.BaseModel):
     sort_order: Optional[str] = 'desc'
     limit:Optional[int] = None
     offset:Optional[int] = None
+    user_id:Optional[int]=None
 
 class ExerciseCreate(ExerciseBase):
     category_id:int 
