@@ -46,6 +46,7 @@ class ReadMealPlan(MealPlanBase):
     carbs : float
     protein: float
     fats : float
+    persona : str
 
 class UpdateMealPlan(BaseModel):
     id: int
@@ -67,6 +68,7 @@ class DeleteMealPlan(BaseModel):
 
 class MealPlanFilterParams(BaseModel):
     visible_for : Optional[VisibleForEnum] = None
+    meal_time : Optional[str] = None
     assign_to : Optional[str] = None
     carbs : Optional[str] = None
     protein: Optional[str] = None
@@ -79,6 +81,7 @@ class MealPlanFilterParams(BaseModel):
     status: Optional[str] = None
     limit:Optional[int] = None
     offset:Optional[int] = None
+    created_by_me : Optional[int] = None
     
     @field_validator('visible_for', mode='before')
     def map_visible_for(cls, value):

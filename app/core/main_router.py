@@ -134,7 +134,7 @@ async def reset_password(user : _schemas.ResetPasswordRequest, db: _orm.Session 
 
     data = _helpers.verify_password_reset_token(user.token)
     if data is None:
-        raise HTTPException(status_code=400, detail="Invalid Token.")
+        raise HTTPException(status_code=400, detail="The reset link is invalid or has expired. Please request a new password reset link.")
     
     if user.new_password != user.confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match")

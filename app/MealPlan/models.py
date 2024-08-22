@@ -14,11 +14,11 @@ class MealTimeEnum(PyEnum):
     dinner = "Dinner"
     evening_snack = "Evening Snack"
     
-class VisibleForEnum(PyEnum):
-    only_myself = "only_myself"
-    staff = "staff"
-    members =  "members"
-    everyone = "everyone"
+class VisibleForEnum(str,PyEnum):
+    only_myself = "Only myself"
+    staff = "Staff of my gym"
+    members =  "Members of my gym"
+    everyone = "Everyone in my gym"
     
 class MealPlan(_database.Base):
     __tablename__ = "meal_plan"

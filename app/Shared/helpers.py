@@ -85,7 +85,7 @@ def verify_password_reset_token(token: str):
         data = serial.loads(decoded_val, max_age=1800)
         return data
     except SignatureExpired:
-        raise HTTPException(status_code=401, detail="Token has expired")
+        raise HTTPException(status_code=401, detail="The reset link is invalid or has expired. Please request a new password reset link.")
     except Exception as e:
         logging.error(f"Error verifying password reset token: {e}")
-        raise _fastapi.HTTPException(status_code=400, detail="Invalid Token.")
+        raise _fastapi.HTTPException(status_code=400, detail="The reset link is invalid or has expired. Please request a new password reset link.")

@@ -22,11 +22,13 @@ def get_db():
         db.close()
 
 
-@router.post("/meal_plans", response_model=_schemas.ReadMealPlan)
+@router.post("/meal_plans",response_model=_schemas.ReadMealPlan)
 async def create_meal_plan(meal_plan: _schemas.CreateMealPlan,request:Request,db: _orm.Session = Depends(get_db)):
     try:
         user_id=request.state.user.get('id')
-        new_meal_plan = _service.create_meal_plan(meal_plan,user_id,db)
+        persona = request.state.user.get('user_type')
+
+        new_meal_plan = _service.create_meal_plan(meal_plan,user_id,persona,db)
 
         _service.create_meal(new_meal_plan.id,meal_plan.meals, db)
         _service.create_member_meal_plan(new_meal_plan.id, meal_plan.member_ids,db)
@@ -90,22 +92,26 @@ def get_filters(
 
     search_key: Annotated[str | None, Query(title="Search Key")] = None,
     visible_for: Annotated[_model.VisibleForEnum | None, Query(title="visible for Enum")] = None,
+    meal_time : Annotated[str | None, Query(title="Meal time")] = None,
     sort_key: Annotated[str | None, Query(title="Sort Key")] = None,
     sort_order: Annotated[str,Query(title="Sorting Order")] = 'desc',
     limit: Annotated[int, Query(description="Pagination Limit")] = None,
     offset: Annotated[int, Query(description="Pagination offset")] = None,
     member_id : Annotated[list[int], Query(description="Member Ids")] = [],
-    food_id : Annotated[list[int], Query(description="Food Ids")] = []
+    food_id : Annotated[list[int], Query(description="Food Ids")] = [],
+    created_by_me : Annotated[int | None, Query(title="Created by me")] = None,
 ):
     return _schemas.MealPlanFilterParams(
         search_key=search_key,
         visible_for=visible_for,
+        meal_time = meal_time,
         sort_key=sort_key,
         sort_order=sort_order,
         member_id= member_id,
         food_id =food_id,
         limit=limit,
-        offset = offset
+        offset = offset,
+        created_by_me = created_by_me
     )
     
 @router.get("/meal_plans")
@@ -115,7 +121,8 @@ async def get_all_meal_plans(
     filters: Annotated[_schemas.MealPlanFilterParams, Depends(get_filters)],
         db: _orm.Session = Depends(get_db)):
     try:
-        meal_plans = _service.get_meal_plans_by_org_id(org_id,db,params=filters)
+        persona = request.state.user.get('user_type')
+        meal_plans = _service.get_meal_plans_by_org_id(org_id, db, persona, params=filters)
         return meal_plans
     except IntegrityError as e:
         logger.error(f"IntegrityError: {e}")

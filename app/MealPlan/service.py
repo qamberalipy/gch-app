@@ -72,7 +72,7 @@ def get_meal_plan_by_id(id: int, db: _orm.Session):
     else:
         return db_meal_plan
 
-def get_meal_plans_by_org_id(org_id: int, db: _orm.Session, params: _schemas.MealPlanFilterParams):
+def get_meal_plans_by_org_id(org_id: int, db: _orm.Session, persona:str ,params: _schemas.MealPlanFilterParams):
     
     sort_mapping = {
         "name": text("meal_plan.name"),
@@ -110,6 +110,7 @@ def get_meal_plans_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Mea
         _models.MealPlan.carbs,
         _models.MealPlan.protein,
         _models.MealPlan.fats,
+        _models.MealPlan.persona,
         _models.MealPlan.created_by,
         _models.MealPlan.created_at,
         _models.MealPlan.updated_by,
@@ -153,6 +154,12 @@ def get_meal_plans_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Mea
     if params.food_id:
         query = query.filter(_models.Meal.food_id.in_(params.food_id))
     
+    if params.meal_time:
+        query = query.filter(_models.Meal.meal_time == params.meal_time)
+    
+    if params.created_by_me:
+        query = query.filter(and_(_models.MealPlan.created_by == params.created_by_me, _models.MealPlan.persona == persona))
+    
     filtered_counts = db.query(func.count()).select_from(query.subquery()).scalar()
     query = query.offset(params.offset).limit(params.limit)
 
@@ -183,11 +190,12 @@ def get_meal_plans_by_org_id(org_id: int, db: _orm.Session, params: _schemas.Mea
     
     return {"data":result,"total_counts":total_counts,"filtered_counts": filtered_counts}
    
-def create_meal_plan(meal_plan: _schemas.CreateMealPlan,user_id,db: _orm.Session):
+def create_meal_plan(meal_plan: _schemas.CreateMealPlan,user_id,persona,db: _orm.Session):
 
     meal_plan_dict = meal_plan.dict(exclude={'meals','member_ids'})
     meal_plan_dict['created_by']=user_id
     meal_plan_dict['updated_by']=user_id
+    meal_plan_dict['persona']=persona
     meal_plan_dict['created_at']=datetime.now()
     meal_plan_dict['updated_at']=datetime.now()
     
