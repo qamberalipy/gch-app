@@ -468,6 +468,7 @@ def get_filtered_clients(
         "last_online": text("client.last_online"),
         "client_since": text("client.client_since"),
         "created_at": text("client.created_at"),
+        "check_in":text("client.check_in"),
         "client_status": text("client_organization.client_status"),
         "membership_plan_id":text("client_membership.membership_plan_id")                      
     }
