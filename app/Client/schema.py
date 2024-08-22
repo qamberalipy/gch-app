@@ -46,7 +46,6 @@ class ClientCreate(ClientBase):
     class Config:
         from_attributes = True
         
-
 class ClientCreateApp(pydantic.BaseModel):
     first_name: str
     last_name: str
@@ -70,7 +69,6 @@ class ClientCreateApp(pydantic.BaseModel):
     status: Optional[str] = "pending"
     membership_plan_id: Optional[int] = 0
     is_deleted:Optional[bool]=False
-
 
 class RegisterClientApp(pydantic.BaseModel):
     own_member_id:str

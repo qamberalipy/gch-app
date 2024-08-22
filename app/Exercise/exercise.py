@@ -127,7 +127,7 @@ async def get_exercise(id:int,db: _orm.Session = Depends(get_db)):
 @router.put("/exercise")
 async def update_exercise(data:_schemas.ExerciseUpdate,request:Request,db: _orm.Session = Depends(get_db)):
     user_id=request.state.user.get('id')
-    user_type=request.state.get('user_type')
+    user_type=request.state.user.get('user_type')
     exercises = await _services.exercise_update(data,user_id,user_type,db)
     return exercises
 
