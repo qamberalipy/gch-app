@@ -34,7 +34,7 @@ class Exercise(_database.Base):
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     org_id=_sql.Column(_sql.Integer)
     exercise_name = _sql.Column(_sql.String, nullable=True)
-    visible_for = _sql.Column(_sql.Enum(VisibleFor), nullable=True)
+    visible_for = _sql.Column(_sql.Enum(VisibleFor))
     category_id = _sql.Column(_sql.Integer, nullable=True) 
     exercise_intensity= _sql.Column(_sql.Enum(Intensity), nullable=True)  
     intensity_value=_sql.Column(_sql.Float, nullable=True)

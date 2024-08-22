@@ -36,11 +36,12 @@ async def register_client(client: _schemas.ClientCreate,request:Request,db: _orm
     try:
         if not _helpers.validate_email(client.email):
             raise HTTPException(status_code=400, detail="Invalid email format")
-        user_id=request.state.user.get('id')
+    
         db_client = await _services.get_client_by_email(client.email, db)
         if db_client:
             raise HTTPException(status_code=400, detail="Email already registered")
-
+        
+        user_id=request.state.user.get('id')
         client_data = client.dict()
         organization_id = client_data.pop('org_id')
         status = client_data.pop('client_status')
@@ -52,8 +53,7 @@ async def register_client(client: _schemas.ClientCreate,request:Request,db: _orm
         auto_renewal=client_data.pop('auto_renewal')
         client_data['created_by']=user_id
         client_data['updated_by']=user_id
-        client_data['created_at']=datetime.datetime.now()
-        client_data['updated_at']=datetime.datetime.now()
+        print(client_data)
 
         new_client = await _services.create_client(_schemas.RegisterClient(**client_data), db)
         

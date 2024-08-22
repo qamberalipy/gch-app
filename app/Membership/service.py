@@ -324,10 +324,7 @@ def create_facility(facility: _schemas.FacilityCreate,user_id,db: _orm.Session):
         status=facility.status,
         min_limit=facility.min_limit,
         created_by=user_id,
-        updated_by=user_id,
-        created_at=datetime.datetime.now(),
-        updated_at=datetime.datetime.now()
-    )
+        updated_by=user_id)
     db.add(db_facility)
     db.commit()
     db.refresh(db_facility)
@@ -415,8 +412,6 @@ def create_income_category(income_category: _schemas.IncomeCategoryCreate,user_i
     income_category=income_category.dict()
     income_category['created_by']=user_id
     income_category['updated_by']=user_id
-    income_category['created_at']=datetime.datetime.now()
-    income_category['updated_at']=datetime.datetime.now()
     
     db_income_category = _models.Income_category(**income_category)
     db.add(db_income_category)
@@ -505,8 +500,7 @@ def create_sale_tax(sale_tax: _schemas.SaleTaxCreate,user_id,db: _orm.Session):
     sale_tax=sale_tax.dict()
     sale_tax['updated_by']=user_id
     sale_tax['created_by']=user_id
-    sale_tax['updated_at']=datetime.datetime.now()
-    sale_tax['created_at']=datetime.datetime.now()
+
     db_sale_tax = _models.Sale_tax(**sale_tax)
     db.add(db_sale_tax)
     db.commit()
@@ -601,8 +595,7 @@ def create_group(group: _schemas.GroupCreate,user_id,db: _orm.Session):
     group=group.model_dump()
     group["created_by"]=user_id
     group["updated_by"]=user_id
-    group["created_at"]=datetime.datetime.now()
-    group["updated_at"]=datetime.datetime.now()
+
     db_group = _models.Membership_group(**group)
     db.add(db_group)
     db.commit()

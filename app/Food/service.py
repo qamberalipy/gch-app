@@ -29,8 +29,6 @@ async def create_food(food: _schemas.FoodCreate,user_id,db: _orm.Session):
     food=food.dict()
     food['updated_by']=user_id
     food['created_by']=user_id
-    food['updated_at']=datetime.datetime.now()
-    food['created_at']=datetime.datetime.now()
     db_food = _models.Food(**food)
     db.add(db_food)
     db.commit()
