@@ -7,22 +7,22 @@ from enum import Enum as PyEnum
 from datetime import datetime
 
 
-class Intensity(str,PyEnum):
+class Intensity(PyEnum):
     irm='irm'
     max_intensity='Max Intensity'
 
-class Difficulty(str,PyEnum):
+class Difficulty(PyEnum):
     Novice='Novice'
     Beginner='Beginner'
     Intermediate='Intermediate'
     Advance='Advance'
     Expert='Expert'
 
-class ExerciseType(str,PyEnum):
+class ExerciseType(PyEnum):
     time_based = 'Time Based'
     repetition_based = 'Repetition Based'
 
-class VisibleFor(str,PyEnum):
+class VisibleFor(PyEnum):
     only_myself = 'Only Myself'
     staff_of_my_club = 'Staff of My Club'
     members_of_my_club = 'Members of My Club'
@@ -34,7 +34,7 @@ class Exercise(_database.Base):
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     org_id=_sql.Column(_sql.Integer)
     exercise_name = _sql.Column(_sql.String, nullable=True)
-    visible_for = _sql.Column(_sql.Enum(VisibleFor), nullable=True)
+    visible_for = _sql.Column(_sql.Enum(VisibleFor))
     category_id = _sql.Column(_sql.Integer, nullable=True) 
     exercise_intensity= _sql.Column(_sql.Enum(Intensity), nullable=True)  
     intensity_value=_sql.Column(_sql.Float, nullable=True)

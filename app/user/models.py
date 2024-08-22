@@ -11,13 +11,11 @@ class StaffStatus(str,PyEnum):
     active='active'
     inactive='inactive'
     pending='pending'    
-
     
 class RoleStatus(str,PyEnum):
     active='active'
     inactive='inactive'
          
-   
 class User(_database.Base):
     __tablename__ = "staff"
 
@@ -46,8 +44,8 @@ class User(_database.Base):
     zipcode = _sql.Column(_sql.String)
     address_1 = _sql.Column(_sql.String(100))
     address_2 = _sql.Column(_sql.String)
-    created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
-    updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
+    created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now())
+    updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now())
     created_by = _sql.Column(_sql.Integer)
     updated_by = _sql.Column(_sql.Integer)
     is_deleted = _sql.Column(_sql.Boolean, default=False)
@@ -70,16 +68,13 @@ class Source(_database.Base):
     __tablename__ = "source"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
     source = _sql.Column(_sql.String)
-    
-
-        
-
+           
 class Organization(_database.Base):
     __tablename__ = "organization"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     name = _sql.Column(_sql.String)
     email = _sql.Column(_sql.String)
-    profile_img = _sql.Column(_sql.String(150))  # varchar(150) in the image is likely a typo
+    profile_img = _sql.Column(_sql.String(150))  
     business_type = _sql.Column(_sql.String(150))
     description = _sql.Column(_sql.String)
     address = _sql.Column(_sql.String(100)) 
@@ -97,8 +92,8 @@ class Organization(_database.Base):
     hide_for_nonmember= _sql.Column(_sql.Boolean, default=False)
     opening_hours=_sql.Column(_sql.JSON)
     opening_hours_notes=_sql.Column(_sql.String)
-    created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
-    updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
+    created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now())
+    updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now())
     created_by = _sql.Column(_sql.Integer)
     updated_by = _sql.Column(_sql.Integer)
     is_deleted= _sql.Column(_sql.Boolean, default=False)
@@ -108,8 +103,8 @@ class UserRole(_database.Base):
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     user_id=_sql.Column(_sql.Integer)
     role_id=_sql.Column(_sql.Integer)
-    created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
-    updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
+    created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now())
+    updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now())
     created_by = _sql.Column(_sql.Integer)
     updated_by = _sql.Column(_sql.Integer)
     is_deleted=_sql.Column(_sql.Boolean)
@@ -194,8 +189,8 @@ class Resource(_database.Base):
     is_root = _sql.Column(_sql.Boolean)
     link = _sql.Column(_sql.String(50))
     icon = _sql.Column(_sql.String(50))
-    created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
-    updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
+    created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now())
+    updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now())
     created_by = _sql.Column(_sql.Integer)
     updated_by = _sql.Column(_sql.Integer)
     is_deleted = _sql.Column(_sql.Boolean)
@@ -230,8 +225,8 @@ class Permission(_database.Base):
     role_id = _sql.Column(_sql.Integer)
     resource_id = _sql.Column(_sql.Integer)
     access_type = _sql.Column(_sql.String(50))
-    created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
-    updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
+    created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now())
+    updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now())
     created_by = _sql.Column(_sql.Integer)
     updated_by = _sql.Column(_sql.Integer)
     is_deleted = _sql.Column(_sql.Boolean)
@@ -258,8 +253,8 @@ class Bank_detail(_database.Base):
     iban_no = _sql.Column(_sql.String(50))
     acc_holder_name = _sql.Column(_sql.String(50))
     swift_code = _sql.Column(_sql.String(50))
-    created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
-    updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now)
+    created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now())
+    updated_at = _sql.Column(_sql.DateTime, default=_dt.datetime.now())
     created_by = _sql.Column(_sql.Integer)
     updated_by = _sql.Column(_sql.Integer)
     is_deleted=_sql.Column(_sql.Boolean)    

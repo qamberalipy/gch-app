@@ -96,7 +96,8 @@ class RegisterClientApp(pydantic.BaseModel):
         
         
 class RegisterClient(ClientBase):
-    pass
+    created_by: Optional[int]
+    updated_by: Optional[int]
 
 class ClientRead(ClientBase):
     id: int
@@ -288,15 +289,15 @@ class ClientFilterRead(pydantic.BaseModel):
     client_status:ClientStatus
     membership_plan_id:int
     auto_renewal:bool
-    prolongation_period:Optional[int]	
-    auto_renew_days:Optional[int]	
-    inv_days_cycle:Optional[int]
-    phone: Optional[str]
-    mobile_number: Optional[str]
-    check_in: Optional[datetime.datetime]
-    last_online: Optional[datetime.datetime]
-    client_since: Optional[datetime.date]
-    business_name: Optional[str]
+    prolongation_period:Optional[int]=None	
+    auto_renew_days:Optional[int]=None	
+    inv_days_cycle:Optional[int]=None
+    phone: Optional[str]=None
+    mobile_number: Optional[str]=None
+    check_in: Optional[datetime.datetime]=None
+    last_online: Optional[datetime.datetime]=None
+    client_since: Optional[datetime.date]=None
+    business_name: Optional[str]=None
     coaches: Optional[List[Dict]] = []
     activated_on: Optional[datetime.date] = None
     created_at: Optional[datetime.datetime] = None

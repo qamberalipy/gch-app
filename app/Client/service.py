@@ -201,7 +201,6 @@ async def get_business_clients(
         )
         .all()
     )
-
     return clients
 
 
@@ -232,7 +231,6 @@ async def update_client(
     
     db.refresh(db_client)
     db.refresh(db_client_status)
-    
     return db_client
 
 
