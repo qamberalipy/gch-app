@@ -83,7 +83,6 @@ def get_meal_plans_by_org_id(org_id: int, db: _orm.Session, persona:str ,params:
         "created_at": text("meal_plan.created_at")
     }
     
-    
     filtered_member = db.query(
         _models.MemberMealPlan.meal_plan_id,func.array_agg(_models.MemberMealPlan.member_id).label('member_id')
     ).filter(
@@ -124,48 +123,39 @@ def get_meal_plans_by_org_id(org_id: int, db: _orm.Session, persona:str ,params:
             _models.MealPlan.org_id == org_id,
             _models.MealPlan.is_deleted == False
         ).group_by(
-            _models.MealPlan.id).subquery()
-        
-    query=db.query( *[filtered_meal_query.c[column.name] for column in filtered_meal_query.columns],
-                   filtered_member.c.member_id).join(
-    filtered_member,
-    filtered_member.c.meal_plan_id == filtered_meal_query.c.meal_plan_id)
-    
-    total_counts = db.query(func.count()).select_from(query.subquery()).scalar()
+            _models.MealPlan.id)
     
     if params.search_key:
         search_pattern = f"%{params.search_key}%"
-        query = query.filter(or_(
+        filtered_meal_query = filtered_meal_query.filter(or_(
             _models.MealPlan.name.ilike(search_pattern),
             _models.MealPlan.description.ilike(search_pattern)))
-
-    if params.sort_key in sort_mapping.keys():
-        sort_order = desc(sort_mapping.get(params.sort_key)) if params.sort_order == "desc" else asc(sort_mapping.get(params.sort_key))
-        query = query.order_by(sort_order)
-    
-    elif params.sort_key is not None:
-        raise _fastapi.HTTPException(status_code=400, detail="Sorting column not found.")    
+        
+    if params.created_by_me:
+        filtered_meal_query = filtered_meal_query.filter(and_(_models.MealPlan.created_by == params.created_by_me, _models.MealPlan.persona == persona))
     
     if params.visible_for:
-        query = query.filter(_models.MealPlan.visible_for == params.visible_for)
+        filtered_meal_query = filtered_meal_query.filter(_models.MealPlan.visible_for == params.visible_for)
     
     if params.food_id:
-        query = query.filter(_models.Meal.food_id.in_(params.food_id))
+        filtered_meal_query = filtered_meal_query.filter(_models.Meal.food_id.in_(params.food_id))
     
     if params.meal_time:
-        query = query.filter(_models.Meal.meal_time == params.meal_time)
+        filtered_meal_query = filtered_meal_query.filter(_models.Meal.meal_time == params.meal_time)
+        
+    if params.sort_key in sort_mapping.keys():
+        sort_order = desc(sort_mapping.get(params.sort_key)) if params.sort_order == "desc" else asc(sort_mapping.get(params.sort_key))
+        filtered_meal_query = filtered_meal_query.order_by(sort_order)
+    elif params.sort_key is not None:
+        raise _fastapi.HTTPException(status_code=400, detail="Sorting column not found.") 
     
-    if params.created_by_me:
-        query = query.filter(and_(_models.MealPlan.created_by == params.created_by_me, _models.MealPlan.persona == persona))
+    filtered_meal_query = filtered_meal_query.subquery()
+        
+    query=db.query( *[filtered_meal_query.c[column.name] for column in filtered_meal_query.columns],
+                    filtered_member.c.member_id).join(filtered_member,filtered_member.c.meal_plan_id == filtered_meal_query.c.meal_plan_id)
     
-    # if params.member_id:
-        # member_meal_plan_subquery = db.query(
-            # _models.MemberMealPlan.meal_plan_id
-        # ).filter(
-            # _models.MemberMealPlan.member_id.in_(params.member_id)
-        # ).subquery()
-
-        # query = query.filter(_models.MealPlan.id.in_(member_meal_plan_subquery))
+    total_count_query = db.query(_models.MealPlan.id).filter(and_(_models.MealPlan.is_deleted == False, _models.MealPlan.org_id == org_id))
+    total_counts = db.query(func.count()).select_from(total_count_query.subquery()).scalar()   
     
     filtered_counts = db.query(func.count()).select_from(query.subquery()).scalar()
     query = query.offset(params.offset).limit(params.limit)
