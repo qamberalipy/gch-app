@@ -189,7 +189,7 @@ def get_meal_plans_by_org_id(org_id: int, db: _orm.Session, persona:str ,params:
    
 def create_meal_plan(meal_plan: _schemas.CreateMealPlan,user_id,persona,db: _orm.Session):
 
-    meal_plan_dict = meal_plan.dict(exclude={'meals','member_ids'})
+    meal_plan_dict = meal_plan.dict(exclude={'meals','member_id'})
     meal_plan_dict['created_by']=user_id
     meal_plan_dict['updated_by']=user_id
     meal_plan_dict['persona']=persona

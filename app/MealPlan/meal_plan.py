@@ -31,7 +31,7 @@ async def create_meal_plan(meal_plan: _schemas.CreateMealPlan,request:Request,db
         new_meal_plan = _service.create_meal_plan(meal_plan,user_id,persona,db)
 
         _service.create_meal(new_meal_plan.id,meal_plan.meals, db)
-        _service.create_member_meal_plan(new_meal_plan.id, meal_plan.member_ids,db)
+        _service.create_member_meal_plan(new_meal_plan.id, meal_plan.member_id,db)
 
         return new_meal_plan
     except IntegrityError as e:

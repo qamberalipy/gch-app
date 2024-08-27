@@ -32,7 +32,7 @@ class MealPlanBase(BaseModel):
     
 class CreateMealPlan(MealPlanBase):
     meals: List[CreateMeal]
-    member_ids: List[int]
+    member_id: List[int]
     created_at: Optional[datetime.datetime] = datetime.datetime.now()
     carbs: float
     protein: float
