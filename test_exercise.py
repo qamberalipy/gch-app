@@ -1,19 +1,12 @@
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-from datetime import datetime
 from main import app
 from app.core.db.session import SessionLocal
 from app.Exercise.service import (
-    create_exercise, 
-    get_muscle, 
-    get_met, 
-    get_category,
-    exercise_update,
-    delete_exercise,
-    get_equipments,
-    get_primary_joints,
-    get_exercise
+    create_exercise, get_muscle, get_met, 
+    get_category, exercise_update, delete_exercise,
+    get_equipments, get_primary_joints, get_exercise
 )
 from app.Exercise.schema import ExerciseCreate, ExerciseUpdate
 from app.Exercise.models import Exercise
@@ -63,17 +56,17 @@ def sample_exercise(db: Session):
 def test_create_exercise(db: Session):
     exercise_data = ExerciseCreate(
         exercise_name="Squat",
-        visible_for=["Everyone in My Club"],  # Adjusted to expected values
+        visible_for=["Everyone in My Gym"],  # Adjusted to expected values
         org_id=1,
         category_id=1,
         exercise_intensity="Max Intensity",  # Adjusted to expected values
         intensity_value=3,
         exercise_type="Repetition Based",  # Adjusted to expected values
         difficulty="Beginner",
-        sets=4,  # Adjusted to be an integer
-        seconds_per_set=45,  # Adjusted to be an integer
-        repetitions_per_set=12,  # Adjusted to be an integer
-        rest_between_set=20,  # Adjusted to be an integer
+        sets=4,
+        seconds_per_set=45,
+        repetitions_per_set=12,
+        rest_between_set=20,
         distance=0,
         speed=0,
         met_id=2,
@@ -95,7 +88,7 @@ def test_update_exercise(db: Session, sample_exercise):
     update_data = ExerciseUpdate(
         id=sample_exercise["id"],
         exercise_name="Modified Push Up",
-        visible_for=["public"],
+        visible_for=["Everyone in My Gym"],
         org_id=1,
         category_id=1,
         exercise_intensity="Medium",
