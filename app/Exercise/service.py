@@ -430,16 +430,3 @@ async def get_exercise(
     db_exercise = query.all()
     exercise_data = [_schemas.ExerciseRead.from_orm(exercise) for exercise in db_exercise]
     return {'data': exercise_data, 'total_counts': total_counts, 'filtered_counts': filtered_counts}
-
-
-        
-    
-    
-    
-
-
-
-
-
-
-
