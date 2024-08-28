@@ -7,7 +7,7 @@ import sqlalchemy.ext.declarative as _declarative
 from enum import Enum as PyEnum
 
 
-class  FoodVisibleFor(PyEnum):
+class FoodVisibleFor(PyEnum):
     only_myself="Only myself"
     members="Members of my gym"
     coaches="Coaches of my gym" 

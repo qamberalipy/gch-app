@@ -131,3 +131,20 @@ async def get_all_meal_plans(
     except DataError as e:
         logger.error(f"DataError: {e}")
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
+    
+
+@router.get("/meal_plans/mobile")
+async def get_all_meal_plans_mobile(org_id: Annotated[int, Query(title="Organization id")], 
+    request:Request, 
+    filters: Annotated[_schemas.MealPlanFilterParams, Depends(get_filters)], db: _orm.Session = Depends(get_db)):
+    try:
+        user_id = request.state.user.get('id')
+        persona = request.state.user.get('user_type')
+        meal_plans = _service.get_meal_plans_by_token(org_id, user_id, persona, db, params=filters)
+        return meal_plans
+    except IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(status_code=400, detail="Integrity error occurred")
+    except DataError as e:
+        logger.error(f"DataError: {e}")
+        raise HTTPException(status_code=400, detail="Data error occurred, check your input")
