@@ -47,6 +47,7 @@ class ClientCreate(ClientBase):
         from_attributes = True
         
 class ClientCreateApp(pydantic.BaseModel):
+    own_member_id:Optional[str] = None
     first_name: str
     last_name: str
     gender: str
@@ -69,7 +70,7 @@ class ClientCreateApp(pydantic.BaseModel):
     is_deleted:Optional[bool]=False
 
 class RegisterClientApp(pydantic.BaseModel):
-    own_member_id:str
+    
     first_name: str
     last_name: str
     gender: str

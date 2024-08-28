@@ -117,6 +117,7 @@ async def login_coach(
     query = (
         db.query(
             *_models.Coach.__table__.columns,
+            _models.CoachOrganization.own_coach_id,
             func.array_agg(
                 func.json_build_object(
                     'id', func.coalesce(_models.CoachOrganization.org_id, 0),
@@ -138,7 +139,8 @@ async def login_coach(
             models.Coach.is_deleted == False
         )
         .group_by(
-            *_models.Coach.__table__.columns
+            *_models.Coach.__table__.columns,
+            _models.CoachOrganization.own_coach_id,
         )
     )
 
@@ -167,6 +169,7 @@ async def get_coach_by_email(
         _models.Coach.first_name,
         _models.Coach.last_name,
         _models.Coach.email,
+        _models.Coach.is_deleted,
         func.array_agg(_models.CoachOrganization.org_id).label('org_ids')
         ).join(
             _models.CoachOrganization,and_(_models.CoachOrganization.coach_id==_models.Coach.id,_models.CoachOrganization.is_deleted==False)    
@@ -281,9 +284,25 @@ async def create_coach(coach: _schemas.CoachCreate,user_id, db: _orm.Session=_fa
         }
 
 
-def get_coach_list(org_id:int,db: _orm.Session = _fastapi.Depends(get_db)):
-    query=db.query(_models.Coach.id,func.concat(_models.Coach.first_name,' ',_models.Coach.last_name).label('name')).outerjoin(_models.CoachOrganization,_models.Coach.id == _models.CoachOrganization.coach_id and _models.CoachOrganization.is_deleted == False).filter(and_(_models.CoachOrganization.org_id == org_id, _models.Coach.is_deleted == False))
-    return query
+def get_coach_list(org_id: int, db: _orm.Session = _fastapi.Depends(get_db)):
+    query = (
+        db.query(
+            _models.Coach.id,
+            func.concat(_models.Coach.first_name, ' ', _models.Coach.last_name).label('name')
+        )
+        .join(
+            _models.CoachOrganization,
+            _models.Coach.id == _models.CoachOrganization.coach_id
+        )
+        .filter(
+            and_(
+                _models.CoachOrganization.org_id == org_id,
+                _models.CoachOrganization.is_deleted == False,
+                _models.Coach.is_deleted == False
+            )
+        )
+    )
+    return query.all()
 
 def update_bank_detail(coach: _schemas.CoachUpdate,user_id,db: _orm.Session, db_coach):
     db_bank_detail = db.query(_usermodels.Bank_detail).filter(

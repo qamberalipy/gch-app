@@ -139,6 +139,7 @@ async def login_client(
     query = (
         db.query(
             *_models.Client.__table__.columns,
+            _models.ClientOrganization.own_member_id,
             func.array_agg(
                 func.json_build_object(
                     'id', func.coalesce(models.ClientOrganization.org_id, 0),
@@ -147,9 +148,9 @@ async def login_client(
                 )
             ).label('organizations')
         )
-        .outerjoin(
+        .join(
             models.ClientOrganization,
-            models.ClientOrganization.client_id == models.Client.id
+            and_(models.ClientOrganization.client_id == models.Client.id,_models.ClientOrganization.is_deleted==False)
         )
         .outerjoin(
             _user_models.Organization,
@@ -160,7 +161,8 @@ async def login_client(
             models.Client.is_deleted == False
         )
         .group_by(
-            *_models.Client.__table__.columns
+            *_models.Client.__table__.columns,
+             _models.ClientOrganization.own_member_id,
         )
     )
 
@@ -188,6 +190,7 @@ async def get_client_by_email(
         _models.Client.first_name,
         _models.Client.last_name,
         _models.Client.email,
+        _models.Client.is_deleted,
         func.array_agg(_models.ClientOrganization.org_id).label('org_ids')
     ).join(
         _models.ClientOrganization, and_(_models.ClientOrganization.client_id == _models.Client.id,_models.ClientOrganization.is_deleted==False)

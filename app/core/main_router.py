@@ -202,7 +202,7 @@ async def register_mobileclient(client: ClientCreateApp, db: _orm.Session = Depe
         coach_id = client_data.pop("coach_id", None)
         membership_id = client_data.pop("membership_plan_id", 0)
 
-        client_data["own_member_id"] = _client_service.generate_own_member_id()
+        own_member_id = _client_service.generate_own_member_id()
 
         new_client = await _client_service.create_client_for_app(
             RegisterClientApp(**client_data), db
@@ -210,7 +210,7 @@ async def register_mobileclient(client: ClientCreateApp, db: _orm.Session = Depe
 
         await _client_service.create_client_organization(
             CreateClientOrganization(
-                client_id=new_client.id, org_id=organization_id, client_status=status
+                client_id=new_client.id, org_id=organization_id, client_status=status,own_member_id=own_member_id
             ),
             db,
         )
