@@ -92,7 +92,7 @@ async def delete_meal_plan(id:int, request:Request, db: _orm.Session = Depends(g
 def get_filters(
 
     search_key: Annotated[str | None, Query(title="Search Key")] = None,
-    visible_for: Annotated[_model.VisibleForEnum | None, Query(title="visible for Enum")] = None,
+    visible_for: Annotated[str | None, Query(title="visible for Enum")] = None,
     meal_time : Annotated[str | None, Query(title="Meal time")] = None,
     sort_key: Annotated[str | None, Query(title="Sort Key")] = None,
     sort_order: Annotated[str,Query(title="Sorting Order")] = 'desc',
@@ -133,7 +133,7 @@ async def get_all_meal_plans(
         raise HTTPException(status_code=400, detail="Data error occurred, check your input")
     
 
-@router.get("/meal_plans/mobile")
+@router.get("/meal_plans/mobile/")
 async def get_all_meal_plans_mobile(org_id: Annotated[int, Query(title="Organization id")], 
     request:Request, 
     filters: Annotated[_schemas.MealPlanFilterParams, Depends(get_filters)], db: _orm.Session = Depends(get_db)):

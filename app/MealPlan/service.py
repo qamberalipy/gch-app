@@ -125,11 +125,12 @@ def get_meal_plans_by_token(org_id: int, user_id : int, persona:str,  db: _orm.S
         ).group_by(
             _models.MealPlan.id)
     
-    
-    if persona == 'staff':
-        filtered_meal_query = filtered_meal_query.filter()
-    elif persona == 'member':
-        filtered_meal_query = filtered_meal_query.filter()
+    persona = 'member'
+    if persona in ('member', 'Member'):
+        filtered_meal_query = filtered_meal_query.filter(
+        or_(_models.MealPlan.visible_for == 'everyone', _models.MealPlan.visible_for == 'members', and_(_models.MealPlan.visible_for == 'only_myself', _models.MealPlan.created_by == user_id)))
+    elif persona in ('coach', 'Coach'):
+        filtered_meal_query = filtered_meal_query.filter(or_(_models.MealPlan.visible_for == 'everyone',_models.MealPlan.visible_for == 'coaches', and_(_models.MealPlan.visible_for == 'only_myself', _models.MealPlan.created_by == user_id)))
         
     if params.search_key:
         search_pattern = f"%{params.search_key}%"
