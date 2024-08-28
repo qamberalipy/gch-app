@@ -14,7 +14,7 @@ class MealTimeEnum(PyEnum):
     dinner = "Dinner"
     evening_snack = "Evening Snack"
     
-class VisibleForEnum(str,PyEnum):
+class VisibleForEnum(PyEnum):
     only_myself = "Only myself"
     coaches = "Coaches of my gym"
     members =  "Members of my gym"
