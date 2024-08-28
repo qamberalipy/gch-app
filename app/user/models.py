@@ -34,8 +34,8 @@ class User(_database.Base):
     last_checkin = _sql.Column(_sql.DateTime)
     last_online = _sql.Column(_sql.DateTime)
     status = _sql.Column(_sql.Enum(StaffStatus))
-    phone = _sql.Column(_sql.String(15))  # Assuming phone number should not include landline
-    mobile_number = _sql.Column(_sql.String(15))
+    phone = _sql.Column(_sql.String(20))  # Assuming phone number should not include landline
+    mobile_number = _sql.Column(_sql.String(20))
     notes = _sql.Column(_sql.String)
     source_id = _sql.Column(_sql.Integer)
     org_id =_sql.Column(_sql.Integer)

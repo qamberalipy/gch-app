@@ -8,9 +8,9 @@ from enum import Enum as PyEnum
 
 
 class  FoodVisibleFor(PyEnum):
-    only_me="Only me"
-    members="Members in my gym"
-    coaches_and_staff="Coaches and Staff in my gym" 
+    only_myself="Only myself"
+    members="Members of my gym"
+    coaches="Coaches of my gym" 
     everyone="Everyone in my gym"
 
 class CategoryEnum(PyEnum):

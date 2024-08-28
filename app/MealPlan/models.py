@@ -16,7 +16,7 @@ class MealTimeEnum(PyEnum):
     
 class VisibleForEnum(str,PyEnum):
     only_myself = "Only myself"
-    staff = "Staff of my gym"
+    coaches = "Coaches of my gym"
     members =  "Members of my gym"
     everyone = "Everyone in my gym"
     

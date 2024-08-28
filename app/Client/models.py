@@ -22,8 +22,8 @@ class Client(_database.Base):
     gender = _sql.Column(_sql.String(10))  # varchar(10) in the image is likely the intended length
     dob = _sql.Column(_sql.Date, nullable=False)
     email = _sql.Column(_sql.String, nullable=False)
-    phone = _sql.Column(_sql.String(11))  # Assuming phone number should not include landline
-    mobile_number = _sql.Column(_sql.String(11))
+    phone = _sql.Column(_sql.String(20))  # Assuming phone number should not include landline
+    mobile_number = _sql.Column(_sql.String(20))
     notes = _sql.Column(_sql.String)
     source_id= _sql.Column(_sql.Integer)  # Removed foreign key reference
     language = _sql.Column(_sql.String(50))
