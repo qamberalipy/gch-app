@@ -333,20 +333,41 @@ async def delete_client(client_id: int,org_id:int,db: _orm.Session = _fastapi.De
     return {"status":"201","detail":"Member deleted successfully"}
 
 
+# def get_list_clients(
+#     org_id: int, db: _orm.Session = _fastapi.Depends(get_db)
+# ) -> List[models.Client]:
+#     return (
+#         db.query(_models.Client.id,func.concat(_models.Client.first_name,' ',_models.Client.last_name).label('name'))
+#         .join(
+#             _models.ClientOrganization,
+#             _models.Client.id == _models.ClientOrganization.client_id,
+#         )
+#         .filter(_models.ClientOrganization.org_id == org_id)
+#         .filter(_models.Client.is_deleted == False)
+#         .all()
+#     )
+
 def get_list_clients(
     org_id: int, db: _orm.Session = _fastapi.Depends(get_db)
 ) -> List[models.Client]:
-    return (
-        db.query(_models.Client.id,func.concat(_models.Client.first_name,' ',_models.Client.last_name).label('name'))
+    query = (
+        db.query(
+            _models.Client.id,
+            func.concat(_models.Client.first_name, ' ', _models.Client.last_name).label('name')
+        )
         .join(
             _models.ClientOrganization,
-            _models.Client.id == _models.ClientOrganization.client_id,
+            _models.Client.id == _models.ClientOrganization.client_id
         )
-        .filter(_models.ClientOrganization.org_id == org_id)
-        .filter(_models.Client.is_deleted == False)
-        .all()
+        .filter(
+            and_(
+                _models.ClientOrganization.org_id == org_id,
+                _models.ClientOrganization.is_deleted == False,
+                _models.Client.is_deleted == False
+            )
+        )
     )
-
+    return query.all()
 
 async def get_total_clients(
     org_id: int, db: _orm.Session = _fastapi.Depends(get_db)
