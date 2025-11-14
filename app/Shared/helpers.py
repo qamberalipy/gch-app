@@ -17,7 +17,7 @@ ACCESS_TOKEN_EXPIRE_SECONDS = int(os.getenv("ACCESS_TOKEN_EXPIRE_SECONDS", "900"
 REFRESH_TOKEN_EXPIRE_SECONDS = int(os.getenv("REFRESH_TOKEN_EXPIRE_SECONDS", str(60 * 60 * 24 * 7)))  # 7 days
 
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", "qamber.qsol@gmail.com")
-BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "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")
 
 EMAIL_REGEX = re.compile(r"^(?=.{1,254}$)[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
 
