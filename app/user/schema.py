@@ -134,10 +134,6 @@ class getStaff(pydantic.BaseModel):
     class Config:
        from_attributes=True
 
-class getPrivileges(pydantic.BaseModel):
-    id:int
-    name:str
-    
 class verify_token(pydantic.BaseModel):
     token:str
     
@@ -157,8 +153,6 @@ class SourceRead(pydantic.BaseModel):
     class Config:
         from_attributes = True
 
-class StaffCount(pydantic.BaseModel):
-    total_staffs: int
 
 class StaffBase(pydantic.BaseModel):
     own_staff_id: Optional[str] = None

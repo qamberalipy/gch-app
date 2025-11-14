@@ -1,4 +1,5 @@
 from datetime import date, datetime
+import secrets
 from typing import Annotated, Any, Dict
 from fastapi.exceptions import HTTPException
 import jwt, json, time, os, random, logging, bcrypt as _bcrypt
@@ -13,6 +14,17 @@ from .schema import UserBase, CoachBase
 from itsdangerous import URLSafeTimedSerializer as Serializer 
 from itsdangerous import SignatureExpired
 import base64
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import smtplib
+from passlib.context import CryptContext
+
+pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
+SMTP_PORT = os.getenv("SMTP_PORT")
+SMTP_SERVER = os.getenv("SMTP_SERVER")
+
 
 JWT_SECRET = os.getenv("JWT_SECRET", "")
 JWT_EXPIRY = os.getenv("JWT_EXPIRY", "")
@@ -66,26 +78,48 @@ def refresh_jwt(refresh_token: str):
         raise _fastapi.HTTPException(status_code=400, detail='Refresh token expired. ')
     except jwt.InvalidTokenError:
         raise _fastapi.HTTPException(status_code=400, detail='Invalid refresh token. ')
+ 
+def decode_token(token: str) -> dict:
+    return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])   
     
-def generate_password_reset_token(user_data_json):
-    
-    serial = Serializer('LetsMove')
-    # token = serial.dumps({'user_id': f'{user_id}'})
-    token = serial.dumps(user_data_json)
-    print('Token:', token)
-    b64Val = base64.b64encode(token.encode()).decode()
-    return b64Val
+def generate_otp(length: int = 6) -> str:
+    # numeric OTP
+    return "".join(secrets.choice("0123456789") for _ in range(length))
 
-def verify_password_reset_token(token: str):
-    
-    serial = Serializer('LetsMove')
+
+def send_email(recipient_email: str, subject: str, html_body: str) -> bool:
+    sender_email = "qamber.qol@gmail.com"
+    sender_password = SENDER_PASSWORD
+    smtp_server = SMTP_SERVER
+    smtp_port = SMTP_PORT
+
+    # Create a MIME multipart message
+    msg = MIMEMultipart("alternative")
+    msg['Subject'] = subject
+    msg['From'] = sender_email
+    msg['To'] = recipient_email
+
+    # Attach the HTML body
+    part = MIMEText(html_body, "html")
+    msg.attach(part)
+
     try:
-        decoded_val = base64.b64decode(token).decode()
-        print("decoded val: ", decoded_val)
-        data = serial.loads(decoded_val, max_age=1800)
-        return data
-    except SignatureExpired:
-        raise HTTPException(status_code=401, detail="The reset link is invalid or has expired. Please request a new password reset link.")
+        # Set up the SMTP server
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(sender_email, sender_password)
+
+        # Send the email
+        server.sendmail(sender_email, recipient_email, msg.as_string())
+        server.quit()
+        return True
     except Exception as e:
-        logging.error(f"Error verifying password reset token: {e}")
-        raise _fastapi.HTTPException(status_code=400, detail="The reset link is invalid or has expired. Please request a new password reset link.")
+        print(f"Failed to send email: {str(e)}")
+        return False
+
+def hash_password(password):
+    # Hash a password
+    return pwd_ctx.hash(password)
+    
+def verify_password(plain: str, hashed: str) -> bool:
+    return pwd_ctx.verify(plain, hashed)

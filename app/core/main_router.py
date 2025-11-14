@@ -8,9 +8,9 @@ from sqlalchemy.exc import DataError, IntegrityError
 import app.Shared.helpers as _helpers
 import sqlalchemy.orm as _orm
 
-from app.Shared.schema import UserBase
+import app.Shared.schema as _schemas
 from ..Shared.dependencies import get_db
-import app.user.schema as _schemas
+import app.user.schema as _User_schemas
 import app.user.models as _models
 import app.user.service as _services
 import app.core.db.session as _database
@@ -30,132 +30,114 @@ LOCKOUT_TIME = datetime.timedelta(minutes=30)
 def healthcheck():
     return JSONResponse(content=jsonable_encoder({"status": "Healthy yayy!"}))
 
+@router.post("/auth/check-email",tags=["Auth"],)
+async def check_email(email: _schemas.CheckEmailReq, db: _orm.Session = Depends(get_db)):
+    if not _helpers.validate_email(email.email):
+        raise HTTPException(status_code=400, detail="Incorrect email format")
+    
+    db_user = await _services.get_user_by_email(email.email,db)
+    if db_user:
+        return {"exists": True}
+    return {"exists": False}
+
+@router.post("/auth/send-otp", tags=["Auth"])
+async def send_otp(email: _schemas.CheckEmailReq, db: _orm.Session = Depends(get_db)):
+    if not _helpers.validate_email(email.email):
+        raise HTTPException(status_code=400, detail="Incorrect email format")
+    
+    otp = _helpers.generate_otp()
+    subject = "Password reset OTP"
+    html_body = f"Your password reset OTP is: {otp}\nIf you did not request this, ignore."
+
+    email_sent = _helpers.send_email(email.email, subject, html_body)
+    if not email_sent:
+        raise HTTPException(status_code=500, detail="Failed to send email")
+    _services.save_otp(db, email.email, otp, purpose="verify")
+
+    return JSONResponse(content={"message": f"An OTP has been sent to {email.email}. If you did not receive the email, please check your spam/junk mail folder."}, status_code=200)
+
+@router.post("/auth/verify-otp", tags=["Auth"])
+async def verify_otp(otp_request: _schemas.VerifyOtpReq, db: _orm.Session = Depends(get_db)):
+    if not _helpers.validate_email(otp_request.email):
+        raise HTTPException(status_code=400, detail="Incorrect email format")
+    
+    is_valid = _services.verify_otp(db, otp_request.email, str(otp_request.otp))
+    if not is_valid:
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+    
+    return JSONResponse(content={"message": "OTP verified successfully."}, status_code=200)
+
+@router.post("/auth/forgot-password", tags=["Auth"])
+async def forgot_password(email: _schemas.CheckEmailReq, db: _orm.Session = Depends(get_db)):
+    if not _helpers.validate_email(email.email):
+        raise HTTPException(status_code=400, detail="Incorrect email format")
+    
+    if not await _services.get_user_by_email(email.email,db):
+        raise HTTPException(status_code=404, detail="Email not found")
+    
+    otp = _helpers.generate_otp()
+    subject = "Password reset OTP"
+    html_body = f"Your password reset OTP is: {otp}\nIf you did not request this, ignore."
+
+    email_sent = _helpers.send_email(email.email, subject, html_body)
+    if not email_sent:
+        raise HTTPException(status_code=500, detail="Failed to send email")
+    _services.save_otp(db, email.email, otp, purpose="reset")
+
+    return JSONResponse(content={"message": f"An OTP has been sent to {email.email}. If you did not receive the email, please check your spam/junk mail folder."}, status_code=200)
+
+@router.post("/auth/reset-password", tags=["Auth"])
+async def reset_password(reset_request: _schemas.ResetPasswordReq, db: _orm.Session = Depends(get_db)):
+    if not _helpers.validate_email(reset_request.email):
+        raise HTTPException(status_code=400, detail="Incorrect email format")
+    
+    _services.reset_password_using_otp(db, reset_request.email, reset_request.otp, reset_request.new_password)
+    return {"message": "Password reset successful"}
+
 @router.post("/refresh_token", tags=["Auth"])
 async def refresh_token(token_body:_schemas.verify_token):
  
     print("This is my refresh token:", token_body.token)
     return _helpers.refresh_jwt(token_body.token)
 
-@router.post("/register/admin")
-async def register_user(user: _schemas.UserCreate, db: _orm.Session = Depends(get_db)):
-    print("Here 1", user.email, user.password, user.first_name)
-    db_user = await _services.get_user_by_email(user.email, db)
-    print(f"User: {db_user}")
-    print("Here 2")
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    organization_details = _schemas.OrganizationCreateTest(name=user.org_name)
-    organization = await _services.create_organizationtest(organization_details, db)
 
-    user_data = user.dict()
-    user_data['org_id'] = organization.id
-    user_data.pop('org_name')
+@router.post("/login", response_model=_schemas.AuthLoginResp, tags=["Auth"])
+def login(payload: _schemas.LoginReq, db: _orm.Session = Depends(get_db)):
+    if payload.email in lockout_expiry:
+        if datetime.datetime.utcnow() < lockout_expiry[payload.email]:
+            raise HTTPException(status_code=403, detail="Account locked due to multiple failed login attempts. Please try again later.")
+        else:
+            del lockout_expiry[payload.email]
+            login_attempts[payload.email] = 0
+    user, access, refresh= _services.login_with_email(db, payload.email, payload.password)
+    return {"message": "Login successful", "access_token": access, "user": user, "refresh_token": refresh}
 
-    user_register = _schemas.UserRegister(**user_data, created_at=datetime.datetime.utcnow())
-    new_user = await _services.create_user(user_register, db)
-    
-    return new_user
+@router.post("/google-login", response_model=_schemas.AuthLoginResp)
+def google_login(payload: _schemas.GoogleLoginReq, db: _orm.Session = Depends(get_db)):
+    user, access, refresh = _services.login_with_google(db, payload.id_token)
+    return {"message": "Login successful", "access_token": access, "refresh_token": refresh, "user": user}
 
-@router.post("/login")
-async def login(user: _schemas.GenerateUserToken,db: _orm.Session = Depends(get_db)):
-    if not _helpers.validate_email(user.email):
-        raise HTTPException(status_code=400, detail="Incorrect email format")
-    
-    print("user: ",user,"lockout_expiry: ",lockout_expiry,"login_attempts: ",login_attempts)
-    if user.email in lockout_expiry and datetime.datetime.now() < lockout_expiry[user.email]:
-        raise HTTPException(status_code=403, detail="Your account has been locked due to multiple unsuccessful sign-in attempts. Please reset your password.")
 
-    authenticated_user = await _services.authenticate_user(user.email, user.password, db)
-    if not authenticated_user:
-        login_attempts[user.email] = login_attempts.get(user.email, 0) + 1
 
-        if login_attempts[user.email] >= MAX_ATTEMPTS:
-            # Lock the account if maximum attempts are reached
-            lockout_expiry[user.email] = datetime.datetime.now() + LOCKOUT_TIME
-            login_attempts[user.email] = 0
-            raise HTTPException(status_code=403, detail="Your account has been locked due to multiple unsuccessful sign-in attempts. Please reset your password.")
+@router.post("/register", response_model=_schemas.AuthLoginResp)
+def register(payload: _schemas.RegisterReq, db: _orm.Session = Depends(get_db)):
+    password = payload.password if payload.auth_provider == "local" else None
+    user, access, refresh = _services.register_user(db, payload, password_plain=password)
+    return {"message": "User registered successfully", "access_token": access, "refresh_token": refresh, "user": user}
 
-        raise HTTPException(status_code=401, detail="Incorrect email or password.")
+@router.post("/refresh", response_model=_schemas.MessageResp, tags=["Auth"])
+def refresh(payload: _schemas.RefreshReq, db: _orm.Session = Depends(get_db)):
+    try:
+        new_access = _services.refresh_access_token(db, payload.refresh_token)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    return {"message": new_access}
 
-    login_attempts[user.email] = 0
-    user_obj = UserBase.model_validate(authenticated_user)
-    user_obj = user_obj.model_dump()
-    token = _helpers.create_token(user_obj, "Staff")
-    user_data = await _services.get_alluser_data(email=user.email, db=db)
-    return {
-        "user": user_data,
-        "token": token
-    }
+@router.post("/check-username", response_model=_schemas.UsernameAvailResp)
+def check_username(payload: _schemas.CheckUsernameReq, db: _orm.Session = Depends(get_db)):
+    avail = _services.check_username_available(db, payload.username)
+    return {"available": avail}
 
-@router.post("/forget_password")
-async def forget_password(staff : _schemas.ForgetPasswordRequest ,db: _orm.Session = Depends(get_db)):
-    
-    org_name,org_id, org_email, user = await _services.get_user_gym(staff.email, db)
-    
-    user_data = {
-        "id": user.id,
-        "email": user.email,
-        "org_id" : org_id
-    }
-    # Convert to JSON
-    user_json = json.dumps(user_data)
-
-    # Generate a password reset token
-    token = _helpers.generate_password_reset_token(user_json)
-    
-    set_token = _services.set_reset_token(user.id, user.email, token, db)
-    html_body = _services.generate_password_reset_html(user.first_name, org_email, org_name, token)
-
-    # Send the password reset email
-    email_sent = _services.send_password_reset_email(user.email, "Password Reset Request", html_body)
-    if not email_sent:
-        raise HTTPException(status_code=500, detail="Failed to send email")
-
-    return JSONResponse(content={"message": f"An e-mail with a password reset link has been sent to {user.email}. If you did not receive the email, please check your spam/junk mail folder."}, status_code=200)
-
-@router.get("/reset_password/{token}")
-async def verify_token(token: str, db: _orm.Session = Depends(get_db)):
-
-    payload = _helpers.verify_password_reset_token(token)
-    payload = json.loads(payload)
-
-    if _services.get_reset_token(payload['id'], db) == token:
-        return JSONResponse(content=payload, status_code=200)
-    else:
-        raise HTTPException(status_code=401, detail="The reset link is invalid or has expired. Please request a new password reset link.")
-     
-@router.post("/reset_password")
-async def reset_password(user : _schemas.ResetPasswordRequest, db: _orm.Session = Depends(get_db)):
-    
-    token = _services.get_reset_token(user.id, db)
-    if token == user.token:
-        data = _helpers.verify_password_reset_token(user.token)
-        
-        if data is None or any(key not in data for key in ["id","org_id"]):
-            raise HTTPException(status_code=400, detail="The reset link is invalid or has expired. Please request a new password reset link.")
-        
-        if user.new_password != user.confirm_password:
-            raise HTTPException(status_code=400, detail="Passwords do not match")
-        
-        password = _services.hash_password(user.new_password)
-        # Update the user's password
-        user = await _services.update_user_password(user.id, user.org_id ,password, db)
-        _services.delete_reset_token(user.id, db)
-        if not user:
-            raise HTTPException(status_code=404, detail="It appears there is no account with this id. Please verify the details provided.")
-        return JSONResponse(content={"message": "Your password has been reset successfully. You can now log in with your new password."}, status_code=200)
-    else:
-        raise HTTPException(status_code=400, detail="The reset link is invalid or has expired. Please request a new password reset link.")
-
-@router.post("/test_token")
-async def test_token(
-        token: str,
-        db: _orm.Session = Depends(get_db)
-    ):
-    print("Token 1: ", token)
-    payload = _helpers.verify_jwt(token, "User")
-    return payload
 
 @router.get("/countries", response_model=List[_schemas.CountryRead])
 async def read_countries(db: _orm.Session = Depends(get_db)):

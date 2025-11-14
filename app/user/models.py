@@ -21,7 +21,7 @@ class AuthProvider(str, PyEnum):
     google = "google"
 
 class User(_database.Base):
-    __tablename__ = "staff"  # kept same name as your original; change to 'users' if preferred
+    __tablename__ = "user"  # kept same name as your original; change to 'users' if preferred
 
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
 
@@ -37,7 +37,6 @@ class User(_database.Base):
     auth_provider = _sql.Column(_sql.Enum(AuthProvider, name="auth_provider"), nullable=False, default=AuthProvider.local)
     google_id = _sql.Column(_sql.String(255), nullable=True)  # store Google 'sub' if using Google OAuth
     is_verified = _sql.Column(_sql.Boolean, default=False, nullable=False)  # email verified flag
-    reset_otp = _sql.Column(_sql.Integer, nullable=True)  # password reset OTP (if you use one)
 
     # status & role
     account_status = _sql.Column(_sql.Enum(AccountStatus, name="account_status"), default=AccountStatus.active, nullable=False)
@@ -105,3 +104,20 @@ class Plan_type(_database.Base):
     id = _sql.Column(_sql.Integer, primary_key=True, index=True, autoincrement=True)
     name = _sql.Column(_sql.String(50), nullable=False)
     is_deleted = _sql.Column(_sql.Boolean, default=False, nullable=False)
+
+class OTP(_database.Base):
+    __tablename__ = "auth_otps"
+    id = _sql.Column(_sql.Integer, primary_key=True, index=True)
+    email = _sql.Column(_sql.String(255), index=True, nullable=False)
+    otp = _sql.Column(_sql.String(32), nullable=False)
+    purpose = _sql.Column(_sql.String(50), nullable=True)  # e.g. verify, reset
+    created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.utcnow)
+    used = _sql.Column(_sql.Boolean, default=False)
+
+class RefreshToken(_database.Base):
+    __tablename__ = "auth_refresh_tokens"
+    id = _sql.Column(_sql.Integer, primary_key=True, index=True)
+    user_id = _sql.Column(_sql.Integer, nullable=False)
+    token = _sql.Column(_sql.Text, nullable=False)
+    created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.utcnow)
+    revoked = _sql.Column(_sql.Boolean, default=False)

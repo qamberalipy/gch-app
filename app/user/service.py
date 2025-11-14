@@ -1,5 +1,5 @@
 from datetime import date,datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from typing import Annotated, List
 import jwt
 from sqlalchemy import asc, desc, func, or_, text
@@ -27,6 +27,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from email.mime.multipart import MIMEMultipart
 import sendgrid
 # import resend
+import app.Shared.helpers as _helpers
 from sendgrid.helpers.mail import Mail, Email, To, Content
 
 # Load environment variables
@@ -56,6 +57,40 @@ def get_db():
     finally:
         db.close()
 
+def check_email_exists(db: _orm.Session, email: str) -> bool:
+    return db.query(_models.User).filter(_models.User.email == email).first() is not None
+
+def save_otp(db: _orm.Session, email: str, otp: str, purpose: str = "verify") -> _models.OTP:
+    record = _models.OTP(email=email, otp=otp, purpose=purpose)
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
+
+def mark_otp_used(db: _orm.Session, otp_record: _models.OTP) -> None:
+    otp_record.used = True
+    db.add(otp_record)
+    db.commit()
+
+def get_latest_otp(db: _orm.Session, email: str, purpose: str = "verify") -> Optional[_models.OTP]:
+    return (
+        db.query(_models.OTP)
+        .filter(_models.OTP.email == email, _models.OTP.purpose == purpose, _models.OTP.used == False)
+        .order_by(_models.OTP.created_at.desc())
+        .first()
+    )
+
+def verify_otp(db: _orm.Session, email: str, otp_value: str, purpose: str = "verify") -> bool:
+    record = get_latest_otp(db, email, purpose)
+    if not record:
+        return False
+    age = datetime.utcnow() - record.created_at
+    if record.otp == otp_value and age.total_seconds() <= 15 * 60:
+        mark_otp_used(db, record)
+      
+        return True
+    return False
+
 def verify_jwt(token: str):
     # Verify a JWT token
     credentials_exception = _fastapi.HTTPException(
@@ -75,20 +110,149 @@ def verify_jwt(token: str):
     except:
         raise credentials_exception
 
-def hash_password(password):
-    # Hash a password
-    return _bcrypt.hashpw(password.encode('utf-8'), _bcrypt.gensalt()).decode('utf-8')
+def reset_password_using_otp(db: _orm.Session, email: str, otp_value: str, new_password: str):
+    ok, _ = verify_otp(db, email, otp_value, purpose="reset")
+    if not ok:
+        raise ValueError("Invalid or expired OTP")
+
+    user = db.query(_models.User).filter(_models.User.email == email).first()
+    if not user:
+        raise ValueError("User not found")
+
+    user.password_hash = _helpers.hash_password(new_password)
+    db.add(user)
+    db.commit()
+    return True
+
+def login_with_email(db: _orm.Session, email: str, password: str):
+    user = db.query(_models.User).filter(_models.User.email == email).first()
+    if not user:
+        raise ValueError("Invalid credentials")
+    if not user.password_hash:
+        raise ValueError("Account does not have a password; use social login")
+    if not _helpers.verify_password(password, user.password_hash):
+        raise ValueError("Invalid credentials")
+
+    access = _helpers.create_access_token({"user_id": user.id})
+    refresh = _helpers.create_refresh_token({"user_id": user.id})
+    _store_refresh_token(db, user.id, refresh)
+    return user, access, refresh
+
+def login_with_google(db: _orm.Session, id_token: str):
+
+    try:
+        # decode without verifying Google's signature
+        info = jwt.decode(id_token, options={"verify_signature": False})
+    except Exception:
+        raise ValueError("Invalid Google token format")
+
+    email = info.get("email")
+    google_sub = info.get("sub")  # Google unique user ID
+
+    if not email:
+        raise ValueError("Google token does not contain email")
+
+    # check if user exists
+    user = db.query(_models.User).filter(
+        (_models.User.email == email) | (_models.User.google_id == google_sub)
+    ).first()
+
+    if not user:
+        # register new user
+        username = email.split("@")[0]
+        user = _models.User(
+            email=email,
+            username=username,
+            auth_provider="google",
+            google_id=google_sub,
+            is_verified=True,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    # generate tokens
+    access = _helpers.create_access_token({"user_id": user.id})
+    refresh = _helpers.create_refresh_token({"user_id": user.id})
+
+    return user, access, refresh
+
+def _store_refresh_token(db: _orm.Session, user_id: int, token: str) -> _models.RefreshToken:
+    rt = _models.RefreshToken(user_id=user_id, token=token)
+    db.add(rt)
+    db.commit()
+    db.refresh(rt)
+    return rt
+
+
+def _revoke_refresh_token(db: _orm.Session, token: str) -> None:
+    r = db.query(_models.RefreshToken).filter(_models.RefreshToken.token == token).first()
+    if r:
+        r.revoked = True
+        db.add(r)
+        db.commit()
+
+def refresh_access_token(db: _orm.Session, refresh_token: str):
+    # verify stored refresh token
+    record = _verify_refresh_token(db, refresh_token)
+    if not record:
+        raise ValueError("Invalid refresh token")
+    # decode & generate new access
+    payload = _helpers.decode_token(refresh_token)
+    user_id = payload.get("user_id")
+    if not user_id:
+        raise ValueError("Invalid refresh token payload")
+    access = _helpers.create_access_token({"user_id": user_id})
+    return access
+
+
+def _verify_refresh_token(db: _orm.Session, token: str) -> Optional[_models.RefreshToken]:
+    r = db.query(_models.RefreshToken).filter(_models.RefreshToken.token == token, _models.RefreshToken.revoked == False).first()
+    return r
+
+def logout_user(db: _orm.Session, refresh_token: Optional[str] = None, access_token: Optional[str] = None):
+    # revoke refresh token if provided. For access tokens, we rely on expiration.
+    if refresh_token:
+        _revoke_refresh_token(db, refresh_token)
+    return True
+
+def register_user(db: _orm.Session, payload: schema.RegisterReq, password_plain: Optional[str] = None):
+    # If user exists with email raise
+    if db.query(_models.User).filter(_models.User.email == payload.email).first():
+        raise ValueError("Email already registered")
+
+    if payload.username and db.query(_models.User).filter(_models.User.username == payload.username).first():
+        raise ValueError("Username already taken")
+
+    # create user object (fields must match your User model)
+    # uses password hashing if provided, otherwise creates user with null password (for google)
+    hashed = _helpers.hash_password(password_plain) if password_plain else None
+
+    user = _models.User(
+        email=payload.email,
+        username=payload.username,
+        password_hash=hashed,
+        profile_type_id=payload.profile_type_id,
+        plan_type_id=payload.plan_type_id,
+        source_id=payload.source_id,
+        auth_provider=payload.auth_provider or "local",
+        google_id=payload.google_id,
+        is_verified=True if payload.auth_provider != "local" else False,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    access = _helpers.create_access_token({"user_id": user.id})
+    refresh = _helpers.create_refresh_token({"user_id": user.id})
+    _store_refresh_token(db, user.id, refresh)
+    return user, access, refresh
 
 async def get_user_by_email(email: str, db: _orm.Session):
     # Retrieve a user by email from the database
     print("Email: ", email)
-    return db.query(_models.User).filter(
-        and_(
-            _models.User.email == email,
-            _models.User.is_deleted == False
-        )
-    ).first()
-
+    return db.query(_models.User).filter(_models.User.email == email).first()
+    
 async def create_user(user: _schemas.UserRegister, db: _orm.Session):
     try:
         valid = _email_check.validate_email(user.email)
@@ -171,33 +335,7 @@ async def get_alluser_data(email: str, db: _orm.Session = _fastapi.Depends(get_d
         }
     return None
 
-async def update_user_password(user_id: int , org_id : int ,new_password : str, db: _orm.Session = _fastapi.Depends(get_db)):
-    user = db.query(_models.User).filter(_models.User.id == user_id, _models.User.org_id == org_id, _models.User.is_deleted == False).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="It appears there is no account with this id. Please verify the details provided.")
     
-    user.password = new_password
-    db.commit()
-    return user
-    
-
-async def create_staff(staff: _schemas.CreateStaff,user_id,db: _orm.Session = _fastapi.Depends(get_db)):
-    staff_data = staff.dict()
-    staff_data['created_by']=user_id
-    staff_data['updated_by']=user_id
-    staff_data['created_at']=datetime.now()
-    staff_data['updated_at']=datetime.now()
-
-    print(staff_data.pop("send_invitation"))
-    db_staff = _models.User(**staff_data)
-    db.add(db_staff)
-    db.commit()
-    db.refresh(db_staff)
-    return {
-            "status_code": "201",
-            "id": db_staff.id,
-            "message": "Staff created successfully"
-        }
         
 async def authenticate_user(email: str, password: str, db: _orm.Session):
     # Authenticate a user
@@ -209,206 +347,6 @@ async def authenticate_user(email: str, password: str, db: _orm.Session):
     if not user.verify_password(password):
         return False
     return user
-
-def generate_password_reset_html(name: str ,email :str ,gym_name: str, token: str) -> str:
-    return f'''
-    <html>
-                    <head>
-                        <title></title>
-                        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-                        <meta name="viewport" content="width=device-width, initial-scale=1">
-                        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-                        <style type="text/css">
-                            /* FONTS */
-                            @media screen {{
-                                @font-face {{
-                                    font-family: 'Lato';
-                                    font-style: normal;
-                                    font-weight: 400;
-                                    src: local('Lato Regular'), local('Lato-Regular'),
-                                    url(https://fonts.gstatic.com/s/lato/v11/qIIYRU-oROkIk8vfvxw6QvesZW2xOQ-xsNqO47m55DA.woff) format('woff');
-                                }}
-                                @font-face {{
-                                    font-family: 'Lato';
-                                    font-style: normal;
-                                    font-weight: 700;
-                                    src: local('Lato Bold'), local('Lato-Bold'),
-                                    url(https://fonts.gstatic.com/s/lato/v11/qdgUG4U09HnJwhYI-uK18wLUuEpTyoUstqEm5AMlJo4.woff) format('woff');
-                                }}
-                                @font-face {{
-                                    font-family: 'Lato';
-                                    font-style: italic;
-                                    font-weight: 400;
-                                    src: local('Lato Italic'), local('Lato-Italic'),
-                                    url(https://fonts.gstatic.com/s/lato/v11/RYyZNoeFgb0l7W3Vu1aSWOvvDin1pK8aKteLpeZ5c0A.woff) format('woff');
-                                }}
-                                @font-face {{
-                                    font-family: 'Lato';
-                                    font-style: italic;
-                                    font-weight: 700;
-                                    src: local('Lato Bold Italic'), local('Lato-BoldItalic'),
-                                    url(https://fonts.gstatic.com/s/lato/v11/HkF_qI1x_noxlxhrhMQYELO3LdcAZYWl9Si6vvxL-qU.woff) format('woff');
-                                }}
-                            }}
-                            /* CLIENT-SPECIFIC STYLES */
-                            body, table, td, a {{
-                                -webkit-text-size-adjust: 100%;
-                                -ms-text-size-adjust: 100%;
-                                color:#525167!important;
-                            }}
-                            table, td {{
-                                mso-table-lspace: 0pt;
-                                mso-table-rspace: 0pt;
-                            }}
-                            img {{
-                                -ms-interpolation-mode: bicubic;
-                            }}
-                            /* RESET STYLES */
-                            img {{
-                                border: 0;
-                                height: auto;
-                                line-height: 100%;
-                                outline: none;
-                                text-decoration: none;
-                            }}
-                            table {{
-                                border-collapse: collapse !important;
-                            }}
-                            body {{
-                                height: 100% !important;
-                                margin: 0 !important;
-                                padding: 0 !important;
-                                width: 100% !important;
-                            }}
-                            /* iOS BLUE LINKS */
-                            a[x-apple-data-detectors] {{
-                                color: inherit !important;
-                                text-decoration: none !important;
-                                font-size: inherit !important;
-                                font-family: inherit !important;
-                                font-weight: inherit !important;
-                                line-height: inherit !important;
-                            }}
-                            /* ANDROID CENTER FIX */
-                            div[style*="margin: 16px 0;"] {{
-                                margin: 0 !important;
-                            }}
-                        </style>
-                    </head>
-                    <body style="background-color: #f4f4f4; margin: 0 !important; padding: 0 !important;">
-                        <div style="display: none; font-size: 1px; color: #fefefe; line-height: 1px; font-family: 'Lato', Helvetica, Arial, sans-serif; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">Hi!</div>
-                        <table border="0" cellpadding="0" cellspacing="0" width="100%">
-                            <tbody>
-                                <tr>
-                                    <td bgcolor="#77DD77" align="center">
-                                        <table border="0" cellpadding="0" cellspacing="0" width="550">
-                                            <tbody>
-                                                <tr>
-                                                    <td align="center" valign="top" style="padding: 40px 10px 40px 10px;">
-                                                        <a href="https://pifs.lts.com.fj" target="_blank"></a>
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td bgcolor="#77DD77" align="center" style="padding: 0px 10px 0px 10px;">
-                                        <table border="0" cellpadding="0" cellspacing="0" width="550">
-                                            <tbody>
-                                                <tr>
-                                                    <td bgcolor="#ffffff" align="center" valign="top" style="padding: 40px 20px 20px 20px; border-radius: 4px 4px 0px 0px; color: #111111; font-family: 'Lato', Helvetica, Arial, sans-serif; font-size: 48px; font-weight: 500; letter-spacing: 2px; line-height: 48px;">
-                                                        <h1 style="font-size: 28px; font-weight: 400; margin: 0;">Forgot Your Password?</h1>
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td bgcolor="#f4f4f4" align="center" style="padding: 0px 10px 0px 10px;">
-                                        <table border="0" cellpadding="0" cellspacing="0" width="550">
-                                            <tbody>
-                                                <tr>
-                                                    <td bgcolor="#ffffff" align="left" style="padding: 20px 30px 20px 30px; color: #666666; font-family: 'Lato', Helvetica, Arial, sans-serif; font-size: 14px; font-weight: 400; line-height: 25px;">
-                                                        <p style="margin: 0;">Hey {name},<br><br>We received a request to reset the password for your account. To proceed with resetting your password, please click the link below:<br><br>If you did not request this password reset, you can safely ignore this email. Your password will not be changed unless you follow the link and complete the reset process.<br><br>For security reasons, this link will expire in 30 minutes. If you do not reset your password within this time, you will need to request a new password reset.<br><br>If you encounter any issues or need further assistance, please contact our support team at {email}.<br><br>Thank you,<br><br>{gym_name}</p>
-                                                    </td>
-                                                    
-                                                </tr>
-                                                <tr>
-                                                    <td bgcolor="#ffffff" align="left">
-                                                        <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                                                            <tbody>
-                                                                <tr>
-                                                                    <td bgcolor="#ffffff" align="center" style="padding: 0px 30px 30px 30px;">
-                                                                        <table border="0" cellspacing="0" cellpadding="0">
-                                                                            <tbody>
-                                                                                <tr>
-                                                                                    <td align="center" style="border-radius: 3px;" bgcolor="#77DD77">
-                                                                                        <a href="{LOCAL_BASE_URL if os.getenv("ENV") == "local" else BASE_URL}/reset_password/{token}" target="_blank" style="font-size: 20px; font-family: Helvetica, Arial, sans-serif; color: #ffffff; text-decoration: none; color: #ffffff; text-decoration: none; padding: 15px 25px; border-radius: 2px; border: 1px solid #77DD77; display: inline-block;">Reset Password</a>
-                                                                                    </td>
-                                                                                </tr>
-                                                                            </tbody>
-                                                                        </table>
-                                                                    </td>
-                                                                </tr>
-                                                            </tbody>
-                                                        </table>
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td bgcolor="#f4f4f4" align="center" style="padding: 16px 10px 0px 10px;">
-                                        <table border="0" cellpadding="0" cellspacing="0" width="550">
-                                            <tbody>
-                                                <tr>
-                                                    <td bgcolor="#f4f4f4" align="left" style="padding: 0px 30px 16px 30px;color: #666666;font-family: 'Lato', Helvetica, Arial, sans-serif;font-size: 14px;font-weight: 400;line-height: 18px;">
-                                                        <p style="margin: 0;">You received this email because your account password is being resetted</p>
-                                                    </td>
-                                                </tr>
-                                               
-                                            </tbody>
-                                        </table>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </body>
-                    </html>
-    '''
-
-def send_password_reset_email(recipient_email: str, subject: str, html_body: str) -> bool:
-    sender_email = "letsmove.project2024@gmail.com"
-    sender_password = SENDER_PASSWORD
-    smtp_server = SMTP_SERVER
-    smtp_port = SMTP_PORT
-
-    # Create a MIME multipart message
-    msg = MIMEMultipart("alternative")
-    msg['Subject'] = subject
-    msg['From'] = sender_email
-    msg['To'] = recipient_email
-
-    # Attach the HTML body
-    part = MIMEText(html_body, "html")
-    msg.attach(part)
-
-    try:
-        # Set up the SMTP server
-        server = smtplib.SMTP(smtp_server, smtp_port)
-        server.starttls()
-        server.login(sender_email, sender_password)
-
-        # Send the email
-        server.sendmail(sender_email, recipient_email, msg.as_string())
-        server.quit()
-        return True
-    except Exception as e:
-        print(f"Failed to send email: {str(e)}")
-        return False
 
 def set_reset_token(id: int, email: str, token: str, db: _orm.Session):
     db.query(_models.User).filter(_models.User.id == id).filter(_models.User.email == email).update({"reset_token": token})
@@ -432,48 +370,3 @@ def get_all_countries( db: _orm.Session):
 def get_all_sources( db: _orm.Session):
     return db.query(_models.Source).all()
 
-async def get_one_staff(staff_id: int, db: _orm.Session):
-    staff_detail = db.query(
-        *models.User.__table__.columns,
-        _models.Role.name.label("role_name")
-        ).join(
-            _models.Role, _models.User.role_id == _models.Role.id
-        ).filter(
-            _models.User.is_deleted == False,
-            _models.User.id == staff_id
-    ).first()
-    print(staff_detail)
-    if staff_detail:
-        return staff_detail
-    else :
-        return None
-    
-
-async def update_staff(staff_id: int,user_id,staff_update: _schemas.UpdateStaff, db: _orm.Session):
-    
-    staff = db.query(_models.User).filter(and_(_models.User.id == staff_id,_models.User.is_deleted == False)).first()
-    
-    if staff is None:
-        raise _fastapi.HTTPException(status_code=404, detail="Staff not found")
-    
-    update_data = staff_update.dict(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(staff, key, value)
-    
-    staff.updated_at = datetime.now()
-    staff.updated_by=user_id
-    db.commit()
-    db.refresh(staff)
-    return staff
-
-
-async def delete_staff(staff_id: int,user_id,db: _orm.Session):
-    staff = db.query(_models.User).filter(and_(_models.User.id == staff_id,_models.User.is_deleted == False)).first()
-    if staff is None:
-        raise _fastapi.HTTPException(status_code=404, detail="Staff not found")
-    
-    staff.is_deleted = True
-    staff.updated_by=user_id
-    staff.updated_at=datetime.now()
-    db.commit()
-    return {"status":"201","detail":"Staff deleted successfully"}
