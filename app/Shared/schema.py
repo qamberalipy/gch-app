@@ -1,7 +1,6 @@
-import datetime
-from datetime import date
-from typing import Optional, List, Any
+from typing import Optional, List
 from pydantic import BaseModel, EmailStr, Field
+from datetime import datetime
 
 
 # ---- Requests ----
@@ -24,12 +23,12 @@ class CheckUsernameReq(BaseModel):
 
 class RegisterReq(BaseModel):
     email: EmailStr
-    username: str
-    password: Optional[str] = None
+    username: Optional[str]
+    password: Optional[str] = Field(None, min_length=6)
     profile_type_id: Optional[int] = None
     plan_type_id: Optional[int] = None
     source_id: Optional[int] = None
-    auth_provider: Optional[str] = "local"  # 'local' or 'google'
+    auth_provider: Optional[str] = "local"
     google_id: Optional[str] = None
 
 
@@ -76,12 +75,14 @@ class UsernameAvailResp(BaseModel):
 
 class UserOut(BaseModel):
     id: int
-    username: Optional[str]
-    email: Optional[str]
+    username: Optional[str] = None
+    email: Optional[str] = None
     profile_type_id: Optional[int] = None
     plan_type_id: Optional[int] = None
     source_id: Optional[int] = None
     auth_provider: Optional[str] = None
+    is_verified: Optional[bool] = False
+    created_at: Optional[datetime] = None
 
     class Config:
         orm_mode = True
@@ -90,4 +91,5 @@ class UserOut(BaseModel):
 class AuthLoginResp(BaseModel):
     message: str
     access_token: str
+    refresh_token: str
     user: UserOut

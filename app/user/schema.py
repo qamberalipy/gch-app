@@ -1,350 +1,96 @@
-import pydantic
-import datetime
-from datetime import date
-from typing import Optional, List, Any
-from app.user.models import StaffStatus,RoleStatus
-from enum import Enum as PyEnum
-
-class UserBase(pydantic.BaseModel):
-    first_name: str
-    email: str
-    class Config:
-        from_attributes=True
-
-class UserCreate(UserBase): 
-    password: str
-    org_name: str
-    class Config:
-        from_attributes=True
-       
-class UserRegister(UserBase):
-    password: str
-    created_at: datetime.datetime
-    org_id: int
-    class Config:
-        from_attributes=True
-
-class User(UserBase):
-    id: int
-    created_at: datetime.datetime
-    class Config:
-        from_attributes=True
-
-class GenerateUserToken(pydantic.BaseModel):
-    email: str
-    password: str
-    class Config:
-       from_attributes=True
-
-class GenerateOtp(pydantic.BaseModel):
-    email: str
-    
-class VerifyOtp(pydantic.BaseModel):
-    email: str
-    otp: int
-
-class ForgetPasswordRequest(pydantic.BaseModel):
-    email : str
-    
-class ResetPasswordRequest(pydantic.BaseModel):
-    id : int
-    org_id : int
-    new_password : str
-    confirm_password : str
-    token : str
-    
-class BankAccountCreate(pydantic.BaseModel):
-    bank_account_number: str
-    bic_swift_code: str
-    bank_account_holder_name: str
-    bank_name: str
-    
-class OrganizationCreateTest(pydantic.BaseModel):
-    name: str
-
-class OrganizationBase(pydantic.BaseModel):
-    name: str
-    email: Optional[str]=None
-    profile_img:Optional[str] = None
-    business_type: Optional[str]=None
-    description: Optional[str] = None
-    address: Optional[str] = None
-    zipcode: Optional[str] = None
-    country_id: Optional[int] = None
-    city: Optional[str] = None
-    facebook_page_url: Optional[str] = None
-    website_url: Optional[str] = None
-    timezone: Optional[str] = None
-    language: Optional[str] = None
-    company_reg_no: Optional[str] = None
-    vat_reg_no: Optional[str] = None
-    club_key: Optional[str] = None
-    api_key: Optional[str] = None
-    hide_for_nonmember: Optional[bool] = None
-    # opening_hours: Optional[dict] = None
-    # opening_hours_notes: Optional[str] = None
-
-    class Config:
-        from_attributes = True
-
-class OrganizationCreate(OrganizationBase):
-    pass
-
-class OrganizationUpdate(OrganizationBase):
-    id:int
-    
-    class Config:
-        from_attributes = True
-
-class OrganizationRead(OrganizationBase):
-    id: int
-    created_at: Optional[datetime.datetime]=None
-    updated_at: Optional[datetime.datetime]=None
-
-    class Config:
-        from_attributes = True
-
-class OpeningHoursBase(pydantic.BaseModel):
-
-    opening_hours: Optional[dict] = None
-    opening_hours_notes: Optional[str] = None
-
-    class Config:
-        from_attributes = True
-    
-class OpeningHoursRead(OpeningHoursBase):
-    id: int
-    created_at: Optional[datetime.datetime]=None
-    updated_at: Optional[datetime.datetime]=None
-
-    class Config:
-        from_attributes = True
-
-class OpeningHoursUpdate(OpeningHoursBase):
-    id:int
-    
-    class Config:
-        from_attributes = True
-        
-
-class getStaff(pydantic.BaseModel):
-    
-    id:Optional[int]
-    name:Optional[str]
-    class Config:
-       from_attributes=True
-
-class verify_token(pydantic.BaseModel):
-    token:str
-    
-class CountryRead(pydantic.BaseModel):
-    id: int
-    country: str
-    country_code: int
-    is_deleted: bool
-
-    class Config:
-        from_attributes = True
-
-class SourceRead(pydantic.BaseModel):
-    id: int
-    source: str
-
-    class Config:
-        from_attributes = True
+# app/user/schema.py
+from typing import Optional, List
+from pydantic import BaseModel, EmailStr, Field
+from datetime import datetime
 
 
-class StaffBase(pydantic.BaseModel):
-    own_staff_id: Optional[str] = None
-    profile_img: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    status:Optional[StaffStatus]=None
-    gender: Optional[str] = None
-    dob: Optional[datetime.datetime]=None
-    email: str
-    phone: Optional[str] = None
-    mobile_number: Optional[str] = None
-    notes: Optional[str] = None
+# ---- Requests ----
+class CheckEmailReq(BaseModel):
+    email: EmailStr
+
+
+class SendOtpReq(BaseModel):
+    email: EmailStr
+
+
+class VerifyOtpReq(BaseModel):
+    email: EmailStr
+    otp: str = Field(..., min_length=4, max_length=10)
+
+
+class CheckUsernameReq(BaseModel):
+    username: str = Field(..., min_length=3)
+
+
+class RegisterReq(BaseModel):
+    email: EmailStr
+    username: Optional[str]
+    password: Optional[str] = Field(None, min_length=6)
+    profile_type_id: Optional[int] = None
+    plan_type_id: Optional[int] = None
     source_id: Optional[int] = None
-    org_id: Optional[int] = None
-    role_id: Optional[int] = None
-    country_id: Optional[int] = None
-    city: Optional[str] = None
-    zipcode: Optional[str] = None
-    address_1: Optional[str] = None
-    address_2: Optional[str] = None
-    status:StaffStatus
-    send_invitation: Optional[bool]=False
-    
-    class Config:
-        from_attributes = True
-
-class CreateStaff(StaffBase):
-    pass
-
-class ReadStaff(StaffBase):
-    id:int
-    activated_on: Optional[datetime.date] = None
-    last_online: Optional[datetime.datetime] = None
-    last_checkin: Optional[datetime.datetime] = None
-    
-class GetStaffResponse(StaffBase):
-    id:int
-    role_name:Optional[str] = None
-    activated_on: Optional[datetime.date] = None
-    last_online: Optional[datetime.datetime] = None
-    last_checkin: Optional[datetime.datetime] = None
-
-    class Config:
-        from_attributes = True
+    auth_provider: Optional[str] = "local"
+    google_id: Optional[str] = None
 
 
-    
-class StaffDetail(pydantic.BaseModel):
+class GoogleLoginReq(BaseModel):
+    id_token: str
+
+
+class LoginReq(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class RefreshReq(BaseModel):
+    refresh_token: str
+
+
+class ForgotPasswordReq(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordReq(BaseModel):
+    email: EmailStr
+    otp: str
+    new_password: str = Field(..., min_length=6)
+
+
+# ---- Responses ----
+class ExistsResp(BaseModel):
+    exists: bool
+
+
+class MessageResp(BaseModel):
+    message: str
+
+
+class VerifyResp(BaseModel):
+    verified: bool
+    temp_token: Optional[str] = None
+
+
+class UsernameAvailResp(BaseModel):
+    available: bool
+
+
+class UserOut(BaseModel):
     id: int
-    own_staff_id: Optional[str] = None
-    first_name: str
-    last_name: Optional[str] = None
-    email: str
-    mobile: Optional[str] = None
-    role_id: Optional[int] = None
-    role_name: Optional[str] = None
-    profile_img: Optional[str] = None
-    activated_on: Optional[datetime.date] = None
-    last_online: Optional[datetime.datetime] = None
-
-    class Config:
-        from_attributes = True
-        
-class DeleteStaff(pydantic.BaseModel):
-    id:int
-            
-class UpdateStaff(pydantic.BaseModel):
-    id:int
-    profile_img: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    status:Optional[StaffStatus]=None
-    gender: Optional[str] = None
-    dob: Optional[datetime.datetime] = None
+    username: Optional[str] = None
     email: Optional[str] = None
-    phone: Optional[str] = None
-    mobile_number: Optional[str] = None
-    notes: Optional[str] = None
+    profile_type_id: Optional[int] = None
+    plan_type_id: Optional[int] = None
     source_id: Optional[int] = None
-    org_id: Optional[int] = None
-    role_id: Optional[int] = None
-    country_id: Optional[int] = None
-    city: Optional[str] = None
-    zipcode: Optional[str] = None
-    address_1: Optional[str] = None
-    address_2: Optional[str] = None
-    status: Optional[StaffStatus] = None
-    activated_on: Optional[datetime.date] = None
-    last_online: Optional[datetime.datetime] = None
-    
-    class Config:
-        from_attributes = True
-        
-class StaffFilterParams(pydantic.BaseModel):
-    search_key: Optional[str] = None
-    staff_name: Optional[str] = None
-    role_id: Optional[List[int]] = None
-    sort_key:Optional[str]=None
-    status:Optional[StaffStatus]=None
-    sort_order: Optional[str] = "desc"
-    limit: Optional[int] = 10
-    offset: Optional[int] = 0
-
-class StaffFilterRead(pydantic.BaseModel):
-    id: Optional[int] = None
-    own_staff_id: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    email: Optional[str] = None
-    mobile: Optional[str] = None
-    role_id: Optional[int] = None
-    role_name: Optional[str] = None
-    profile_img: Optional[str] = None
+    auth_provider: Optional[str] = None
+    is_verified: Optional[bool] = False
+    created_at: Optional[datetime] = None
 
     class Config:
-        from_attributes = True
-
-class RoleBase(pydantic.BaseModel):
-    name: str
-    org_id: Optional[int] = None
-    status: Optional[RoleStatus] = "active"
-    is_deleted: Optional[bool] = False
-
-    class Config:
-        from_attributes = True
+        orm_mode = True
 
 
-class RoleCreate(RoleBase):
-    resource_id: List[int]
-    access_type: List[str]
-
-class RoleDelete(pydantic.BaseModel):
-    id: int
-
-    class Config:
-        from_attributes = True
-
-class RoleRead(pydantic.BaseModel):
-    resource_name: Optional[str] = None
-    role_id: Optional[int] = None
-    role_name: Optional[str] = None
-    org_id: Optional[int] = None
-    status: Optional[bool] = None
-    permission_id: Optional[int] = None
-    resource_id: Optional[int] = None
-    access_type: Optional[str] = None
-    is_parent: Optional[bool] = None
-    is_root: Optional[bool] = None
-    parent: Optional[str] = None
-    code: Optional[str] = None
-    link: Optional[str] = None
-    icon: Optional[str] = None
-    is_deleted: Optional[bool] = False
-    # resources: Optional[List['RoleRead']] = None
-    children: Optional[List['RoleRead']] = []
-
-    class Config:
-        from_attributes = True
-
-RoleRead.update_forward_refs()
-# class RoleSingleRead(pydantic.BaseModel):
-#     name: str
-#     access_type: str
-
-#     class Config:
-#         from_attributes = True
-
-class RoleUpdate(pydantic.BaseModel):
-    id: int
-    name: Optional[str] = None
-    org_id: int
-    status: Optional[RoleStatus] = []
-    resource_id: Optional[List[int]] = None
-    access_type: Optional[List[str]] = None
-
-    class Config:
-        from_attributes = True
-        extra = "forbid"
-
-class ResourceRead(pydantic.BaseModel):
-    id: int
-    name: str
-    code: Optional[str] = None
-    parent: Optional[str] = None
-    is_parent: Optional[bool] = None
-    is_root: Optional[bool] = None
-    link: Optional[str] = None
-    icon: Optional[str] = None
-    children: Optional[List['ResourceRead']] = []
-
-    class Config:
-        from_attributes = True
-
-ResourceRead.update_forward_refs()
+class AuthLoginResp(BaseModel):
+    message: str
+    access_token: str
+    refresh_token: str
+    user: UserOut

@@ -25,7 +25,6 @@ from dotenv import load_dotenv
 from starlette.status import HTTP_401_UNAUTHORIZED
 from app.core.main_router import router as main_router
 from app.user import user_router
-from app.Shared.helpers import verify_jwt
 
 load_dotenv(".env")
 JWT_SECRET = os.getenv("JWT_SECRET", "")

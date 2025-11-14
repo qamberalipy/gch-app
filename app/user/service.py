@@ -1,64 +1,40 @@
-from datetime import date,datetime
-from typing import List, Dict, Any, Optional
-from typing import Annotated, List
-import jwt
-from sqlalchemy import asc, desc, func, or_, text
-import sqlalchemy.orm as _orm
-from sqlalchemy.sql import and_  
-import email_validator as _email_check
-import fastapi as _fastapi
-import fastapi.security as _security
-import app.core.db.session as _database
-import app.user.schema as _schemas
-import app.user.models as _models
-import random
-import json
-import pika
-import time
+from datetime import datetime, timedelta
+from typing import Optional, Tuple, Dict, Any, List
 import os
-import bcrypt as _bcrypt
-from . import models, schema
 import logging
-from collections import defaultdict
-from app.user.models import StaffStatus
-import smtplib
-from email.mime.text import MIMEText
-from fastapi import APIRouter, Depends, HTTPException, Header
-from email.mime.multipart import MIMEMultipart
-import sendgrid
-# import resend
-import app.Shared.helpers as _helpers
-from sendgrid.helpers.mail import Mail, Email, To, Content
 
-# Load environment variables
+import sqlalchemy.orm as _orm
+from fastapi import HTTPException
+
+import app.user.models as _models
+import app.user.schema as _schemas
+import app.core.db.session as _database
+from app.Shared import helpers as _helpers
 
 logger = logging.getLogger("uvicorn.error")
-JWT_SECRET = os.getenv("JWT_SECRET")
-JWT_EXPIRY = os.getenv("JWT_EXPIRY")
-LOCAL_BASE_URL = os.getenv("LOCAL_BASE_URL")
-BASE_URL = os.getenv("BASE_URL")
-SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
-SMTP_PORT = os.getenv("SMTP_PORT")
-SMTP_SERVER = os.getenv("SMTP_SERVER")
-# RESEND_API_KEY = os.getenv('RESEND_API_KEY')
 
+# environment / defaults
+ACCESS_TOKEN_EXPIRE = int(os.getenv("ACCESS_TOKEN_EXPIRE_SECONDS", "900"))
 
-oauth2schema = _security.OAuth2PasswordBearer(tokenUrl="api/login")
-
-def create_database():
-    # Create database tables
-    return _database.Base.metadata.create_all(bind=_database.engine)
-
+# DB dependency
 def get_db():
-    # Dependency to get a database session
     db = _database.SessionLocal()
     try:
         yield db
     finally:
         db.close()
 
+
+# Basic helpers for DB queries
 def check_email_exists(db: _orm.Session, email: str) -> bool:
-    return db.query(_models.User).filter(_models.User.email == email).first() is not None
+    return db.query(_models.User).filter(_models.User.email == email, _models.User.is_deleted == False).first() is not None
+
+
+def check_username_available(db: _orm.Session, username: str) -> bool:
+    if not username:
+        return False
+    return db.query(_models.User).filter(_models.User.username == username, _models.User.is_deleted == False).first() is None
+
 
 def save_otp(db: _orm.Session, email: str, otp: str, purpose: str = "verify") -> _models.OTP:
     record = _models.OTP(email=email, otp=otp, purpose=purpose)
@@ -67,10 +43,6 @@ def save_otp(db: _orm.Session, email: str, otp: str, purpose: str = "verify") ->
     db.refresh(record)
     return record
 
-def mark_otp_used(db: _orm.Session, otp_record: _models.OTP) -> None:
-    otp_record.used = True
-    db.add(otp_record)
-    db.commit()
 
 def get_latest_otp(db: _orm.Session, email: str, purpose: str = "verify") -> Optional[_models.OTP]:
     return (
@@ -80,90 +52,116 @@ def get_latest_otp(db: _orm.Session, email: str, purpose: str = "verify") -> Opt
         .first()
     )
 
-def verify_otp(db: _orm.Session, email: str, otp_value: str, purpose: str = "verify") -> bool:
+
+def mark_otp_used(db: _orm.Session, otp_record: _models.OTP) -> None:
+    otp_record.used = True
+    db.add(otp_record)
+    db.commit()
+
+
+def verify_otp(db: _orm.Session, email: str, otp_value: str, purpose: str = "verify", expiry_seconds: int = 15 * 60) -> bool:
     record = get_latest_otp(db, email, purpose)
     if not record:
         return False
     age = datetime.utcnow() - record.created_at
-    if record.otp == otp_value and age.total_seconds() <= 15 * 60:
+    if record.otp == otp_value and age.total_seconds() <= expiry_seconds:
         mark_otp_used(db, record)
-      
         return True
     return False
 
-def verify_jwt(token: str):
-    # Verify a JWT token
-    credentials_exception = _fastapi.HTTPException(
-        status_code=_fastapi.status.HTTP_401_UNAUTHORIZED,
-        detail="Token Expired or Invalid",
-        headers={"WWW-Authenticate": "Bearer"},
+
+# ----- Auth flows -----
+def register_user(db: _orm.Session, payload: _schemas.RegisterReq) -> Tuple[_models.User, str, str]:
+    if check_email_exists(db, payload.email):
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    if payload.username and not check_username_available(db, payload.username):
+        raise HTTPException(status_code=400, detail="Username already taken")
+
+    user = _models.User(
+        email=payload.email,
+        username=payload.username,
+        profile_type_id=payload.profile_type_id,
+        plan_type_id=payload.plan_type_id,
+        auth_provider=payload.auth_provider or "local",
+        google_id=payload.google_id,
+        is_verified=False if (payload.auth_provider or "local") == "local" else True,
     )
-    try:
-        token = token.split("Bearer ")[1]
-        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-        print("Time Difference", time.time() - payload["token_time"])
-        if time.time() - payload["token_time"] > JWT_EXPIRY:
-            print("Token Expired")
-            raise credentials_exception
 
-        return payload
-    except:
-        raise credentials_exception
+    if payload.password and payload.auth_provider == "local":
+        user.set_password(payload.password)
 
-def reset_password_using_otp(db: _orm.Session, email: str, otp_value: str, new_password: str):
-    ok, _ = verify_otp(db, email, otp_value, purpose="reset")
-    if not ok:
-        raise ValueError("Invalid or expired OTP")
-
-    user = db.query(_models.User).filter(_models.User.email == email).first()
-    if not user:
-        raise ValueError("User not found")
-
-    user.password_hash = _helpers.hash_password(new_password)
     db.add(user)
     db.commit()
-    return True
+    db.refresh(user)
 
-def login_with_email(db: _orm.Session, email: str, password: str):
-    user = db.query(_models.User).filter(_models.User.email == email).first()
+    access_payload = {"sub": {"user_id": user.id}}
+    access_token = _helpers.create_access_token(access_payload)
+    refresh_token = _helpers.create_refresh_token(access_payload)
+
+    # persist refresh token
+    rt = _models.RefreshToken(user_id=user.id, token=refresh_token)
+    db.add(rt)
+    db.commit()
+
+    return user, access_token, refresh_token
+
+
+def login_with_email(db: _orm.Session, email: str, password: str) -> Tuple[_models.User, str, str]:
+    user = db.query(_models.User).filter(_models.User.email == email, _models.User.is_deleted == False).first()
     if not user:
-        raise ValueError("Invalid credentials")
+        raise HTTPException(status_code=400, detail="Invalid credentials")
+
     if not user.password_hash:
-        raise ValueError("Account does not have a password; use social login")
-    if not _helpers.verify_password(password, user.password_hash):
-        raise ValueError("Invalid credentials")
+        raise HTTPException(status_code=400, detail="Account does not have a password; use social login")
 
-    access = _helpers.create_access_token({"user_id": user.id})
-    refresh = _helpers.create_refresh_token({"user_id": user.id})
-    _store_refresh_token(db, user.id, refresh)
-    return user, access, refresh
+    if not user.verify_password(password):
+        raise HTTPException(status_code=400, detail="Invalid credentials")
 
-def login_with_google(db: _orm.Session, id_token: str):
+    access_payload = {"sub": {"user_id": user.id}}
+    access_token = _helpers.create_access_token(access_payload)
+    refresh_token = _helpers.create_refresh_token(access_payload)
 
+    rt = _models.RefreshToken(user_id=user.id, token=refresh_token)
+    db.add(rt)
+    db.commit()
+
+    # update last_login
+    user.last_login = datetime.utcnow()
+    db.add(user)
+    db.commit()
+
+    return user, access_token, refresh_token
+
+
+def login_with_google(db: _orm.Session, id_token: str) -> Tuple[_models.User, str, str]:
+    # For production, verify Google token signature with Google's library.
+    # Here we decode & trust token payload but ensure email exists.
     try:
-        # decode without verifying Google's signature
-        info = jwt.decode(id_token, options={"verify_signature": False})
+        payload = _helpers.decode_token(id_token)
     except Exception:
-        raise ValueError("Invalid Google token format")
+        # try decode without verification (useful if frontend gives raw Google token) *not recommended*
+        import jwt
+        try:
+            payload = jwt.decode(id_token, options={"verify_signature": False})
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid Google token")
 
-    email = info.get("email")
-    google_sub = info.get("sub")  # Google unique user ID
-
+    email = payload.get("email")
+    google_sub = payload.get("sub")
     if not email:
-        raise ValueError("Google token does not contain email")
+        raise HTTPException(status_code=400, detail="Google token must contain email")
 
-    # check if user exists
     user = db.query(_models.User).filter(
         (_models.User.email == email) | (_models.User.google_id == google_sub)
     ).first()
 
     if not user:
-        # register new user
         username = email.split("@")[0]
         user = _models.User(
             email=email,
             username=username,
-            auth_provider="google",
+            auth_provider=_models.AuthProvider.google,
             google_id=google_sub,
             is_verified=True,
         )
@@ -171,202 +169,79 @@ def login_with_google(db: _orm.Session, id_token: str):
         db.commit()
         db.refresh(user)
 
-    # generate tokens
-    access = _helpers.create_access_token({"user_id": user.id})
-    refresh = _helpers.create_refresh_token({"user_id": user.id})
+    access_payload = {"sub": {"user_id": user.id}}
+    access_token = _helpers.create_access_token(access_payload)
+    refresh_token = _helpers.create_refresh_token(access_payload)
 
-    return user, access, refresh
-
-def _store_refresh_token(db: _orm.Session, user_id: int, token: str) -> _models.RefreshToken:
-    rt = _models.RefreshToken(user_id=user_id, token=token)
+    rt = _models.RefreshToken(user_id=user.id, token=refresh_token)
     db.add(rt)
     db.commit()
-    db.refresh(rt)
-    return rt
+
+    return user, access_token, refresh_token
 
 
-def _revoke_refresh_token(db: _orm.Session, token: str) -> None:
-    r = db.query(_models.RefreshToken).filter(_models.RefreshToken.token == token).first()
-    if r:
-        r.revoked = True
-        db.add(r)
+def _verify_refresh_token_record(db: _orm.Session, token: str) -> Optional[_models.RefreshToken]:
+    return db.query(_models.RefreshToken).filter(_models.RefreshToken.token == token, _models.RefreshToken.revoked == False).first()
+
+
+def refresh_access_token(db: _orm.Session, refresh_token: str) -> str:
+    record = _verify_refresh_token_record(db, refresh_token)
+    if not record:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    payload = _helpers.decode_token(refresh_token)
+    if payload.get("type") != "refresh":
+        raise HTTPException(status_code=401, detail="Invalid token type")
+
+    user_id = payload.get("sub", {}).get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid refresh token payload")
+
+    access_payload = {"sub": {"user_id": user_id}}
+    return _helpers.create_access_token(access_payload)
+
+
+def revoke_refresh_token(db: _orm.Session, token: str) -> None:
+    record = db.query(_models.RefreshToken).filter(_models.RefreshToken.token == token).first()
+    if record:
+        record.revoked = True
+        db.add(record)
         db.commit()
 
-def refresh_access_token(db: _orm.Session, refresh_token: str):
-    # verify stored refresh token
-    record = _verify_refresh_token(db, refresh_token)
-    if not record:
-        raise ValueError("Invalid refresh token")
-    # decode & generate new access
-    payload = _helpers.decode_token(refresh_token)
-    user_id = payload.get("user_id")
-    if not user_id:
-        raise ValueError("Invalid refresh token payload")
-    access = _helpers.create_access_token({"user_id": user_id})
-    return access
 
-
-def _verify_refresh_token(db: _orm.Session, token: str) -> Optional[_models.RefreshToken]:
-    r = db.query(_models.RefreshToken).filter(_models.RefreshToken.token == token, _models.RefreshToken.revoked == False).first()
-    return r
-
-def logout_user(db: _orm.Session, refresh_token: Optional[str] = None, access_token: Optional[str] = None):
-    # revoke refresh token if provided. For access tokens, we rely on expiration.
+def logout_user(db: _orm.Session, refresh_token: Optional[str] = None) -> bool:
     if refresh_token:
-        _revoke_refresh_token(db, refresh_token)
+        revoke_refresh_token(db, refresh_token)
     return True
 
-def register_user(db: _orm.Session, payload: schema.RegisterReq, password_plain: Optional[str] = None):
-    # If user exists with email raise
-    if db.query(_models.User).filter(_models.User.email == payload.email).first():
-        raise ValueError("Email already registered")
 
-    if payload.username and db.query(_models.User).filter(_models.User.username == payload.username).first():
-        raise ValueError("Username already taken")
-
-    # create user object (fields must match your User model)
-    # uses password hashing if provided, otherwise creates user with null password (for google)
-    hashed = _helpers.hash_password(password_plain) if password_plain else None
-
-    user = _models.User(
-        email=payload.email,
-        username=payload.username,
-        password_hash=hashed,
-        profile_type_id=payload.profile_type_id,
-        plan_type_id=payload.plan_type_id,
-        source_id=payload.source_id,
-        auth_provider=payload.auth_provider or "local",
-        google_id=payload.google_id,
-        is_verified=True if payload.auth_provider != "local" else False,
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-
-    access = _helpers.create_access_token({"user_id": user.id})
-    refresh = _helpers.create_refresh_token({"user_id": user.id})
-    _store_refresh_token(db, user.id, refresh)
-    return user, access, refresh
-
-async def get_user_by_email(email: str, db: _orm.Session):
-    # Retrieve a user by email from the database
-    print("Email: ", email)
-    return db.query(_models.User).filter(_models.User.email == email).first()
-    
-async def create_user(user: _schemas.UserRegister, db: _orm.Session):
-    try:
-        valid = _email_check.validate_email(user.email)
-        email = valid.email
-    except _email_check.EmailNotValidError:
-        raise _fastapi.HTTPException(status_code=400, detail="Please enter a valid email")
-
-    hashed_password = hash_password(user.password)
-    user_obj = _models.User(
-        email=email, 
-        first_name=user.first_name, 
-        password=hashed_password,
-        org_id=user.org_id
-    )
-    db.add(user_obj)
-    db.commit()
-    db.refresh(user_obj)
-    return user_obj
-
-async def create_token(user: _models.User):
-    # Create a JWT token for authentication
-    user_obj = _schemas.User.from_orm(user)
-    user_dict = user_obj.dict()
-    print(user_dict)
-    del user_dict["date_created"]
-    user_dict['token_time'] = time.time()
-    print("JWT_SECRET", JWT_SECRET)
-    print("User Dict: ", user_dict)
-    token = jwt.encode(user_dict, JWT_SECRET, algorithm="HS256")
-    return dict(access_token=token, token_type="bearer")
-
-async def get_current_user(token: str, db: _orm.Session = _fastapi.Depends(get_db)):
-    # Get the current authenticated user from the JWT token
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-        user = db.query(_models.User).get(payload["id"])
-    except:
-        raise _fastapi.HTTPException(status_code=401, detail="Invalid Email or Password")
-    return _schemas.UserSchema.from_orm(user)
-
-def generate_otp():
-    # Generate a random OTP
-    return str(random.randint(100000, 999999))
-
-async def get_user_by_email(email: str, db: _orm.Session = _fastapi.Depends(get_db)):
-    return db.query(_models.User).filter(
-        and_(
-            _models.User.email == email,
-            _models.User.is_deleted == False
-        )
-    ).first()
-
-async def get_filtered_user_by_email(email: str, db: _orm.Session = _fastapi.Depends(get_db)):
-    user =  db.query(models.User).filter(models.User.email == email, _models.User.is_deleted == False).first()
-    if user:
-        return user
-    else: 
-        raise HTTPException(status_code=404, detail="It appears there is no account with this email. Please verify the address provided.")
+# ---- User queries ----
+def get_user_by_email(db: _orm.Session, email: str) -> Optional[_models.User]:
+    return db.query(_models.User).filter(_models.User.email == email, _models.User.is_deleted == False).first()
 
 
-async def get_alluser_data(email: str, db: _orm.Session = _fastapi.Depends(get_db)):
-    # Retrieve a user by email from the database
-    result = (
-        db.query(_models.User, _models.Organization.name)
-        .join(_models.Organization, _models.User.org_id == _models.Organization.id)
-        .filter(_models.User.email == email)
-        .first()
-    )
-    
-    if result:
-        user, org_name = result
-        return {
-            "id": user.id,
-            "first_name": user.first_name,
-            "email": user.email,
-            "date_created": user.created_at,
-            "org_id": user.org_id,
-            "org_name": org_name,
-            "is_deleted": user.is_deleted
-        }
-    return None
+def get_user_by_id(db: _orm.Session, user_id: int) -> Optional[_models.User]:
+    return db.query(_models.User).filter(_models.User.id == user_id, _models.User.is_deleted == False).first()
 
-    
-        
-async def authenticate_user(email: str, password: str, db: _orm.Session):
-    # Authenticate a user
-    user = await get_user_by_email(email=email, db=db)
 
-    if not user:
-       raise HTTPException(status_code=400, detail="No account found associated with the provided email.")
-
-    if not user.verify_password(password):
-        return False
-    return user
-
-def set_reset_token(id: int, email: str, token: str, db: _orm.Session):
-    db.query(_models.User).filter(_models.User.id == id).filter(_models.User.email == email).update({"reset_token": token})
-    db.commit()
-    return token
-
-def get_reset_token(id: int, db: _orm.Session):
-    user = db.query(_models.User).filter(_models.User.id == id, _models.User.reset_token.isnot(None)).first()
-    if user is None:
-        return None
-
-    return user.reset_token
-
-def delete_reset_token(id: int, db: _orm.Session):
-    db.query(_models.User).filter(_models.User.id == id).update({"reset_token": None})
-    db.commit()
-
-def get_all_countries( db: _orm.Session):
+def get_all_countries(db: _orm.Session) -> List[_models.Country]:
     return db.query(_models.Country).filter(_models.Country.is_deleted == False).all()
 
-def get_all_sources( db: _orm.Session):
+
+def get_all_sources(db: _orm.Session) -> List[_models.Source]:
     return db.query(_models.Source).all()
 
+
+def reset_password_using_otp(db: _orm.Session, email: str, otp_value: str, new_password: str):
+    ok = verify_otp(db, email, otp_value, purpose="reset")
+    if not ok:
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+
+    user = get_user_by_email(db, email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.set_password(new_password)
+    db.add(user)
+    db.commit()
+    return True
