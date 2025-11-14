@@ -74,17 +74,20 @@ class User(_database.Base):
     # soft delete
     is_deleted = _sql.Column(_sql.Boolean, default=False, nullable=False)
 
-    # password helpers (uses passlib)
     def set_password(self, password: str) -> None:
-        self.password_hash = pwd_ctx.hash(password)
+        try:
+            safe_pass = password[:72]   # bcrypt max length
+            self.password_hash = pwd_ctx.hash(safe_pass)
+        except Exception as e:
+            # Handle or log the exception as needed
+            raise e
 
     def verify_password(self, plain_password: str) -> bool:
-        if not self.password_hash:
-            return False
         try:
-            return pwd_ctx.verify(plain_password, self.password_hash)
+            return pwd_ctx.verify(plain_password[:72], self.password_hash)
         except Exception:
             return False
+
 
 
 class Country(_database.Base):

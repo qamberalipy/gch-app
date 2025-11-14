@@ -42,6 +42,7 @@ def send_otp(payload: _schemas.SendOtpReq, db: Session = Depends(_services.get_d
     html_body = f"<p>Your OTP: <strong>{otp}</strong></p><p>If you did not request this, ignore.</p>"
 
     sent = _helpers.send_email(payload.email, subject, html_body)
+    print(sent)
     if not sent:
         raise HTTPException(status_code=500, detail="Failed to send email")
 

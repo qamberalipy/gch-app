@@ -108,29 +108,35 @@ def register_user(db: _orm.Session, payload: _schemas.RegisterReq) -> Tuple[_mod
 
 
 def login_with_email(db: _orm.Session, email: str, password: str) -> Tuple[_models.User, str, str]:
-    user = db.query(_models.User).filter(_models.User.email == email, _models.User.is_deleted == False).first()
+    user = db.query(_models.User).filter(
+        _models.User.email == email, 
+        _models.User.is_deleted == False
+    ).first()
+    
     if not user:
         raise HTTPException(status_code=400, detail="Invalid credentials")
-
+    
     if not user.password_hash:
         raise HTTPException(status_code=400, detail="Account does not have a password; use social login")
-
-    if not user.verify_password(password):
+    
+    if not _helpers.pwd_ctx.verify(password, user.password_hash):
         raise HTTPException(status_code=400, detail="Invalid credentials")
-
-    access_payload = {"sub": {"user_id": user.id}}
-    access_token = _helpers.create_access_token(access_payload)
-    refresh_token = _helpers.create_refresh_token(access_payload)
-
+    
+    # ✅ Correct payload: just user_id as sub
+    access_token = _helpers.create_access_token(user.id)
+    refresh_token = _helpers.create_refresh_token(user.id)
+    print("Access Token:", access_token)
+    print("Refresh Token:", refresh_token)
+    # Save refresh token in DB
     rt = _models.RefreshToken(user_id=user.id, token=refresh_token)
     db.add(rt)
-    db.commit()
-
+    
     # update last_login
     user.last_login = datetime.utcnow()
     db.add(user)
+    
     db.commit()
-
+    
     return user, access_token, refresh_token
 
 
@@ -185,20 +191,27 @@ def _verify_refresh_token_record(db: _orm.Session, token: str) -> Optional[_mode
 
 
 def refresh_access_token(db: _orm.Session, refresh_token: str) -> str:
-    record = _verify_refresh_token_record(db, refresh_token)
+    # Check token exists in DB and not revoked
+    record = db.query(_models.RefreshToken).filter(
+        _models.RefreshToken.token == refresh_token,
+        _models.RefreshToken.revoked == False
+    ).first()
+    
     if not record:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
-
+    
     payload = _helpers.decode_token(refresh_token)
+    
     if payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Invalid token type")
-
-    user_id = payload.get("sub", {}).get("user_id")
+    
+    user_id = payload.get("sub")
     if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid refresh token payload")
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    
+    # create new access token
+    return _helpers.create_access_token(int(user_id))
 
-    access_payload = {"sub": {"user_id": user_id}}
-    return _helpers.create_access_token(access_payload)
 
 
 def revoke_refresh_token(db: _orm.Session, token: str) -> None:
