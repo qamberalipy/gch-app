@@ -9,18 +9,21 @@ from typing import Dict, Any
 import re
 from passlib.context import CryptContext
 import fastapi as _fastapi
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
-load_dotenv(".env")
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
+
+load_dotenv(".env")
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 JWT_SECRET = os.getenv("JWT_SECRET")
 ACCESS_TOKEN_EXPIRE_SECONDS = int(os.getenv("ACCESS_TOKEN_EXPIRE_SECONDS", "900"))  # 15 minutes default
 REFRESH_TOKEN_EXPIRE_SECONDS = int(os.getenv("REFRESH_TOKEN_EXPIRE_SECONDS", str(60 * 60 * 24 * 7)))  # 7 days
-
-SENDER_EMAIL = os.getenv("SENDER_EMAIL", "zaidi1465@gmail.com")
-SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+SENDER_EMAIL = os.getenv("SENDER_EMAIL", "qamber.qsol@gmail.com")
+SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "rswiitydiojgupnh")
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 
 EMAIL_REGEX = re.compile(r"^(?=.{1,254}$)[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
 
@@ -79,33 +82,40 @@ def decode_token(token: str) -> Dict[str, Any]:
 def create_otp(length: int = 6) -> str:
     return "".join(secrets.choice("0123456789") for _ in range(length))
 
-# ----------------- Brevo Email -----------------
 def send_email(recipient_email: str, subject: str, html_text: str, otp: str) -> bool:
     try:
-        # Build final HTML body
+        # Build your final HTML body
         html_body = generate_otp_email_html(otp, html_text)
-        print("APIKEY:", SENDGRID_API_KEY)
-        print("SENDER EMAIL:", SENDER_EMAIL)
-        print("Recipient Email:", recipient_email)
-        # Create SendGrid Mail object
-        message = Mail(
-            from_email=SENDER_EMAIL,
-            to_emails=recipient_email,
-            subject=subject,
-            html_content=html_body
-        )
 
-        # Send email using SendGrid
-        sg = SendGridAPIClient(SENDGRID_API_KEY)
-        response = sg.send(message)
+        # Create the email message
+        message = MIMEMultipart("alternative")
+        message["From"] = SENDER_EMAIL
+        message["To"] = recipient_email
+        message["Subject"] = subject
 
-        print("SendGrid Response:", response)
+        # Attach the HTML body
+        html_part = MIMEText(html_body, "html")
+        message.attach(html_part)
+
+        # Gmail SMTP connection
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()  # Secure connection
+
+        # Login using Gmail App Password
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+
+        # Send email
+        server.sendmail(SENDER_EMAIL, recipient_email, message.as_string())
+
+        server.quit()
+
+        print("Email sent successfully via Gmail SMTP!")
         return True
 
     except Exception as e:
-        print("Error sending email via SendGrid:", e)
+        print("Error sending email via Gmail SMTP:", e)
         return False
-    
+
 def generate_otp_email_html(otp: str, message: str = None) -> str:
     """
     Generate a modern OTP email HTML body.
