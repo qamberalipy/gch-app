@@ -2,35 +2,63 @@ import os
 import sys
 from logging.config import fileConfig
 
-from sqlalchemy import create_engine, pool
+from sqlalchemy import engine_from_config
+from sqlalchemy import pool
 from alembic import context
+from dotenv import load_dotenv  # Required to read .env
 
-# Make app importable
-sys.path.append(os.path.abspath("."))
+# ------------------------------------------------------------------------
+# 1. SETUP PATH AND ENV
+# ------------------------------------------------------------------------
+# Add the project root directory to python path so we can import 'app'
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-# Load DB + Base
-from app.core.db.session import Base, DATABASE_URL
+# Load variables from .env file
+load_dotenv()
 
-# Import your models so Alembic can detect them
-from app.user.models import User  # <-- add more models here
+# ------------------------------------------------------------------------
+# 2. IMPORT MODELS
+# ------------------------------------------------------------------------
+# Import your Base (where metadata lives)
+from app.core.db.session import Base
 
+# MUST Import all your models here so Alembic can "see" the tables
+# If you create new model files later, add them here!
+import app.user.models 
+# import app.order.models  <-- Example for future modules
 
+# ------------------------------------------------------------------------
+# 3. CONFIGURATION
+# ------------------------------------------------------------------------
 config = context.config
 
-# Load .env variables in alembic.ini
-section = config.config_ini_section
-if config.get_main_option("env_file"):
-    from dotenv import load_dotenv
-    load_dotenv(config.get_main_option("env_file"))
+# Overwrite the sqlalchemy.url in alembic.ini with the one from .env
+# This keeps your password secure and not hardcoded in ini files.
+database_url = os.getenv("DATABASE_URL")
 
-fileConfig(config.config_file_name)
+# Fix for some postgres drivers that fail with the "postgres://" prefix (they prefer "postgresql://")
+if database_url and database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
 
+config.set_main_option("sqlalchemy.url", database_url)
+
+
+# Interpret the config file for Python logging.
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
+# Link the metadata for autogeneration support
 target_metadata = Base.metadata
 
+# ------------------------------------------------------------------------
+# 4. MIGRATION FUNCTIONS (Standard Boilerplate)
+# ------------------------------------------------------------------------
 
-def run_migrations_offline():
+def run_migrations_offline() -> None:
+    """Run migrations in 'offline' mode."""
+    url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=DATABASE_URL,
+        url=url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -40,14 +68,19 @@ def run_migrations_offline():
         context.run_migrations()
 
 
-def run_migrations_online():
-    engine = create_engine(DATABASE_URL, poolclass=pool.NullPool)
+def run_migrations_online() -> None:
+    """Run migrations in 'online' mode."""
+    
+    # We use the config section to create the engine
+    connectable = engine_from_config(
+        config.get_section(config.config_ini_section),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
 
-    with engine.connect() as connection:
+    with connectable.connect() as connection:
         context.configure(
-            connection=connection,
-            target_metadata=target_metadata,
-            compare_type=True,
+            connection=connection, target_metadata=target_metadata
         )
 
         with context.begin_transaction():
