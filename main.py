@@ -56,7 +56,7 @@ async def authorization(
 
 root_router = APIRouter(dependencies=[Depends(authorization)])
 
-app = FastAPI(title="Link Nest APIs", root_path=ROOT_PATH, swagger_ui_parameters={'displayRequestDuration': True})
+app = FastAPI(title="GCH App APIs", root_path=ROOT_PATH, swagger_ui_parameters={'displayRequestDuration': True})
 
 app.add_middleware(
     CORSMiddleware,

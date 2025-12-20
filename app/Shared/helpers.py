@@ -18,8 +18,8 @@ load_dotenv(".env")
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 JWT_SECRET = os.getenv("JWT_SECRET")
-ACCESS_TOKEN_EXPIRE_SECONDS = "1800"
-REFRESH_TOKEN_EXPIRE_SECONDS =  str(60 * 60 * 24 * 7) 
+ACCESS_TOKEN_EXPIRE_SECONDS = 1800 
+REFRESH_TOKEN_EXPIRE_SECONDS = 60 * 60 * 24 * 7 
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", "qamber.qsol@gmail.com")
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "rswiitydiojgupnh")
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
@@ -126,7 +126,7 @@ def generate_otp_email_html(otp: str, message: str = None) -> str:
     """
     if message is None:
         message = (
-            "Thank you for choosing <strong>Link Nest</strong>. "
+            "Thank you for choosing <strong>GCH App</strong>. "
             "Use the following OTP to complete your sign-up procedure. "
             "This OTP is valid for <strong>5 minutes</strong>."
         )
@@ -154,7 +154,7 @@ def generate_otp_email_html(otp: str, message: str = None) -> str:
           
           <p style="font-size: 0.9em; color: #777777; margin-top: 30px;">
             Regards,<br>
-            <strong>Link Nest Team</strong>
+            <strong>GCH Team</strong>
           </p>
         </div>
         
