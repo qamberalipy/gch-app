@@ -18,12 +18,12 @@ load_dotenv(".env")
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 JWT_SECRET = os.getenv("JWT_SECRET")
-ACCESS_TOKEN_EXPIRE_SECONDS = int(os.getenv("ACCESS_TOKEN_EXPIRE_SECONDS"))  # 15 minutes default
-REFRESH_TOKEN_EXPIRE_SECONDS = int(os.getenv("REFRESH_TOKEN_EXPIRE_SECONDS"))  # 7 days
-SENDER_EMAIL = os.getenv("SENDER_EMAIL")
-SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
-SMTP_SERVER = os.getenv("SMTP_SERVER")
-SMTP_PORT = int(os.getenv("SMTP_PORT"))
+ACCESS_TOKEN_EXPIRE_SECONDS = "1800"
+REFRESH_TOKEN_EXPIRE_SECONDS =  str(60 * 60 * 24 * 7) 
+SENDER_EMAIL = os.getenv("SENDER_EMAIL", "qamber.qsol@gmail.com")
+SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "rswiitydiojgupnh")
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 
 EMAIL_REGEX = re.compile(r"^(?=.{1,254}$)[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
 
