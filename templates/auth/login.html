@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grail Studios - Login</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+    <style>
+        body {
+            background-color: #f0f2f5;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* 1. Main Container */
+        .login-container {
+            background: #fff;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            min-height: 600px;
+            width: 100%;
+            max-width: 1100px;
+        }
+
+        /* 2. Left Side (Image & Network) */
+        .login-left {
+            /* FIX 1: Darker Gradient so white lines show up */
+            background: linear-gradient(135deg, #cfd9df 0%, #859398 100%);
+            position: relative;
+            padding: 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+        }
+
+        /* Background Network Pattern */
+        .network-bg {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            
+            /* FIX 2: Ensure image covers area and is visible */
+            background-image: url('/static/img/login_side.png');
+            background-size: cover; 
+            background-position: center;
+            background-repeat: no-repeat;
+            
+            /* FIX 3: Increase opacity */
+            opacity: 0.6; 
+            z-index: 0;
+        }
+
+        .left-content {
+            position: relative;
+            z-index: 2; /* Keeps text above the network image */
+        }
+
+        /* Branding */
+        .grail-logo {
+            font-weight: 700;
+            font-size: 28px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #333;
+            text-align: center;
+            display: inline-block;
+        }
+
+        .promo-text {
+            font-size: 22px;
+            font-weight: 300;
+            color: #2c3e50; /* Slightly darker for better readability on grey */
+            line-height: 1.5;
+            max-width: 90%;
+        }
+
+        /* Floating Avatars */
+        .avatar-float {
+            position: absolute;
+            border-radius: 50%;
+            border: 4px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            object-fit: cover;
+            z-index: 1;
+            transition: transform 0.3s ease;
+        }
+        .avatar-float:hover { transform: scale(1.1); }
+
+        .av-1 { top: 25%; right: 15%; width: 80px; height: 80px; }
+        .av-2 { top: 50%; left: 15%; width: 70px; height: 70px; }
+        .av-3 { bottom: 30%; right: 35%; width: 60px; height: 60px; }
+
+        /* 3. Right Side (Form) */
+        .login-right {
+            padding: 60px 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background-color: white;
+        }
+
+        /* Gold Theme */
+        .text-gold { color: #C49A6C; }
+        
+        .btn-gold {
+            background-color: #C49A6C;
+            color: white;
+            border: none;
+            padding: 14px;
+            font-weight: 600;
+            font-size: 16px;
+            border-radius: 50px;
+            width: 100%;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(196, 154, 108, 0.4);
+        }
+        .btn-gold:hover {
+            background-color: #a88258;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        /* Inputs */
+        .form-label { font-size: 14px; color: #888; font-weight: 500; }
+        
+        .form-control-custom {
+            background-color: #f8f9fa;
+            border: 1px solid transparent;
+            padding: 16px;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: 0.3s;
+        }
+        .form-control-custom:focus {
+            box-shadow: none;
+            background-color: #fff;
+            border-color: #C49A6C;
+        }
+
+        .password-wrapper { position: relative; }
+        .eye-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #aaa;
+            cursor: pointer;
+            padding: 5px;
+        }
+        .eye-icon:hover { color: #C49A6C; }
+
+        /* Mobile Adjustments */
+        @media (max-width: 991px) {
+            .login-container { max-width: 500px; min-height: auto; }
+            .login-left { display: none; }
+            .login-right { padding: 40px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 d-flex justify-content-center">
+                
+                <div class="row login-container">
+                    
+                    <div class="col-lg-7 login-left d-none d-lg-flex">
+                        <div class="network-bg"></div>
+                        
+                        <div class="left-content">
+                            <div class="grail-logo">
+                                <img src="/static/img/web_logo.png" alt="Grail Studios Logo" width="180px">
+                            </div>
+                        </div>
+
+                        <img src="https://i.pravatar.cc/150?img=33" class="avatar-float av-1">
+                        <img src="https://i.pravatar.cc/150?img=5" class="avatar-float av-2">
+                        <img src="https://i.pravatar.cc/150?img=12" class="avatar-float av-3">
+
+                        <div class="left-content">
+                            <p class="promo-text">
+                                Connect, manage and monitor your team from a single platform
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-5 login-right">
+                        <div>
+                            <h2 class="text-gold mb-1">Login</h2>
+                            <p class="text-muted mb-5">Welcome to Grail Studios Admin Portal</p>
+
+                            <div id="loginAlert" class="alert alert-danger d-none small" role="alert"></div>
+
+                            <form id="loginForm">
+                                <div class="mb-4">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control form-control-custom" id="email" placeholder="example: johndoe@gmail.com" required>
+                                </div>
+
+                                <div class="mb-5">
+                                    <label for="password" class="form-label">Password</label>
+                                    <div class="password-wrapper">
+                                        <input type="password" class="form-control form-control-custom" id="password" placeholder="XXXXXXXX" required>
+                                        <span class="eye-icon" id="togglePassword">
+                                            <i class="bi bi-eye"></i>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-gold" id="loginBtn">
+                                    <span class="spinner-border spinner-border-sm d-none" id="btnSpinner" role="status" aria-hidden="true"></span>
+                                    <span id="btnText">Login</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            
+            // 1. Toggle Password Visibility
+            $("#togglePassword").click(function() {
+                const passwordInput = $("#password");
+                const icon = $(this).find("i");
+                
+                if (passwordInput.attr("type") === "password") {
+                    passwordInput.attr("type", "text");
+                    icon.removeClass("bi-eye").addClass("bi-eye-slash");
+                } else {
+                    passwordInput.attr("type", "password");
+                    icon.removeClass("bi-eye-slash").addClass("bi-eye");
+                }
+            });
+
+            // 2. Handle Login Submit
+            $("#loginForm").submit(function(event) {
+                event.preventDefault();
+
+                // UI Loading State
+                $("#loginBtn").prop("disabled", true);
+                $("#btnSpinner").removeClass("d-none");
+                $("#btnText").text(" Signing in...");
+                $("#loginAlert").addClass("d-none");
+
+                var formData = {
+                    email: $("#email").val(),
+                    password: $("#password").val()
+                };
+
+                // AJAX Request to your FastAPI Backend
+                $.ajax({
+                    type: "POST",
+                    url: "/api/auth/login",
+                    contentType: "application/json",
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        // Success: Save Token
+                        localStorage.setItem("access_token", response.access_token);
+                        
+                        if (response.user && response.user.role) {
+                            localStorage.setItem("user_role", response.user.role);
+                        }
+
+                        // Redirect
+                        setTimeout(function() {
+                            window.location.href = "/demo";
+                        }, 500);
+                    },
+                    error: function(xhr) {
+                        // Error: Reset Button & Show Alert
+                        $("#loginBtn").prop("disabled", false);
+                        $("#btnSpinner").addClass("d-none");
+                        $("#btnText").text("Login");
+                        
+                        var errorMsg = "Login failed. Please check credentials.";
+                        if (xhr.responseJSON && xhr.responseJSON.detail) {
+                            errorMsg = xhr.responseJSON.detail;
+                        }
+                        $("#loginAlert").text(errorMsg).removeClass("d-none");
+                    }
+                });
+            });
+
+        });
+    </script>
+</body>
+</html>
