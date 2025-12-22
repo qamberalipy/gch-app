@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status,BackgroundTasks
 from sqlalchemy.orm import Session
 import app.Shared.helpers as _helpers
 from app.Shared import schema as _shared_schemas # Be sure to update Shared schema imports if needed, or import from local user schema
@@ -67,24 +67,35 @@ def logout(payload: Optional[_shared_schemas.RefreshReq] = None, db: Session = D
     _services.logout_user(db, refresh_token=token)
     return {"message": "Logged out"}
 
-# --- PASSWORD RECOVERY ---
 
 @router.post("/auth/forgot-password", tags=["Auth"])
-def forgot_password(payload: _shared_schemas.ForgotPasswordReq, db: Session = Depends(_services.get_db)):
+def forgot_password(
+    payload: _shared_schemas.ForgotPasswordReq, 
+    background_tasks: BackgroundTasks, 
+    db: Session = Depends(_services.get_db)):
     user = _services.get_user_by_email(db, payload.email)
+    
+    # --- CHANGE: Raise Error if User Not Found ---
     if not user:
-        # Security: Don't reveal if email exists, just say sent
-        return {"message": "If email exists, OTP sent"}
+        raise HTTPException(
+            status_code=404, 
+            detail="User not found with this email"
+        )
         
+    # Proceed if user exists
     otp = _helpers.create_otp()
+    
+    # Save OTP to DB first
+    _services.save_otp(db, payload.email, otp, purpose="reset")
+    
+    # Prepare Email Content
     subject = "Password Reset Request"
     html_text = f"Your OTP for password reset is: <strong>{otp}</strong>. Valid for 5 minutes."
     
-    if _helpers.send_email(payload.email, subject, html_text, otp):
-        _services.save_otp(db, payload.email, otp, purpose="reset")
-        return {"message": "OTP sent"}
+    # Send Email (using BackgroundTasks is recommended for speed)
+    background_tasks.add_task(_helpers.send_email, payload.email, subject, html_text, otp)
     
-    raise HTTPException(status_code=500, detail="Failed to send email")
+    return {"message": "OTP sent successfully"}
 
 @router.post("/auth/reset-password", tags=["Auth"])
 def reset_password(payload: _shared_schemas.ResetPasswordReq, db: Session = Depends(_services.get_db)):
