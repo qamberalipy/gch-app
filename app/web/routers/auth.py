@@ -46,3 +46,11 @@ async def demo_view(request: Request):
     File location: templates/auth/demo.html
     """
     return templates.TemplateResponse("auth/demo.html", {"request": request})
+
+@router.get("/dashboard")
+async def dashboard_view(request: Request):
+    """
+    Main Dashboard view after successful login.
+    File location: templates/dashboard.html
+    """
+    return templates.TemplateResponse("dashboard.html", {"request": request})
