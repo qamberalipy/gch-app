@@ -105,7 +105,6 @@ def create_user_by_admin(db: _orm.Session, payload: _schemas.CreateUserReq) -> _
         country_id=payload.country_id,
         timezone=payload.timezone,
         is_onboarded=False, # User must setup/change pass on first login if required
-        is_verified=True,   # Admin created, so it's verified
         account_status=_models.AccountStatus.active
     )
     
