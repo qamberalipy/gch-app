@@ -6,7 +6,7 @@ from fastapi import (
     FastAPI,
     APIRouter,
     HTTPException,
-    Request,
+    Request,status
 )
 from fastapi.staticfiles import StaticFiles 
 from fastapi.security import (
@@ -37,29 +37,35 @@ from app.web.routers import auth as web_auth
 
 bearer_scheme = HTTPBearer()
 
-# --- AUTH LOGIC (API ONLY) ---
+
 async def authorization(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
 ):
     token = credentials.credentials
-    token_expection = HTTPException(
-        status_code=HTTP_401_UNAUTHORIZED,
+    
+    # Define the exception to raise if validation fails
+    token_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Token Expired or Invalid",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    try:
-        # Now JWT_SECRET is definitely defined because we moved it up
-        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-    except:
-        raise token_expection
-    
-    # Ensure JWT_EXPIRY is treated as an integer
-    if (time.time() - payload.get("token_time", 0)) > int(JWT_EXPIRY or 3600):
-        raise token_expection
-    request.state.user = payload
 
-# Router for PROTECTED API endpoints
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        request.state.user = payload
+
+    except jwt.ExpiredSignatureError:
+        print("Token has expired.")
+        raise token_exception
+    except jwt.InvalidTokenError:
+        print("Token is invalid.")
+        raise token_exception
+    except Exception as e:
+        print(f"Token validation error: {e}")
+        raise token_exception
+
+
 root_router = APIRouter(dependencies=[Depends(authorization)])
 
 app = FastAPI(
