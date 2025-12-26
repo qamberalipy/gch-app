@@ -7,11 +7,20 @@
     --bg-sidebar: #ffffff;   /* White Sidebar */
 }
 
+/* --- Global Scale Fix --- */
+html {
+    /* Sets base size to 14px instead of browser default 16px. 
+       This scales down all 'rem' values by ~12.5% */
+    font-size: 14px; 
+}
+
 body {
     font-family: 'Poppins', sans-serif;
     background-color: var(--bg-body);
-    font-size: 0.9rem;
+    font-size: 1rem; /* Effectively 14px now */
     color: var(--primary-text);
+    font-weight: 400; /* Force normal weight for cleaner look */
+    -webkit-font-smoothing: antialiased; /* Sharper fonts on Mac/iOS */
 }
 
 /* --- Sidebar Styling --- */
@@ -46,7 +55,9 @@ body {
 .nav-link {
     color: var(--secondary-text);
     font-weight: 500;
-    padding: 0.7rem 2rem;
+    /* Tighter padding for cleaner look */
+    padding: 0.6rem 1.5rem; 
+    font-size: 0.95rem;
     display: flex;
     align-items: center;
     transition: all 0.2s;
@@ -92,7 +103,8 @@ body {
     background-color: #f8f9fa;
     border: none;
     border-radius: 50px;
-    padding: 0.7rem 1rem 0.7rem 3rem;
+    /* Slimmer padding */
+    padding: 0.5rem 1rem 0.5rem 2.5rem;
     width: 100%;
     font-size: 0.9rem;
     color: var(--primary-text);
@@ -106,11 +118,11 @@ body {
 
 .search-icon {
     position: absolute;
-    left: 18px;
+    left: 15px;
     top: 50%;
     transform: translateY(-50%);
     color: #b0b0b0;
-    font-size: 1.1rem;
+    font-size: 1rem;
 }
 
 /* --- Navbar Actions (Right Side) --- */
@@ -269,7 +281,7 @@ body {
     min-height: 70vh;
 }
 
-/* --- Loader CSS (Ported from Old Project) --- */
+/* --- Loader CSS --- */
 #loader {
     position: fixed;
     top: 0;

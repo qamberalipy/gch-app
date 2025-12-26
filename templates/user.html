@@ -2,23 +2,23 @@
 
 {% block stylesheets %}
 <style>
-    /* --- Grail Studios Custom Table Theme --- */
+    /* --- Grail Studios Custom Table Theme (Optimized) --- */
     
-    /* The Main Card Container */
+    /* 1. Main Card: Reduce padding */
     .grail-table-card {
         background: #fff;
         border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.03); /* Softer shadow */
-        padding: 25px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        padding: 20px; /* Reduced from 25px */
         border: 1px solid #f1f1f1;
     }
 
-    /* Header Area (Title, Search, Button) */
+    /* 2. Header Area: Tighter spacing */
     .grail-header-area {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 25px;
+        margin-bottom: 20px; /* Reduced from 25px */
         flex-wrap: wrap;
         gap: 15px;
     }
@@ -26,53 +26,55 @@
     .page-title {
         font-family: 'Poppins', sans-serif;
         font-weight: 600;
-        font-size: 1.5rem;
+        font-size: 1.25rem; /* Reduced from 1.5rem */
         color: #333;
         margin: 0;
     }
 
-    /* Search Box Styling */
+    /* 3. Search Box: Slimmer */
     .grail-search-box {
         position: relative;
-        width: 300px;
+        width: 260px; /* Reduced width */
     }
 
     .grail-search-box input {
-        background: #F9FAFB; /* Very light gray */
+        background: #F9FAFB;
         border: 1px solid #E5E7EB;
-        border-radius: 50px; /* Full pill shape */
-        padding: 10px 20px 10px 45px; /* Space for icon */
+        border-radius: 50px;
+        /* Significantly reduced padding for slim look */
+        padding: 8px 15px 8px 38px; 
         width: 100%;
         color: #4B5563;
-        font-size: 0.9rem;
+        font-size: 0.85rem; /* Smaller font */
         transition: all 0.2s;
     }
 
     .grail-search-box input:focus {
         background: #fff;
-        border-color: var(--active-color); /* Gold border on focus */
+        border-color: var(--active-color);
         outline: none;
         box-shadow: 0 0 0 3px rgba(200, 158, 71, 0.1);
     }
 
     .grail-search-box i {
         position: absolute;
-        left: 18px;
+        left: 14px;
         top: 50%;
         transform: translateY(-50%);
         color: #9CA3AF;
-        font-size: 1.1rem;
+        font-size: 1rem;
     }
 
-    /* Gold Button */
+    /* 4. Gold Button: Smaller and Sleeker */
     .btn-grail-gold {
-        background-color: #C89E47; /* Specific Grail Gold */
+        background-color: #C89E47;
         color: white;
         border: none;
-        padding: 10px 25px;
-        border-radius: 50px; /* Pill shape */
+        /* Much tighter padding */
+        padding: 8px 20px; 
+        border-radius: 50px;
         font-weight: 500;
-        font-size: 0.9rem;
+        font-size: 0.85rem; /* Smaller font */
         box-shadow: 0 4px 6px rgba(200, 158, 71, 0.2);
         transition: transform 0.2s, box-shadow 0.2s;
     }
@@ -84,7 +86,7 @@
         color: white;
     }
 
-    /* Table Styling */
+    /* 5. Table Styling: The Key Fix */
     .table-grail {
         margin-bottom: 0;
         border-collapse: separate;
@@ -92,85 +94,71 @@
     }
 
     .table-grail thead th {
-        background-color: #EDF9FE; /* Light gray header like design */
+        background-color: #EDF9FE;
         color: #6B7280;
         font-weight: 600;
-        font-size: 0.85rem;
+        font-size: 0.8rem; /* Smaller header font */
         text-transform: uppercase;
         letter-spacing: 0.05em;
         border: none;
-        padding: 16px 20px;
+        /* Drastically reduced padding */
+        padding: 12px 15px; 
     }
 
-    .table-grail thead th:first-child {
-        border-top-left-radius: 8px;
-        border-bottom-left-radius: 8px;
-    }
-    .table-grail thead th:last-child {
-        border-top-right-radius: 8px;
-        border-bottom-right-radius: 8px;
-    }
+    .table-grail thead th:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+    .table-grail thead th:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
 
     .table-grail tbody td {
         vertical-align: middle;
-        padding: 16px 20px;
+        /* Drastically reduced padding to reduce row height */
+        padding: 10px 15px; 
         border-bottom: 1px solid #F3F4F6;
         color: #374151;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
     }
 
-    .table-grail tbody tr:last-child td {
-        border-bottom: none;
-    }
+    .table-grail tbody tr:last-child td { border-bottom: none; }
 
-    /* Avatar & Name grouping */
-    .user-info-group {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-    }
-
+    /* Avatar size tweak */
     .user-avatar-small {
-        width: 40px;
-        height: 40px;
+        width: 36px; /* Reduced from 40px */
+        height: 36px;
         border-radius: 50%;
         object-fit: cover;
         border: 2px solid #fff;
         box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        margin-right: 12px;
     }
 
-    /* Badges */
+    /* Badges: Tighter */
     .badge-role {
         background-color: #F3F4F6;
         color: #4B5563;
         font-weight: 500;
-        padding: 5px 10px;
+        padding: 4px 8px;
         border-radius: 6px;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         text-transform: uppercase;
     }
 
     .badge-active {
         background-color: #ECFDF5;
         color: #059669;
-        padding: 5px 12px;
+        padding: 4px 10px;
         border-radius: 20px;
         font-weight: 500;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
     }
 
-    /* Actions */
     .action-icon {
         color: #9CA3AF;
-        font-size: 1.2rem;
-        margin-left: 12px;
+        font-size: 1.1rem;
+        margin-left: 10px;
         cursor: pointer;
         transition: color 0.2s;
     }
-
     .action-icon:hover { color: #C89E47; }
     .action-icon.delete:hover { color: #EF4444; }
-
 </style>
 {% endblock stylesheets %}
 

@@ -108,16 +108,18 @@ $("#userForm").submit(function(e) {
         ? axios.put(`/api/users/${userId}`, payload) 
         : axios.post('/api/users/', payload);
 
-    showLoading(isEdit ? "Updating..." : "Creating...");
+    myshowLoader();
 
     apiCall
         .then(response => {
             Swal.close();
             $("#userModal").modal("hide");
+            myhideLoader();
             showToastMessage('success', isEdit ? 'User updated successfully!' : 'User created successfully!');
             loadUsers(); // Refresh table
         })
         .catch(error => {
+            myhideLoader();
             Swal.close();
             let msg = "Operation failed";
             if(error.response && error.response.data && error.response.data.detail) {
@@ -136,6 +138,7 @@ $("#userForm").submit(function(e) {
 // --- 4. EDIT USER (Logic) ---
 function openEditModal(id) {
     // Fetch latest data for this user
+    myshowLoader();
     axios.get(`/api/users/${id}`)
         .then(res => {
             const user = res.data;
@@ -154,15 +157,17 @@ function openEditModal(id) {
             $("#passwordHint").removeClass("d-none");
             
             $("#userModal").modal("show");
+            myhideLoader();
         })
         .catch(err => {
             showToastMessage('error', 'Could not fetch user details');
+            myhideLoader();
         });
 }
 
 // --- 5. DELETE USER ---
 function deleteUser(id) {
-    Swal.fire({
+        Swal.fire({
         title: 'Delete User?',
         text: "This action cannot be undone.",
         icon: 'warning',
@@ -199,7 +204,3 @@ function viewUser(id) {
         });
 }
 
-// --- Helper for loading ---
-function showLoading(txt) {
-    Swal.fire({ title: txt, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-}
