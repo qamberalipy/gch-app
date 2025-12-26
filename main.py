@@ -33,7 +33,8 @@ from app.core.main_router import router as main_router
 from app.user import user_router
 
 # --- 2. IMPORT WEB (HTML) ROUTERS ---
-from app.web.routers import auth as web_auth
+from app.web.routers import auth_views
+from app.web.routers import user_views
 
 bearer_scheme = HTTPBearer()
 
@@ -98,9 +99,8 @@ else:
 
 # --- 4. INCLUDE ALL ROUTERS ---
 # Web Routes (HTML Pages)
-app.include_router(web_auth.router)    
-
-
+app.include_router(auth_views.auth_view)    
+app.include_router(user_views.user_view)
 # API Routes
 app.include_router(main_router)         
 root_router.include_router(user_router) 

@@ -1,76 +1,323 @@
 {% extends "base.html" %}
 
 {% block stylesheets %}
-<link rel="stylesheet" href="https://cdn.datatables.net/1.10.22/css/jquery.dataTables.min.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.2.6/css/responsive.dataTables.min.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/select/1.3.1/css/select.dataTables.min.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/buttons/1.6.5/css/buttons.dataTables.min.css">
+<style>
+    /* --- Grail Studios Custom Table Theme --- */
+    
+    /* The Main Card Container */
+    .grail-table-card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.03); /* Softer shadow */
+        padding: 25px;
+        border: 1px solid #f1f1f1;
+    }
+
+    /* Header Area (Title, Search, Button) */
+    .grail-header-area {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .page-title {
+        font-family: 'Poppins', sans-serif;
+        font-weight: 600;
+        font-size: 1.5rem;
+        color: #333;
+        margin: 0;
+    }
+
+    /* Search Box Styling */
+    .grail-search-box {
+        position: relative;
+        width: 300px;
+    }
+
+    .grail-search-box input {
+        background: #F9FAFB; /* Very light gray */
+        border: 1px solid #E5E7EB;
+        border-radius: 50px; /* Full pill shape */
+        padding: 10px 20px 10px 45px; /* Space for icon */
+        width: 100%;
+        color: #4B5563;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+
+    .grail-search-box input:focus {
+        background: #fff;
+        border-color: var(--active-color); /* Gold border on focus */
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(200, 158, 71, 0.1);
+    }
+
+    .grail-search-box i {
+        position: absolute;
+        left: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9CA3AF;
+        font-size: 1.1rem;
+    }
+
+    /* Gold Button */
+    .btn-grail-gold {
+        background-color: #C89E47; /* Specific Grail Gold */
+        color: white;
+        border: none;
+        padding: 10px 25px;
+        border-radius: 50px; /* Pill shape */
+        font-weight: 500;
+        font-size: 0.9rem;
+        box-shadow: 0 4px 6px rgba(200, 158, 71, 0.2);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-grail-gold:hover {
+        background-color: #B08A3D;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 10px rgba(200, 158, 71, 0.25);
+        color: white;
+    }
+
+    /* Table Styling */
+    .table-grail {
+        margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .table-grail thead th {
+        background-color: #EDF9FE; /* Light gray header like design */
+        color: #6B7280;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border: none;
+        padding: 16px 20px;
+    }
+
+    .table-grail thead th:first-child {
+        border-top-left-radius: 8px;
+        border-bottom-left-radius: 8px;
+    }
+    .table-grail thead th:last-child {
+        border-top-right-radius: 8px;
+        border-bottom-right-radius: 8px;
+    }
+
+    .table-grail tbody td {
+        vertical-align: middle;
+        padding: 16px 20px;
+        border-bottom: 1px solid #F3F4F6;
+        color: #374151;
+        font-size: 0.95rem;
+    }
+
+    .table-grail tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* Avatar & Name grouping */
+    .user-info-group {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .user-avatar-small {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #fff;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    /* Badges */
+    .badge-role {
+        background-color: #F3F4F6;
+        color: #4B5563;
+        font-weight: 500;
+        padding: 5px 10px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+    }
+
+    .badge-active {
+        background-color: #ECFDF5;
+        color: #059669;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-weight: 500;
+        font-size: 0.75rem;
+    }
+
+    /* Actions */
+    .action-icon {
+        color: #9CA3AF;
+        font-size: 1.2rem;
+        margin-left: 12px;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+
+    .action-icon:hover { color: #C89E47; }
+    .action-icon.delete:hover { color: #EF4444; }
+
+</style>
 {% endblock stylesheets %}
 
 {% block user_page %} 
 <div class="main-div">
-  <div class="jumbotron jumbotron-fluid rounded bg-white border-0 shadow-sm border-left py-3 px-4">
-    <div class="row justify-content-between mb-3">  
-      <div class="col-6">
-        <h5 class="text-pos">Expense Head Registration</h5>
-      </div>
-      <div class="col-6 text-end">
-        <button class="btn btn-primary" id="trigger_add_expensehead">Add Expense Head</button>
-      </div>
+    
+    <div class="grail-header-area pt-3 px-3">
+        <h2 class="page-title">Users</h2>
+        
+        <div class="d-flex align-items-center gap-3">
+            <div class="grail-search-box">
+                <i class="ri-search-line"></i>
+                <input type="text" id="userSearchInput" placeholder="Search by Name or ID">
+            </div>
+            
+            <button class="btn-grail-gold" onclick="openCreateModal()">
+                Add Users
+            </button>
+        </div>
     </div>
 
-    <div class="text-dark">
-      <div class="table-responsive">
-        <table id="expense_table" class="table table-bordered table-hover w-100">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Branch</th>
-              <th>Created By</th>
-              <th>Created At</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="table_body"></tbody>
-        </table>
-      </div>        
+    <div class="border-0 grail-table-card pt-0">
+        <div class="table-responsive">
+            <table class="table table-grail w-100">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">
+                            <input class="form-check-input" type="checkbox" id="selectAll">
+                        </th>
+                        <th>Names</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <div class="spinner-border text-warning" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="d-flex justify-content-end mt-4" id="paginationControls"></div>
     </div>
-  </div>
 </div>
 
-<!-- Add/Edit Expense Head Modal -->
-<div class="modal fade" id="expenseheadModal" tabindex="-1" aria-labelledby="expenseheadModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="expenseheadModalLabel">Add Expense Head</h5>
+<div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+      <div class="modal-header border-0 pb-0 pt-4 px-4">
+        <h5 class="modal-title fw-bold" id="userModalLabel">Add User</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body">
-        <form id="expensehead_form">
-          <input type="hidden" id="expensehead_id" name="expensehead_id">
+      <div class="modal-body p-4">
+        <form id="userForm">
+          <input type="hidden" id="userId"> 
 
-          <div class="mb-3">
-            <label for="expensehead_name" class="form-label">Expense Head</label>
-            <input type="text" class="form-control" id="expensehead_name" name="expensehead_name" required>
+          <div class="row">
+              <div class="col-md-6 mb-3">
+                  <label class="form-label small text-muted fw-bold">Full Name</label>
+                  <input type="text" class="form-control" id="fullName" name="full_name" placeholder="Ex: John Doe">
+              </div>
+              <div class="col-md-6 mb-3">
+                  <label class="form-label small text-muted fw-bold">Username <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="username" name="username" required>
+              </div>
           </div>
 
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button id="save_expensehead" type="submit" class="btn btn-primary">Save</button>
+          <div class="mb-3">
+              <label class="form-label small text-muted fw-bold">Email <span class="text-danger">*</span></label>
+              <input type="email" class="form-control" id="email" name="email" required>
+          </div>
+
+          <div class="row" id="passwordRow">
+            <div class="col-md-12 mb-3">
+                <label class="form-label small text-muted fw-bold">Password <span class="text-danger">*</span></label>
+                <input type="password" class="form-control" id="password" name="password" minlength="6">
+                <small class="text-muted d-none" id="passwordHint" style="font-size: 0.75rem;">Leave empty to keep current password</small>
+            </div>
+          </div>
+
+          <div class="row">
+              <div class="col-md-6 mb-3">
+                  <label class="form-label small text-muted fw-bold">Role</label>
+                  <select class="form-select" id="role" name="role">
+                      <option value="team_member">Team Member</option>
+                      <option value="digital_creator">Digital Creator</option>
+                      <option value="manager">Manager</option>
+                      <option value="admin">Admin</option>
+                  </select>
+              </div>
+              <div class="col-md-6 mb-3">
+                  <label class="form-label small text-muted fw-bold">Gender</label>
+                  <select class="form-select" id="gender" name="gender">
+                      <option value="">Select...</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                  </select>
+              </div>
+          </div>
+
+          <div class="d-grid mt-4">
+            <button type="submit" class="btn btn-grail-gold py-2" style="border-radius: 8px;">Save User</button>
           </div>
         </form>
       </div>
     </div>
   </div>
 </div>
+
+<div class="modal fade" id="viewUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+        <div class="modal-body text-center pt-5 pb-4">
+            <img id="viewUserAvatar" src="" class="rounded-circle mb-3 shadow-sm border" width="90" height="90">
+            <h5 class="fw-bold mb-1 text-dark" id="viewUserName"></h5>
+            <p class="text-muted small mb-3" id="viewUserEmail"></p>
+            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill" id="viewUserRole"></span>
+            
+            <div class="mt-4 text-start px-2 bg-light rounded p-3">
+                <p class="small mb-2 d-flex justify-content-between">
+                    <span class="text-muted">Username:</span> 
+                    <span id="viewUserUsername" class="fw-medium text-dark"></span>
+                </p>
+                <p class="small mb-2 d-flex justify-content-between">
+                    <span class="text-muted">Phone:</span> 
+                    <span id="viewUserPhone" class="fw-medium text-dark">-</span>
+                </p>
+                <p class="small mb-0 d-flex justify-content-between">
+                    <span class="text-muted">Status:</span> 
+                    <span id="viewUserStatus" class="text-success fw-bold">Active</span>
+                </p>
+            </div>
+            
+            <button class="btn btn-outline-secondary btn-sm w-100 mt-4 rounded-pill" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
 {% endblock %}
 
 {% block javascript %}
-<script src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/responsive/2.2.6/js/dataTables.responsive.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/1.6.5/js/dataTables.buttons.min.js"></script>
-<script src="https://cdn.datatables.net/select/1.3.1/js/dataTables.select.min.js"></script>
+<script src="{{ url_for('static', path='/js/user.js') }}"></script>
 {% endblock %}
