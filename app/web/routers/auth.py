@@ -53,4 +53,4 @@ async def dashboard_view(request: Request):
     Main Dashboard view after successful login.
     File location: templates/dashboard.html
     """
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    return templates.TemplateResponse("user.html", {"request": request})
