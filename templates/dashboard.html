@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+
+{% block stylesheets %}
+<style>
+    /* --- Dashboard Specific Overrides --- */
+    
+    /* Make the main canvas transparent so cards float on the gray body background */
+    .content-canvas {
+        background-color: transparent !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+    }
+
+    /* Common Card Styling */
+    .dash-card {
+        background-color: #ffffff;
+        border-radius: 16px;
+        padding: 1.5rem;
+        border: none;
+        height: 100%;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+        transition: transform 0.2s ease;
+    }
+
+    .dash-card:hover {
+        transform: translateY(-2px);
+    }
+
+    /* Top Metrics */
+    .metric-title {
+        color: var(--secondary-text);
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .metric-value {
+        font-size: 2.2rem;
+        font-weight: 700;
+        color: #d97706; /* Matches the gold/orange in image */
+        line-height: 1;
+    }
+
+    /* Section Headers */
+    .section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #4b5563;
+        margin-bottom: 1.5rem;
+    }
+
+    /* Progress Bars */
+    .progress-label {
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        display: block;
+        color: #1f2937;
+    }
+    
+    .progress {
+        height: 8px;
+        border-radius: 10px;
+        background-color: #f3f4f6;
+        overflow: hidden;
+    }
+
+    .progress-bar-red { background-color: #dc2626; }
+    .progress-bar-blue { background-color: #3b82f6; }
+    .progress-bar-green { background-color: #22c55e; }
+
+    /* Lists & Tables */
+    .list-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 0;
+        border-bottom: 1px solid #f3f4f6;
+        cursor: pointer;
+    }
+    
+    .list-item:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .list-item:hover .ri-arrow-right-s-line {
+        color: var(--active-color);
+        transform: translateX(3px);
+    }
+
+    .user-name {
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #1f2937;
+        margin-bottom: 0.1rem;
+    }
+
+    .sub-text {
+        font-size: 0.85rem;
+        color: #6b7280;
+    }
+    
+    .sub-text-red { color: #dc2626; }
+
+    /* Badges */
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .badge-expired { background-color: #fee2e2; color: #dc2626; }
+    .badge-unassigned { background-color: #dbeafe; color: #3b82f6; }
+    .badge-soon { background-color: #ffedd5; color: #ea580c; }
+
+    /* Icons */
+    .arrow-icon {
+        font-size: 1.2rem;
+        color: #9ca3af;
+        transition: all 0.2s;
+    }
+</style>
+{% endblock stylesheets %}
+
+{% block user_page %} 
+<div class="container-fluid p-0">
+    
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="dash-card">
+                <div class="metric-title">Overdue Tasks</div>
+                <div class="metric-value">14</div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="dash-card">
+                <div class="metric-title">Missing Content</div>
+                <div class="metric-value">7</div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="dash-card">
+                <div class="metric-title">Unsigned Docs</div>
+                <div class="metric-value">3</div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="dash-card">
+                <div class="metric-title">Blocked Tasks</div>
+                <div class="metric-value">5</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="dash-card">
+                <h5 class="section-title">Task Completion</h5>
+                
+                <div class="row align-items-center mb-4">
+                    <div class="col-md-2">
+                        <span class="progress-label">Models</span>
+                    </div>
+                    <div class="col-md-9">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-red" role="progressbar" style="width: 45%" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-1 text-end d-flex align-items-center justify-content-end gap-2">
+                        <span class="text-danger fw-bold">45%</span>
+                        <i class="ri-arrow-right-s-line arrow-icon"></i>
+                    </div>
+                </div>
+
+                <div class="row align-items-center mb-4">
+                    <div class="col-md-2">
+                        <span class="progress-label">Managers</span>
+                    </div>
+                    <div class="col-md-9">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-blue" role="progressbar" style="width: 72%" aria-valuenow="72" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-1 text-end d-flex align-items-center justify-content-end gap-2">
+                        <span class="text-primary fw-bold">72%</span>
+                        <i class="ri-arrow-right-s-line arrow-icon"></i>
+                    </div>
+                </div>
+
+                <div class="row align-items-center">
+                    <div class="col-md-2">
+                        <span class="progress-label">Team</span>
+                    </div>
+                    <div class="col-md-9">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-green" role="progressbar" style="width: 88%" aria-valuenow="88" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-1 text-end d-flex align-items-center justify-content-end gap-2">
+                        <span class="text-success fw-bold">88%</span>
+                        <i class="ri-arrow-right-s-line arrow-icon"></i>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        
+        <div class="col-lg-6 d-flex flex-column gap-4">
+            
+            <div class="dash-card">
+                <h5 class="section-title">Missing Content</h5>
+                
+                <div class="list-item">
+                    <div>
+                        <div class="user-name">Sarah Kane</div>
+                        <div class="sub-text text-danger">missing items - 8</div>
+                    </div>
+                    <i class="ri-arrow-right-s-line arrow-icon"></i>
+                </div>
+                
+                <div class="list-item">
+                    <div>
+                        <div class="user-name">John Jackson</div>
+                        <div class="sub-text text-danger">missing items - 4</div>
+                    </div>
+                    <i class="ri-arrow-right-s-line arrow-icon"></i>
+                </div>
+
+                <div class="list-item">
+                    <div>
+                        <div class="user-name">Emma Harry</div>
+                        <div class="sub-text text-danger">missing items - 2</div>
+                    </div>
+                    <i class="ri-arrow-right-s-line arrow-icon"></i>
+                </div>
+            </div>
+
+            <div class="dash-card">
+                <h5 class="section-title">Process Bottlenecks</h5>
+                
+                <div class="list-item">
+                    <div>
+                        <div class="user-name">Sarah Kane</div>
+                        <div class="sub-text">Content Pending</div>
+                    </div>
+                    <i class="ri-arrow-right-s-line arrow-icon"></i>
+                </div>
+
+                <div class="list-item">
+                    <div>
+                        <div class="user-name">John Jackson</div>
+                        <div class="sub-text">Document Verification</div>
+                    </div>
+                    <i class="ri-arrow-right-s-line arrow-icon"></i>
+                </div>
+
+                <div class="list-item">
+                    <div>
+                        <div class="user-name">Emma Harry</div>
+                        <div class="sub-text">Approval Pending</div>
+                    </div>
+                    <i class="ri-arrow-right-s-line arrow-icon"></i>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="col-lg-6 d-flex flex-column gap-4">
+            
+            <div class="dash-card">
+                <h5 class="section-title">Document Compliance</h5>
+                
+                <div class="list-item">
+                    <div>
+                        <div class="user-name">Sarah Kane</div>
+                        <div class="sub-text">NDA</div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="status-badge badge-expired">Expired</span>
+                        <i class="ri-arrow-right-s-line arrow-icon"></i>
+                    </div>
+                </div>
+
+                <div class="list-item">
+                    <div>
+                        <div class="user-name">John Jackson</div>
+                        <div class="sub-text">W-9 Contract</div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="status-badge badge-unassigned">Unassigned</span>
+                        <i class="ri-arrow-right-s-line arrow-icon"></i>
+                    </div>
+                </div>
+
+                <div class="list-item">
+                    <div>
+                        <div class="user-name">Emma Harry</div>
+                        <div class="sub-text">Release Form</div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="status-badge badge-soon">Expiring Soon</span>
+                        <i class="ri-arrow-right-s-line arrow-icon"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dash-card">
+                <h5 class="section-title">Time-to-Completion</h5>
+                
+                <div class="list-item">
+                    <div>
+                        <div class="user-name">4.2 Days</div>
+                        <div class="sub-text">Avg. task completion</div>
+                    </div>
+                    <div class="text-success fw-bold d-flex align-items-center gap-2">
+                        <i class="ri-arrow-right-down-line"></i> 12%
+                    </div>
+                </div>
+
+                <div class="list-item">
+                    <div>
+                        <div class="user-name">7.8 Days</div>
+                        <div class="sub-text">Slowest: Document review</div>
+                    </div>
+                    <div class="text-danger fw-bold d-flex align-items-center gap-2">
+                        <i class="ri-arrow-right-up-line"></i> 12%
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+    // Example: You can initialize tooltips here or fetch live data
+    console.log("Dashboard Loaded");
+</script>
+{% endblock %}
