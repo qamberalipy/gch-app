@@ -12,7 +12,7 @@ async def dashboard_view(request: Request):
     File location: templates/dashboard.html
     """
     # You need to create a simple dashboard.html or point this to user.html if that's your home
-    return templates.TemplateResponse("user.html", {"request": request}) 
+    return templates.TemplateResponse("dashboard.html", {"request": request}) 
 
 @user_view.get("/users")
 async def users_list_view(request: Request):
