@@ -1,5 +1,5 @@
 # app/user/user.py
-from typing import List
+from typing import List,Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
@@ -84,14 +84,24 @@ async def delete_user(
     _services.soft_delete_user(db, user_id)
     return {"message": "User deleted"}
 
+
 @router.get("/", response_model=List[_schemas.UserOut], tags=["User CURD API"])
 async def get_all_users(
     skip: int = 0,
     limit: int = 100,
+    role: Optional[_models.UserRole] = None, # Filter by specific role
+    search: Optional[str] = None,            # Search by name/email/username
     current_user: _models.User = Depends(get_admin_or_manager),
     db: Session = Depends(_services.get_db)
 ):
-    return _services.get_all_users_filtered(db, current_user.id, skip, limit)
+    return _services.get_all_users_filtered(
+        db=db, 
+        current_user_id=current_user.id, 
+        skip=skip, 
+        limit=limit, 
+        role=role, 
+        search=search
+    )
 
 @router.get("/{user_id}", response_model=_schemas.UserOut, tags=["User CURD API"])
 async def get_user_by_id(

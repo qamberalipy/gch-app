@@ -3,6 +3,7 @@ from typing import Optional, List
 from datetime import datetime
 from fastapi import HTTPException, status
 import sqlalchemy.orm as _orm
+from sqlalchemy import or_
 
 import app.user.models as _models
 import app.user.schema as _schemas
@@ -106,8 +107,27 @@ def soft_delete_user(db: _orm.Session, user_id: int) -> bool:
     db.commit()
     return True
 
-def get_all_users_filtered(db: _orm.Session, current_user_id: int, skip: int = 0, limit: int = 100):
-    return db.query(_models.User).filter(
+def get_all_users_filtered(db: _orm.Session, current_user_id: int, skip: int = 0, limit: int = 100, role: _models.UserRole = None, search: str = None):
+    # 1. Start the base query (Exclude deleted and self)
+    query = db.query(_models.User).filter(
         _models.User.is_deleted == False,
-        _models.User.id != current_user_id  # Exclude self
-    ).offset(skip).limit(limit).all()
+        _models.User.id != current_user_id
+    )
+    # 2. Apply Role Filter if provided
+    if role:
+        query = query.filter(_models.User.role == role)
+
+    # 3. Apply Search Filter if provided
+    if search:
+        search_fmt = f"%{search}%"
+        # Using ilike for case-insensitive search
+        query = query.filter(
+            or_(
+                _models.User.full_name.ilike(search_fmt),
+                _models.User.username.ilike(search_fmt),
+                _models.User.email.ilike(search_fmt)
+            )
+        )
+
+    # 4. Apply pagination and execute
+    return query.offset(skip).limit(limit).all()
