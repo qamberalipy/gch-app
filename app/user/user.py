@@ -89,7 +89,7 @@ async def delete_user(
 async def get_all_users(
     skip: int = 0,
     limit: int = 100,
-    role: Optional[_models.UserRole] = None, 
+    role: Optional[str] = None, 
     search: Optional[str] = None,
     current_user: _models.User = Depends(get_admin_or_manager),
     db: Session = Depends(_services.get_db)
