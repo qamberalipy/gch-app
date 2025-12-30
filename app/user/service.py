@@ -107,20 +107,25 @@ def soft_delete_user(db: _orm.Session, user_id: int) -> bool:
     db.commit()
     return True
 
-def get_all_users_filtered(db: _orm.Session, current_user_id: int, skip: int = 0, limit: int = 100, role: _models.UserRole = None, search: str = None):
-    # 1. Start the base query (Exclude deleted and self)
+def get_all_users_filtered(
+    db: _orm.Session, 
+    current_user_id: int, 
+    skip: int = 0, 
+    limit: int = 100, 
+    role: _models.UserRole = None, 
+    search: str = None
+):
+    
     query = db.query(_models.User).filter(
         _models.User.is_deleted == False,
         _models.User.id != current_user_id
     )
-    # 2. Apply Role Filter if provided
+
     if role:
         query = query.filter(_models.User.role == role)
 
-    # 3. Apply Search Filter if provided
-    if search:
-        search_fmt = f"%{search}%"
-        # Using ilike for case-insensitive search
+    if search and search.strip():
+        search_fmt = f"%{search.strip()}%"
         query = query.filter(
             or_(
                 _models.User.full_name.ilike(search_fmt),
@@ -129,5 +134,4 @@ def get_all_users_filtered(db: _orm.Session, current_user_id: int, skip: int = 0
             )
         )
 
-    # 4. Apply pagination and execute
     return query.offset(skip).limit(limit).all()
