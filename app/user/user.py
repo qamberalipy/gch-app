@@ -93,15 +93,34 @@ async def get_all_users(
     search: Optional[str] = None,
     current_user: _models.User = Depends(get_admin_or_manager),
     db: Session = Depends(_services.get_db)
-):
-    return _services.get_all_users_filtered(
-        db=db, 
-        current_user_id=current_user.id, 
-        skip=skip, 
-        limit=limit, 
-        role=role, 
-        search=search
-    )
+    ):
+    try:
+        # --- FIX: Strip quotes AND whitespace ---
+        if role:
+            # Removes ' and " from start/end (e.g., "'admin'" -> "admin")
+            role = role.strip("'\" ") 
+            if role.lower() == "null" or role == "":
+                role = None
+
+        if search:
+            # Removes ' and " from start/end (e.g., '"za"' -> "za")
+            search = search.strip("'\" ")
+            if search.lower() == "null" or search == "":
+                search = None
+        
+        print(f"Fetching users with role={role} and search='{search}'")
+
+        return _services.get_all_users_filtered(
+            db=db, 
+            current_user_id=current_user.id, 
+            skip=skip, 
+            limit=limit, 
+            role=role, 
+            search=search
+        )
+    except Exception as e:
+        print(f"Error processing query params: {e}")
+        raise HTTPException(status_code=400, detail="Invalid query parameters")
 
 @router.get("/{user_id}", response_model=_schemas.UserOut, tags=["User CURD API"])
 async def get_user_by_id(
