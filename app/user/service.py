@@ -81,25 +81,60 @@ def update_user_details(db: _orm.Session, user_id: int, user_in: _schemas.UserUp
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Only update fields that are provided
+    # Exclude unset fields so we don't overwrite with None
     update_data = user_in.dict(exclude_unset=True)
+
+    if "email" in update_data:
+        new_email = update_data["email"]
+        if new_email != user.email: # Only check if it's actually changing
+            if check_email_exists(db, new_email):
+                raise HTTPException(status_code=400, detail="Email already currently in use")
     
+    # 2. Check Username Duplication
+    if "username" in update_data:
+        new_username = update_data["username"]
+        if new_username != user.username:
+            if not check_username_available(db, new_username):
+                raise HTTPException(status_code=400, detail="Username already taken")
+
+    # --- HANDLE PASSWORD HASHING ---
+    print("Update Data Before Password Handling:", update_data)
+    if "password" in update_data:
+        password = update_data.pop("password") # Remove from dict so we don't save plain text
+        if password: # If not empty string
+            user.set_password(password)
+
+    # --- UPDATE FIELDS ---
     for key, value in update_data.items():
         if hasattr(user, key):
             setattr(user, key, value)
 
     user.updated_at = datetime.utcnow()
     
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
+    try:
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        return user
+    except Exception as e:
+        db.rollback()
+        # Catch unexpected DB errors (like string length too long)
+        raise HTTPException(status_code=500, detail=str(e))
 
 def soft_delete_user(db: _orm.Session, user_id: int) -> bool:
     user = get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
+    # Create a unique suffix
+    timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    
+    # Mask Email & Username to free them up
+    # e.g. "john@gmail.com" -> "john@gmail.com_del_20260103"
+    user.email = f"{user.email}_del_{timestamp}"
+    if user.username:
+        user.username = f"{user.username}_del_{timestamp}"
+
     user.is_deleted = True
     user.account_status = _models.AccountStatus.deleted
     

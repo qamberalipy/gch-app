@@ -64,25 +64,31 @@ async def update_user(
     current_user: _models.User = Depends(get_current_user),
     db: Session = Depends(_services.get_db)
 ):
-    # Logic: Can update self, OR must be admin/manager
-    is_privileged = current_user.role in [_models.UserRole.admin, _models.UserRole.manager]
+    # 1. Permission Check
+    is_admin = current_user.role in [_models.UserRole.admin, _models.UserRole.manager]
     
-    if current_user.id != user_id and not is_privileged:
+    # If not admin, you can only update yourself
+    if current_user.id != user_id and not is_admin:
         raise HTTPException(status_code=403, detail="Cannot update other users")
+
+    # 2. Security: Prevent Non-Admins from changing Roles
+    # If the user tries to send "role": "admin", we simply remove it here.
+    if not is_admin and user_in.role:
+        del user_in.role 
 
     return _services.update_user_details(db, user_id, user_in)
 
 @router.delete("/{user_id}", tags=["User CURD API"])
 async def delete_user(
     user_id: int,
-    current_user: _models.User = Depends(get_admin_or_manager),
+    current_user: _models.User = Depends(get_admin_or_manager), # Only admins can delete
     db: Session = Depends(_services.get_db)
 ):
     if current_user.id == user_id:
         raise HTTPException(status_code=400, detail="Cannot delete your own account")
         
     _services.soft_delete_user(db, user_id)
-    return {"message": "User deleted"}
+    return {"message": "User deleted successfully"}
 
 
 @router.get("/", response_model=List[_schemas.UserOut], tags=["User CURD API"])

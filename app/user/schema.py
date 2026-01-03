@@ -34,7 +34,13 @@ class UserCreate(BaseModel):
     bio: Optional[str] = None
 
 class UserUpdate(BaseModel):
-
+    # --- sensitive fields (New) ---
+    email: Optional[EmailStr] = None
+    username: Optional[str] = Field(None, min_length=3, max_length=50)
+    password: Optional[str] = Field(None, min_length=6)
+    role: Optional[UserRoleEnum] = None  
+    
+    # --- Profile Info ---
     full_name: Optional[str] = None
     bio: Optional[str] = None
     gender: Optional[GenderEnum] = None
@@ -49,7 +55,7 @@ class UserUpdate(BaseModel):
     address_1: Optional[str] = None
     address_2: Optional[str] = None
 
-    # Media & Socials (New fields for Settings Page)
+    # Media & Socials
     profile_picture_url: Optional[str] = None
     x_link: Optional[str] = None
     of_link: Optional[str] = None
@@ -57,7 +63,6 @@ class UserUpdate(BaseModel):
 
     class Config:
         orm_mode = True
-
 # --- Responses ---
 
 class UserOut(BaseModel):
