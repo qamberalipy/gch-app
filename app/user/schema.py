@@ -1,6 +1,6 @@
 # app/user/schema.py
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, validator
 from datetime import datetime, date
 from enum import Enum
 
@@ -34,18 +34,29 @@ class UserCreate(BaseModel):
     bio: Optional[str] = None
 
 class UserUpdate(BaseModel):
-    """All fields optional for PATCH/PUT updates"""
+
     full_name: Optional[str] = None
-    phone: Optional[str] = None
-    mobile_number: Optional[str] = None
     bio: Optional[str] = None
     gender: Optional[GenderEnum] = None
     dob: Optional[date] = None
+
+    # Contact & Address
+    phone: Optional[str] = None
+    mobile_number: Optional[str] = None
     country_id: Optional[int] = None
     city: Optional[str] = None
     zipcode: Optional[str] = None
     address_1: Optional[str] = None
     address_2: Optional[str] = None
+
+    # Media & Socials (New fields for Settings Page)
+    profile_picture_url: Optional[str] = None
+    x_link: Optional[str] = None
+    of_link: Optional[str] = None
+    insta_link: Optional[str] = None
+
+    class Config:
+        orm_mode = True
 
 # --- Responses ---
 
@@ -57,13 +68,40 @@ class UserOut(BaseModel):
     role: Optional[str] = None
     account_status: Optional[str] = None
     
-    # Contact
+    # Contact & Profile
     phone: Optional[str] = None
+    mobile_number: Optional[str] = None
     profile_picture_url: Optional[str] = None
+    bio: Optional[str] = None
+    gender: Optional[GenderEnum] = None
+    dob: Optional[date] = None
     
-    # Flags
+    # Address
+    city: Optional[str] = None
+    country_id: Optional[int] = None
+    address_1: Optional[str] = None
+    address_2: Optional[str] = None
+    zipcode: Optional[str] = None
+
+    # Social Links
+    x_link: Optional[str] = None
+    of_link: Optional[str] = None
+    insta_link: Optional[str] = None
+
+    # Flags & Timestamps
+    is_onboarded: bool
     created_at: Optional[datetime] = None
     last_login: Optional[datetime] = None
 
     class Config:
         orm_mode = True
+class ChangePassword(BaseModel):
+    old_password: str = Field(..., description="Required for security verification")
+    new_password: str = Field(..., min_length=6, description="Min 6 chars")
+    confirm_password: str = Field(..., min_length=6)
+
+    @validator('confirm_password')
+    def passwords_match(cls, v, values, **kwargs):
+        if 'new_password' in values and v != values['new_password']:
+            raise ValueError('Passwords do not match')
+        return v

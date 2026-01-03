@@ -132,3 +132,16 @@ async def get_user_by_id(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+
+@router.post("/change-password", status_code=status.HTTP_200_OK, tags=["User CURD API"])
+async def change_password(
+    password_data: _schemas.ChangePassword,
+    current_user: _models.User = Depends(get_current_user),
+    db: Session = Depends(_services.get_db)
+):
+    """
+    Resets the logged-in user's password.
+    Requires 'old_password' for security.
+    """
+    return _services.change_user_password(db, current_user.id, password_data)

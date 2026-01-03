@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Request
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 templates = Jinja2Templates(directory="templates")
@@ -31,7 +32,7 @@ async def profile_view(request: Request):
     # Ensure you create a profile.html file
     return templates.TemplateResponse("profile.html", {"request": request})
 
-@user_view.get("/settings")
+@user_view.get("/settings",response_class=HTMLResponse)
 async def settings_view(request: Request):
     """
     Renders the General Application Settings.

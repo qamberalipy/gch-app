@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block stylesheets %}
+<style>
+    /* --- Settings Page Styling --- */
+    .settings-container {
+        background-color: #fff;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        overflow: hidden;
+        min-height: 80vh;
+    }
+
+    /* Sidebar Navigation */
+    .settings-sidebar {
+        background-color: #f9fafb;
+        border-right: 1px solid #e5e7eb;
+        padding: 2rem 1rem;
+    }
+
+    .settings-nav-item {
+        display: flex;
+        align-items: center;
+        padding: 12px 16px;
+        color: #4b5563;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-weight: 500;
+    }
+
+    .settings-nav-item:hover { background-color: #f3f4f6; color: #111827; }
+
+    .settings-nav-item.active {
+        background-color: #fff;
+        color: #d97706; /* Brand Orange */
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        font-weight: 600;
+    }
+
+    .settings-nav-item i { margin-right: 10px; font-size: 1.1rem; }
+    
+    /* Content Area */
+    .settings-content { padding: 2.5rem; }
+    .section-title { color: #d97706; font-weight: 600; }
+    .section-subtitle { color: #6b7280; font-size: 0.9rem; margin-bottom: 2rem; }
+
+    /* Forms */
+    .form-control:focus, .form-select:focus {
+        border-color: #d97706;
+        box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.1);
+    }
+
+    /* Upload Area */
+    .upload-area {
+        border: 2px dashed #e5e7eb;
+        border-radius: 12px;
+        padding: 2rem;
+        text-align: center;
+        background-color: #f9fafb;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .upload-area:hover { border-color: #d97706; background-color: #fffbeb; }
+
+    .current-avatar {
+        width: 80px; height: 80px;
+        border-radius: 50%; object-fit: cover;
+        border: 3px solid #fff;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+   /* Tabs Helper */
+    .tab-pane { display: none; }
+    
+    .tab-pane.active { 
+        display: block; 
+        animation: fadeIn 0.3s ease-in-out; /* Correct property */
+    }
+
+    /* You must define the animation keyframes for it to work */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+{% endblock %}
+
+{% block user_page %}
+<div class="container-fluid">
+    <div class="row settings-container no-gutters">
+        
+        <div class="col-md-3 settings-sidebar">
+            <h5 class="mb-4 ps-3 fw-bold text-dark">Settings</h5>
+            
+            <div class="settings-nav-item active" data-tab="profile">
+                <i class="ri-user-line"></i> Profile
+            </div>
+            
+            <div class="settings-nav-item" data-tab="password">
+                <i class="ri-lock-password-line"></i> Reset Password
+            </div>
+        </div>
+
+        <div class="col-md-9 settings-content">
+            
+            <div id="tab-profile" class="tab-pane active">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="section-title">Edit Profile</h2>
+                        <p class="section-subtitle">Update your photo and personal details.</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-outline-secondary rounded-pill px-4 me-2" onclick="location.reload()">Cancel</button>
+                        <button class="btn btn-warning text-white rounded-pill px-4" id="btnSaveProfile">Save</button>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-12 mb-3">
+                        <h6 class="fw-bold">Your Photo</h6>
+                        <div class="d-flex align-items-center gap-4">
+                            <img src="https://ui-avatars.com/api/?name=User" id="settingsAvatar" class="current-avatar">
+                            <div class="flex-grow-1">
+                                <div class="upload-area" id="uploadDropZone">
+                                    <i class="ri-upload-cloud-2-line fs-3 text-secondary"></i>
+                                    <p class="mb-0 fw-medium">Click to Upload</p>
+                                    <small class="text-muted">PNG, JPG (max 800x400px)</small>
+                                </div>
+                                <input type="file" id="fileInput" accept="image/*" hidden>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Full Name</label>
+                        <input type="text" class="form-control" id="inputFullName">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control bg-light" id="inputEmail" disabled>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Role</label>
+                        <input type="text" class="form-control bg-light text-capitalize" id="inputRole" disabled>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Phone</label>
+                        <input type="text" class="form-control" id="inputPhone">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">Bio</label>
+                        <textarea class="form-control" id="inputBio" rows="2"></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Date of Birth</label>
+                        <input type="date" class="form-control" id="inputDob">
+                    </div>
+                    <div class="col-md-6">
+                         <label class="form-label">Gender</label>
+                         <select class="form-select" id="inputGender">
+                            <option value="">Select...</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                         </select>
+                    </div>
+
+                    <div class="col-12 mt-4"><h6 class="fw-bold">Social Links</h6></div>
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" id="inputInsta" placeholder="Instagram URL">
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" id="inputX" placeholder="X (Twitter) URL">
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" id="inputOF" placeholder="OnlyFans URL">
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-password" class="tab-pane">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="section-title">Reset Password</h2>
+                        <p class="section-subtitle">Secure your account with a new password.</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-warning text-white rounded-pill px-4" id="btnSavePassword">Update Password</button>
+                    </div>
+                </div>
+
+                <div class="row g-3" style="max-width: 600px;">
+                    <div class="col-12">
+                        <label class="form-label">Current Password</label>
+                        <input type="password" class="form-control" id="oldPassword">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">New Password</label>
+                        <input type="password" class="form-control" id="newPassword">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Confirm Password</label>
+                        <input type="password" class="form-control" id="confirmPassword">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script src="{{ url_for('static', path='/js/settings.js') }}"></script>
+
+{% endblock %}
