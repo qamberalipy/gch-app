@@ -83,7 +83,7 @@ $("#userForm").submit(function(e) {
     const userId = $("#userId").val();
     const isEdit = !!userId;
     
-    // Construct Payload based on Schema
+    // 1. Base Payload
     const payload = {
         email: $("#email").val(),
         username: $("#username").val(),
@@ -92,18 +92,26 @@ $("#userForm").submit(function(e) {
         gender: $("#gender").val() || null,
     };
 
-    // Handle Password
+    // 2. Handle Password Logic (THE FIX)
     const passwordVal = $("#password").val();
+
     if (!isEdit) {
-        // Create Mode: Password is required
+        // --- Create Mode ---
+        // Password is strictly required
+        if (!passwordVal) {
+            Swal.fire({ icon: 'warning', title: 'Missing Field', text: 'Password is required for new users.' });
+            return; 
+        }
         payload.password = passwordVal;
     } else {
-        // Edit Mode: Only send if user typed something (though your API might handle this differently, standard practice is optional update)
-        // NOTE: Your specific Update API schema doesn't include password. 
-        // If password updates are separate, ignore it here. 
-        // We will assume Update API matches 'UserUpdate' schema provided.
+        // --- Edit Mode (FIXED) ---
+        // Only add to payload if user actually typed something
+        if (passwordVal && passwordVal.trim() !== "") {
+            payload.password = passwordVal;
+        }
     }
 
+    // 3. Send Request
     const apiCall = isEdit 
         ? axios.put(`/api/users/${userId}`, payload) 
         : axios.post('/api/users/', payload);
@@ -116,14 +124,13 @@ $("#userForm").submit(function(e) {
             $("#userModal").modal("hide");
             myhideLoader();
             showToastMessage('success', isEdit ? 'User updated successfully!' : 'User created successfully!');
-            loadUsers(); // Refresh table
+            loadUsers(); 
         })
         .catch(error => {
             myhideLoader();
             Swal.close();
             let msg = "Operation failed";
             if(error.response && error.response.data && error.response.data.detail) {
-                // Formatting API validation errors nicely
                 const details = error.response.data.detail;
                 if(Array.isArray(details)) {
                     msg = details.map(d => `${d.loc[1]}: ${d.msg}`).join('<br>');
@@ -134,7 +141,6 @@ $("#userForm").submit(function(e) {
             Swal.fire({ icon: 'error', title: 'Error', html: msg });
         });
 });
-
 // --- 4. EDIT USER (Logic) ---
 function openEditModal(id) {
     // Fetch latest data for this user
@@ -176,12 +182,16 @@ function deleteUser(id) {
         confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
         if (result.isConfirmed) {
+            myshowLoader();
             axios.delete(`/api/users/${id}`)
                 .then(() => {
+                    myhideLoader();
                     showToastMessage('success', 'User deleted.');
                     loadUsers();
+
                 })
                 .catch(err => {
+                    myhideLoader();
                     showToastMessage('error', 'Failed to delete user.');
                 });
         }

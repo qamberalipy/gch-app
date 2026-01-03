@@ -40,3 +40,11 @@ async def settings_view(request: Request):
     """
     # Ensure you create a settings.html file
     return templates.TemplateResponse("settings.html", {"request": request})
+
+@user_view.get("/about")
+async def about_view(request: Request):
+    """
+    Renders the About Page.
+    File location: templates/about.html
+    """
+    return templates.TemplateResponse("about.html", {"request": request})

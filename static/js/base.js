@@ -7,7 +7,7 @@ function parseJwt(token) {
     try {
         const base64Url = token.split('.')[1];
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
             return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
         }).join(''));
         return JSON.parse(jsonPayload);
@@ -50,7 +50,7 @@ function isTokenExpired(token) {
     }
 
     // --- UI Hydration ---
-    document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener("DOMContentLoaded", function () {
         try {
             const user = JSON.parse(userInfoRaw);
             const nameEl = document.getElementById("user-name-display");
@@ -59,9 +59,12 @@ function isTokenExpired(token) {
 
             if (nameEl) nameEl.innerText = user.full_name || user.username || "User";
             if (roleEl) roleEl.innerText = user.role || "Member";
-            
+
             if (avatarEl) {
-                const imgSrc = user.avatar_url || `https://ui-avatars.com/api/?name=${user.username}&background=C89E47&color=fff`;
+                // --- FIX START: Change user.avatar_url to user.profile_picture_url ---
+                const imgSrc = user.profile_picture_url || `https://ui-avatars.com/api/?name=${user.username}&background=C89E47&color=fff`;
+                // --- FIX END ---
+
                 avatarEl.src = imgSrc;
             }
         } catch (e) {
@@ -85,9 +88,9 @@ function handleLogout() {
     }).then((result) => {
         if (result.isConfirmed) {
             const refreshToken = localStorage.getItem("refresh_token");
-            
+
             // Call API to invalidate token on server
-            if(refreshToken) {
+            if (refreshToken) {
                 axios.post('/api/auth/logout', { refresh_token: refreshToken })
                     .catch(err => console.error("Logout API failed", err))
                     .finally(() => {
@@ -101,7 +104,7 @@ function handleLogout() {
 }
 
 function performLocalLogout() {
-    localStorage.clear(); 
+    localStorage.clear();
     window.location.href = "/login";
 }
 
@@ -126,7 +129,7 @@ const processQueue = (error, token = null) => {
 };
 
 if (typeof axios !== 'undefined') {
-    
+
     // REQUEST INTERCEPTOR: Attach Token
     axios.interceptors.request.use(function (config) {
         const token = localStorage.getItem("access_token");
@@ -142,15 +145,15 @@ if (typeof axios !== 'undefined') {
     axios.interceptors.response.use(function (response) {
         return response;
     }, function (error) {
-        
+
         const originalRequest = error.config;
 
         // If error is 401 (Unauthorized) and we haven't tried refreshing yet
         if (error.response && error.response.status === 401 && !originalRequest._retry) {
-            
+
             if (isRefreshing) {
-                return new Promise(function(resolve, reject) {
-                    failedQueue.push({resolve, reject});
+                return new Promise(function (resolve, reject) {
+                    failedQueue.push({ resolve, reject });
                 }).then(token => {
                     originalRequest.headers['Authorization'] = 'Bearer ' + token;
                     return axios(originalRequest);
@@ -176,7 +179,7 @@ if (typeof axios !== 'undefined') {
                         // 1. Save new tokens
                         const newAccessToken = res.data.access_token;
                         localStorage.setItem("access_token", newAccessToken);
-                        if(res.data.refresh_token) {
+                        if (res.data.refresh_token) {
                             localStorage.setItem("refresh_token", res.data.refresh_token);
                         }
 
@@ -186,7 +189,7 @@ if (typeof axios !== 'undefined') {
 
                         // 3. Process queued requests
                         processQueue(null, newAccessToken);
-                        
+
                         // 4. Retry original request
                         return axios(originalRequest);
                     }

@@ -57,7 +57,7 @@ class UserOut(BaseModel):
     role: UserRole
     is_onboarded: bool
     timezone: Optional[str] = None
-    
+    profile_picture_url: Optional[str] = None
     # Additional info
     phone: Optional[str] = None
     gender: Optional[str] = None
