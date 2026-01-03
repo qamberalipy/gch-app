@@ -51,7 +51,11 @@ class User(_database.Base):
     address_1 = _sql.Column(_sql.String(255), nullable=True)
     address_2 = _sql.Column(_sql.String(255), nullable=True)
     timezone = _sql.Column(_sql.String(50), nullable=True)
-    
+    #social media links
+    x_link = _sql.Column(_sql.String(255), nullable=True) 
+    of_link = _sql.Column(_sql.String(255), nullable=True)
+    insta_link = _sql.Column(_sql.String(255), nullable=True)
+
     # Demographics
     gender = _sql.Column(_sql.Enum(Gender, name="gender_enum"), nullable=True) # Added Missing Column
     dob = _sql.Column(_sql.Date, nullable=True)

@@ -135,3 +135,22 @@ def get_all_users_filtered(
         )
 
     return query.offset(skip).limit(limit).all()
+
+def change_user_password(db: _orm.Session, user_id: int, password_data: _schemas.ChangePassword):
+    # 1. Get the user
+    user = get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # 2. Verify Old Password (Security Check)
+    if not user.verify_password(password_data.old_password):
+        raise HTTPException(status_code=400, detail="Incorrect old password")
+
+    # 3. Hash and Save New Password
+    user.set_password(password_data.new_password)
+    user.updated_at = datetime.utcnow()
+    
+    db.add(user)
+    db.commit()
+    
+    return {"message": "Password updated successfully"}
