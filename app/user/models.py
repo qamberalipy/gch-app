@@ -1,3 +1,4 @@
+# app/user/models.py
 import datetime as _dt
 from enum import Enum as _PyEnum
 import sqlalchemy as _sql
@@ -39,10 +40,7 @@ class User(_database.Base):
     account_status = _sql.Column(_sql.Enum(AccountStatus, name="account_status"), default=AccountStatus.active, nullable=False)
     
     # --- Hierarchy Fields ---
-    # manager_id: The person who manages this user
     manager_id = _sql.Column(_sql.Integer, _sql.ForeignKey("user.id"), nullable=True)
-    
-    # assigned_model_id: 1:1 Link between Team Member and Digital Creator
     assigned_model_id = _sql.Column(_sql.Integer, _sql.ForeignKey("user.id"), nullable=True)
 
     # --- Profile Data ---
@@ -74,18 +72,21 @@ class User(_database.Base):
     # --- Relationships ---
     
     # 1. Manager Relationship (Many-to-One)
+    # This creates "manager" on the child, and "managed_staff" list on the parent
     manager = relationship("User", remote_side=[id], foreign_keys=[manager_id], backref="managed_staff")
     
     # 2. Assigned Model/Staff Relationship (One-to-One)
-    # This relationship populates the 'assigned_model_rel' field in Schema
     assigned_model_rel = relationship("User", remote_side=[id], foreign_keys=[assigned_model_id])
     
-    # 3. Manager View: Get all Digital Creators managed by this user
-    models_under_manager = relationship("User", 
-        primaryjoin="and_(User.manager_id==User.id, User.role=='digital_creator', User.is_deleted==False)",
-        foreign_keys=[manager_id],
-        viewonly=True
-    )
+    # 3. FIXED: Python Property for Filtering Digital Creators
+    # This replaces the broken SQL relationship
+    @property
+    def models_under_manager(self):
+        # Return only active Digital Creators from the staff list
+        return [
+            user for user in self.managed_staff 
+            if user.role == UserRole.digital_creator and not user.is_deleted
+        ]
 
     def set_password(self, password: str) -> None:
         try:
@@ -100,7 +101,7 @@ class User(_database.Base):
         except Exception:
             return False
 
-
+# ... (Keep Country, Source, OTP, RefreshToken classes as is)
 class Country(_database.Base):
     __tablename__ = "country"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
@@ -108,13 +109,11 @@ class Country(_database.Base):
     country_code = _sql.Column(_sql.String(10), nullable=True)
     is_deleted = _sql.Column(_sql.Boolean, default=False, nullable=False)
 
-
 class Source(_database.Base):
     __tablename__ = "source"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
     name = _sql.Column(_sql.String(100), nullable=False)
     is_active = _sql.Column(_sql.Boolean, default=True)
-
 
 class OTP(_database.Base):
     __tablename__ = "otp"
@@ -124,7 +123,6 @@ class OTP(_database.Base):
     purpose = _sql.Column(_sql.String(20), default="verify") 
     used = _sql.Column(_sql.Boolean, default=False)
     created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.utcnow)
-
 
 class RefreshToken(_database.Base):
     __tablename__ = "auth_refresh_tokens"

@@ -78,10 +78,12 @@ async def update_user(
     if current_user.id != user_id and not is_admin_or_manager:
         raise HTTPException(status_code=403, detail="Cannot update other users")
 
+    # Filter fields for non-admin users
     if not is_admin_or_manager:
         if user_in.role: del user_in.role
         if user_in.manager_id: del user_in.manager_id
         if user_in.assigned_model_id: del user_in.assigned_model_id
+        if user_in.assign_model_ids: del user_in.assign_model_ids
 
     return _services.update_user(db, user_id, user_in, current_user)
 

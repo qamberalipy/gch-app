@@ -56,24 +56,44 @@ def create_user(db: _orm.Session, user_in: _schemas.UserCreate, creator: _models
         raise HTTPException(status_code=400, detail="Username already taken")
 
     try:
-        # Exclude special fields to handle manually
-        user_data = user_in.dict(exclude={"password", "manager_id", "assigned_model_id"})
+        # Separate special fields
+        user_data = user_in.dict(exclude={"password", "manager_id", "assigned_model_id", "assign_model_ids"})
         db_user = _models.User(**user_data, created_at=datetime.utcnow(), is_onboarded=True)
         db_user.set_password(user_in.password)
 
-        # 2. Manager Assignment Logic
+        # 2. Manager Assignment Logic (Hierarchy)
         if creator.role == _models.UserRole.manager:
             db_user.manager_id = creator.id
         elif user_in.manager_id:
             db_user.manager_id = user_in.manager_id
 
         db.add(db_user)
-        db.flush() # Flush to get ID, but don't commit yet
+        db.flush() # Flush to get db_user.id
 
-        # 3. Model <-> Team Member Assignment (1:1 Exclusive)
+        # 3. BULK ASSIGNMENT (For Admin Creating a Manager)
+        if user_in.assign_model_ids and db_user.role == _models.UserRole.manager:
+            if creator.role != _models.UserRole.admin:
+                 raise HTTPException(status_code=403, detail="Only Admins can bulk assign models to managers.")
+            
+            # Fetch selected models
+            models_to_assign = db.query(_models.User).filter(
+                _models.User.id.in_(user_in.assign_model_ids),
+                _models.User.role == _models.UserRole.digital_creator,
+                _models.User.is_deleted == False
+            ).all()
+
+            for model in models_to_assign:
+                model.manager_id = db_user.id
+
+        # 4. Model <-> Team Member Assignment (1:1 Exclusive)
         if user_in.assigned_model_id and user_in.role in [_models.UserRole.team_member, _models.UserRole.digital_creator]:
             target = get_user_by_id(db, user_in.assigned_model_id)
             if target:
+                # [SECURITY FIX]: If creator is Manager, ensure they OWN the target model
+                if creator.role == _models.UserRole.manager:
+                    if target.role == _models.UserRole.digital_creator and target.manager_id != creator.id:
+                        raise HTTPException(status_code=403, detail="You cannot assign staff to a model you do not manage.")
+
                 if target.assigned_model_id:
                     raise HTTPException(status_code=400, detail="Selected user is already assigned to someone else.")
                 
@@ -84,14 +104,13 @@ def create_user(db: _orm.Session, user_in: _schemas.UserCreate, creator: _models
         db.refresh(db_user)
         return db_user
 
-    except IntegrityError as e:
+    except IntegrityError:
         db.rollback()
-        print(f"Database Integrity Error: {e}")
         raise HTTPException(status_code=400, detail="User creation failed due to database constraint.")
     except Exception as e:
         db.rollback()
-        print(f"Unexpected Error in create_user: {e}")
-        raise HTTPException(status_code=500, detail="Internal Server Error during user creation.")
+        print(f"Error in create_user: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 def update_user(db: _orm.Session, user_id: int, user_in: _schemas.UserUpdate, current_user: _models.User) -> _models.User:
     user = get_user_by_id(db, user_id)
@@ -104,29 +123,42 @@ def update_user(db: _orm.Session, user_id: int, user_in: _schemas.UserUpdate, cu
         # --- HIERARCHY UPDATES (Admin/Manager Only) ---
         if current_user.role in [_models.UserRole.admin, _models.UserRole.manager]:
             
-            # Manager Change
+            # 1. Change Manager
             if "manager_id" in update_data:
                 user.manager_id = update_data.pop("manager_id")
             
-            # Assignment Change (Swap Logic)
+            # 2. Bulk Assign Models (For Manager Profile Update)
+            if "assign_model_ids" in update_data:
+                model_ids = update_data.pop("assign_model_ids")
+                if user.role == _models.UserRole.manager and model_ids is not None:
+                     # Fetch and update
+                    models = db.query(_models.User).filter(_models.User.id.in_(model_ids)).all()
+                    for m in models:
+                        m.manager_id = user.id
+
+            # 3. Assignment Change (1:1 Swap Logic)
             if "assigned_model_id" in update_data:
                 new_target_id = update_data.pop("assigned_model_id")
                 
-                # Unlink current assignment if exists
+                # Unlink current
                 if user.assigned_model_id:
                     old_target = get_user_by_id(db, user.assigned_model_id)
-                    if old_target: 
-                        old_target.assigned_model_id = None
+                    if old_target: old_target.assigned_model_id = None
                 
-                # Link new assignment if provided
+                # Link new
                 if new_target_id:
                     new_target = get_user_by_id(db, new_target_id)
                     if new_target:
+                        # [SECURITY FIX]: Manager Check
+                        if current_user.role == _models.UserRole.manager:
+                            is_target_model = new_target.role == _models.UserRole.digital_creator
+                            if is_target_model and new_target.manager_id != current_user.id:
+                                 raise HTTPException(status_code=403, detail="You cannot assign staff to a model you do not manage.")
+
                         # Steal/Overwrite logic
                         if new_target.assigned_model_id:
-                            previous_owner = get_user_by_id(db, new_target.assigned_model_id)
-                            if previous_owner:
-                                previous_owner.assigned_model_id = None
+                            prev_owner = get_user_by_id(db, new_target.assigned_model_id)
+                            if prev_owner: prev_owner.assigned_model_id = None
                         
                         user.assigned_model_id = new_target.id
                         new_target.assigned_model_id = user.id
@@ -134,13 +166,26 @@ def update_user(db: _orm.Session, user_id: int, user_in: _schemas.UserUpdate, cu
                         user.assigned_model_id = None
                 else:
                     user.assigned_model_id = None
+        else:
+            # Non-Admins/Managers cannot change these at all
+            update_data.pop("manager_id", None)
+            update_data.pop("assigned_model_id", None)
+            update_data.pop("assign_model_ids", None)
 
         # --- GENERAL PROFILE UPDATES ---
         if "password" in update_data:
             user.set_password(update_data.pop("password"))
         
-        # Cleanup
-        update_data.pop("role", None) 
+        # [FIXED] ROLE UPDATE LOGIC
+        # Only Admins should be able to freely change roles (e.g. Team Member <-> Model)
+        if "role" in update_data:
+            if current_user.role != _models.UserRole.admin:
+                # If you are not admin, we ignore your role update request
+                update_data.pop("role")
+            else:
+                # Admin is allowed to update role. 
+                # (Logic proceeds to loop below which sets the new role)
+                pass 
         
         for key, value in update_data.items():
             if hasattr(user, key):
@@ -150,7 +195,7 @@ def update_user(db: _orm.Session, user_id: int, user_in: _schemas.UserUpdate, cu
         db.refresh(user)
         return user
 
-    except IntegrityError as e:
+    except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=400, detail="Update failed. Username or Email may already exist.")
     except Exception as e:
@@ -169,7 +214,6 @@ def soft_delete_user(db: _orm.Session, user_id: int) -> bool:
         if user.username:
             user.username = f"{user.username}_del_{timestamp}"
         
-        # Unlink relationships
         if user.assigned_model_id:
             partner = get_user_by_id(db, user.assigned_model_id)
             if partner:
@@ -198,8 +242,9 @@ def get_all_users(db: _orm.Session, current_user: _models.User, role=None, searc
     if search:
         s = f"%{search}%"
         query = query.filter(or_(_models.User.full_name.ilike(s), _models.User.email.ilike(s)))
-
-    return query.offset(skip).limit(limit).all()
+    
+    result = query.offset(skip).limit(limit).all()
+    return result
 
 def change_user_password(db: _orm.Session, user_id: int, password_data: _schemas.ChangePassword):
     user = get_user_by_id(db, user_id)

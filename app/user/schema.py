@@ -1,3 +1,4 @@
+# app/user/schema.py
 from typing import Optional, List
 from pydantic import BaseModel, EmailStr, Field, validator
 from datetime import datetime, date
@@ -28,8 +29,13 @@ class UserCreate(BaseModel):
     username: str
     password: str
     role: UserRoleEnum
+    
+    # Relationships
     manager_id: Optional[int] = None
-    assigned_model_id: Optional[int] = None
+    assigned_model_id: Optional[int] = None  # For 1:1 (Staff <-> Model)
+    assign_model_ids: Optional[List[int]] = [] # NEW: For Bulk Assign (Manager -> [Models])
+
+    # Profile
     full_name: Optional[str] = None
     phone: Optional[str] = None
     gender: Optional[GenderEnum] = None
@@ -39,8 +45,13 @@ class UserUpdate(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     role: Optional[UserRoleEnum] = None
+    
+    # Relationships
     manager_id: Optional[int] = None
     assigned_model_id: Optional[int] = None
+    assign_model_ids: Optional[List[int]] = None # NEW: Bulk re-assign
+
+    # Profile
     full_name: Optional[str] = None
     bio: Optional[str] = None
     gender: Optional[GenderEnum] = None
@@ -66,9 +77,9 @@ class UserOut(BaseModel):
     account_status: Optional[str] = None
     
     # Hierarchy Data
-    manager: Optional[UserInList] = None # Populated by models.manager
-    assigned_model_rel: Optional[UserInList] = None # Populated by models.assigned_model_rel
-    models_under_manager: List[UserInList] = [] # Populated by models.models_under_manager
+    manager: Optional[UserInList] = None 
+    assigned_model_rel: Optional[UserInList] = None 
+    models_under_manager: List[UserInList] = [] 
     
     # Contact & Profile
     phone: Optional[str] = None
