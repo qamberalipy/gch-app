@@ -60,18 +60,19 @@ $(document).ready(function() {
                 url: "/api/auth/login",
                 contentType: "application/json",
                 data: JSON.stringify(formData),
+                
+                // --- SUCCESS ---
                 success: function(response) {
                     Swal.close();
                     
-                    localStorage.setItem("access_token", response.access_token);
-                    localStorage.setItem("refresh_token", response.refresh_token);
-                    localStorage.setItem("user_info", JSON.stringify(response.user));
+                    // NOTE: We do NOT save tokens to localStorage anymore.
+                    // The server has set an HttpOnly Cookie automatically.
 
                     Swal.fire({
                         heightAuto: false,
                         icon: 'success',
                         title: 'Login Successful',
-                        text: `Welcome back, ${response.user.username}!`,
+                        text: `Welcome back!`,
                         timer: 1500,
                         showConfirmButton: false
                     }).then(() => {

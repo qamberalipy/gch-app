@@ -1,15 +1,14 @@
+# app/core/main_router.py
 from datetime import datetime, timedelta
 from typing import List, Optional
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status,BackgroundTasks
+# Added 'Response' to imports
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Response
 from sqlalchemy.orm import Session
 import app.Shared.helpers as _helpers
-from app.Shared import schema as _shared_schemas # Be sure to update Shared schema imports if needed, or import from local user schema
+from app.Shared import schema as _shared_schemas
 from app.Shared import service as _services
-
-# Assuming you have a dependency to get current user/admin
-# from app.auth.dependencies import get_current_active_admin 
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(prefix="/api")
@@ -26,7 +25,11 @@ def healthcheck():
 # --- AUTHENTICATION ---
 
 @router.post("/auth/login", response_model=_shared_schemas.AuthLoginResp, tags=["Auth"])
-def login(payload: _shared_schemas.LoginReq, db: Session = Depends(_services.get_db)):
+def login(
+    response: Response,  # <--- INJECT RESPONSE OBJECT
+    payload: _shared_schemas.LoginReq, 
+    db: Session = Depends(_services.get_db)
+):
     # 1. Lockout Check
     attempts = login_attempts.get(payload.email, {"count": 0, "locked_until": None})
     if attempts.get("locked_until") and attempts["locked_until"] > datetime.utcnow():
@@ -39,6 +42,17 @@ def login(payload: _shared_schemas.LoginReq, db: Session = Depends(_services.get
         # 3. Success - Reset attempts
         login_attempts.pop(payload.email, None)
         
+        # --- NEW: SET COOKIE FOR WEB DASHBOARD ---
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,   # Secure: JS cannot read this
+            max_age=1800,    # 30 minutes
+            samesite="lax",
+            secure=False     # Set to True if using HTTPS
+        )
+        # -----------------------------------------
+        
         return {
             "message": "Login successful", 
             "access_token": access_token, 
@@ -46,6 +60,7 @@ def login(payload: _shared_schemas.LoginReq, db: Session = Depends(_services.get
             "user": user
         }
     except HTTPException as e:
+        print(f"Login failed for {payload.email}: {e.detail}")
         # 4. Failure - Increment attempts
         attempts = login_attempts.setdefault(payload.email, {"count": 0, "locked_until": None})
         attempts["count"] += 1
@@ -62,9 +77,17 @@ def refresh(payload: _shared_schemas.RefreshReq, db: Session = Depends(_services
         raise HTTPException(status_code=401, detail="Invalid token")
 
 @router.post("/auth/logout", tags=["Auth"])
-def logout(payload: Optional[_shared_schemas.RefreshReq] = None, db: Session = Depends(_services.get_db)):
+def logout(
+    response: Response, # <--- INJECT RESPONSE TO DELETE COOKIE
+    payload: Optional[_shared_schemas.RefreshReq] = None, 
+    db: Session = Depends(_services.get_db)
+):
     token = payload.refresh_token if payload else None
     _services.logout_user(db, refresh_token=token)
+    
+    # --- NEW: Clear Cookie ---
+    response.delete_cookie("access_token")
+    
     return {"message": "Logged out"}
 
 
@@ -82,17 +105,11 @@ def forgot_password(
             detail="User not found with this email"
         )
         
-    # Proceed if user exists
     otp = _helpers.create_otp()
-    
-    # Save OTP to DB first
     _services.save_otp(db, payload.email, otp, purpose="reset")
     
-    # Prepare Email Content
     subject = "Password Reset Request"
     html_text = f"Your OTP for password reset is: <strong>{otp}</strong>. Valid for 5 minutes."
-    
-    # Send Email (using BackgroundTasks is recommended for speed)
     background_tasks.add_task(_helpers.send_email, payload.email, subject, html_text, otp)
     
     return {"message": "OTP sent successfully"}
@@ -105,20 +122,14 @@ def reset_password(payload: _shared_schemas.ResetPasswordReq, db: Session = Depe
 @router.post("/admin/create-user", response_model=_shared_schemas.UserOut, tags=["Admin"])
 def create_user(
     payload: _shared_schemas.CreateUserReq, 
-    db: Session = Depends(_services.get_db),
-    # current_user: User = Depends(get_current_active_admin) # Add your protection dependency here
+    db: Session = Depends(_services.get_db)
 ):
-    # Verify permission here if dependency doesn't handle it
     new_user = _services.create_user_by_admin(db, payload)
     return new_user
 
 @router.get("/countries", response_model=List[_shared_schemas.CountryOut], tags=["Misc"])
 def read_countries(db: Session = Depends(_services.get_db)):
-    """
-    Fetch all available countries.
-    """
     countries = _services.get_all_countries(db)
     if not countries:
-        # Optional: return empty list instead of 404 if preferred
         return []
     return countries

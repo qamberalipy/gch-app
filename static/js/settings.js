@@ -12,11 +12,8 @@ $(document).ready(function() {
     initSettings();
 
     function initSettings() {
-        const token = localStorage.getItem("access_token");
-        if (!token) { 
-            window.location.href = "/login"; 
-            return; 
-        }
+        // [FIX] No longer need to check localStorage token. 
+        // The page wouldn't load if not authenticated (server protects it).
 
         // Init Phone Input
         const inputPhone = document.querySelector("#inputPhone");
@@ -24,17 +21,18 @@ $(document).ready(function() {
             iti = window.intlTelInput(inputPhone, {
                 utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js",
                 separateDialCode: true,
-                preferredCountries: ["us", "gb", "pk"], // Add preferences
+                preferredCountries: ["us", "gb", "pk"],
             });
         }
 
-        const decoded = parseJwt(token);
-        currentUserId = (typeof decoded.sub === 'object') ? decoded.sub.user_id : decoded.sub;
-
-        if (currentUserId) {
+        // [FIX] Get User ID from Meta Tag instead of Token
+        const metaId = document.querySelector('meta[name="user-id"]');
+        if (metaId && metaId.content) {
+            currentUserId = metaId.content;
             loadUserProfile(currentUserId);
         } else {
-            showToastMessage('error', 'Could not identify user session.');
+            console.error("User ID not found in meta tag.");
+            // Optional: Reload page or redirect if critical data is missing
         }
     }
 
@@ -55,6 +53,7 @@ $(document).ready(function() {
     async function loadUserProfile(id) {
         myshowLoader(); 
         try {
+            // Cookie is automatically sent by browser
             const res = await axios.get(`/api/users/${id}`);
             const data = res.data;
 
@@ -94,7 +93,7 @@ $(document).ready(function() {
     
     // A. Trigger File Input
     $('#uploadDropZone').on('click', function() {
-        $('#fileInput').val(''); // clear input to allow re-selection
+        $('#fileInput').val(''); // clear input
         $('#fileInput').click();
     });
 
@@ -106,25 +105,22 @@ $(document).ready(function() {
             const reader = new FileReader();
             
             reader.onload = function(evt) {
-                // Set image src for cropper
                 $('#imageToCrop').attr('src', evt.target.result);
-                // Open Modal
                 $('#cropModal').modal('show');
             };
             reader.readAsDataURL(file);
         }
     });
 
-    // C. Initialize Cropper when Modal opens
+    // C. Initialize Cropper
     $('#cropModal').on('shown.bs.modal', function () {
         const image = document.getElementById('imageToCrop');
         cropper = new Cropper(image, {
-            aspectRatio: 1, // 1:1 for Profile Pictures
+            aspectRatio: 1, 
             viewMode: 1,
             autoCropArea: 0.8,
         });
     }).on('hidden.bs.modal', function () {
-        // Destroy cropper when modal closes to reset
         if(cropper) {
             cropper.destroy();
             cropper = null;
@@ -135,9 +131,8 @@ $(document).ready(function() {
     $('#btnCropConfirm').on('click', function() {
         if (!cropper) return;
 
-        // Get cropped canvas
         const canvas = cropper.getCroppedCanvas({
-            width: 400, // Resize for consistency
+            width: 400,
             height: 400,
         });
 
@@ -146,14 +141,10 @@ $(document).ready(function() {
             return;
         }
 
-        // Convert to Blob and Upload
         canvas.toBlob(async function(blob) {
-            // Close Modal
             $('#cropModal').modal('hide');
 
-            // --- Upload Logic (Reused from previous code) ---
             const formData = new FormData();
-            // Append the blob, give it a filename
             formData.append('file', blob, 'profile-cropped.png'); 
 
             const $dropZone = $('#uploadDropZone');
@@ -161,6 +152,7 @@ $(document).ready(function() {
             $dropZone.html('<div class="spinner-border text-warning spinner-border-sm"></div> Uploading...');
 
             try {
+                // Cookies handle auth automatically
                 const res = await axios.post('/api/upload/general-upload', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
@@ -179,20 +171,19 @@ $(document).ready(function() {
                 $dropZone.html(originalContent);
             }
 
-        }, 'image/png'); // Output type
+        }, 'image/png');
     });
 
     // --- 5. Save Profile (PUT) ---
     $('#btnSaveProfile').on('click', async function() {
         if (!currentUserId) return;
 
-        // Get Number from ITI plugin (E.164 format for database, e.g., +12015550123)
         const fullPhoneNumber = iti ? iti.getNumber() : $('#inputPhone').val();
 
         const payload = {
             full_name: $('#inputFullName').val(),
             bio: $('#inputBio').val(),
-            phone: fullPhoneNumber, // Use formatted number
+            phone: fullPhoneNumber,
             dob: $('#inputDob').val() || null,
             gender: $('#inputGender').val() || null,
             insta_link: $('#inputInsta').val(),
@@ -205,18 +196,10 @@ $(document).ready(function() {
         try {
             await axios.put(`/api/users/${currentUserId}`, payload);
             showToastMessage('success', 'Profile updated successfully!');
-
-            let userInfo = JSON.parse(localStorage.getItem("user_info") || '{}');
-            userInfo.full_name = payload.full_name;
-
-            // --- FIX START: Use correct key name ---
-            if(payload.profile_picture_url) {
-                userInfo.profile_picture_url = payload.profile_picture_url; // Was userInfo.avatar_url
-            }
-            // --- FIX END ---
-
-            localStorage.setItem("user_info", JSON.stringify(userInfo));
-
+            
+            // Note: We don't update localStorage anymore as we are Cookie based.
+            // The next page refresh will fetch fresh data from the server.
+            
         } catch (err) {
             showToastMessage('error', 'Failed to save changes.');
         } finally {
