@@ -1,5 +1,5 @@
 # app/user/user.py
-from typing import List,Optional
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
@@ -10,21 +10,17 @@ import app.user.models as _models
 router = APIRouter()
 
 # --- Dependency Injection ---
-
 def get_db():
-    # Use the generator from service to ensure consistency
     return _services.get_db()
 
-async def get_current_user(request: Request,db: Session = Depends(_services.get_db)) -> _models.User:
-   
+async def get_current_user(request: Request, db: Session = Depends(_services.get_db)) -> _models.User:
     if not hasattr(request.state, "user") or not request.state.user:
         raise HTTPException(status_code=401, detail="Authentication credentials missing")
     
     payload = request.state.user
-    
     sub = payload.get("sub")
-    user_id = None
     
+    user_id = None
     if isinstance(sub, dict):
         user_id = sub.get("user_id")
     elif isinstance(sub, (str, int)):
@@ -36,7 +32,6 @@ async def get_current_user(request: Request,db: Session = Depends(_services.get_
     user = _services.get_user_by_id(db, user_id=int(user_id))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-        
     return user
 
 async def get_admin_or_manager(current_user: _models.User = Depends(get_current_user)) -> _models.User:
@@ -44,44 +39,56 @@ async def get_admin_or_manager(current_user: _models.User = Depends(get_current_
         raise HTTPException(status_code=403, detail="Not authorized")
     return current_user
 
+# --- Utility Endpoints ---
 
-@router.post("/", response_model=_schemas.UserOut, status_code=status.HTTP_201_CREATED,tags=["User CURD API"])
+@router.get("/available/managers", response_model=List[_schemas.UserInList], tags=["Utility"])
+def list_managers(db: Session = Depends(_services.get_db), current_user = Depends(get_admin_or_manager)):
+    return db.query(_models.User).filter(_models.User.role == "manager", _models.User.is_deleted == False).all()
+
+@router.get("/available/team-members", response_model=List[_schemas.UserInList], tags=["Utility"])
+def list_free_team_members(db: Session = Depends(_services.get_db), current_user = Depends(get_admin_or_manager)):
+    return _services.get_available_users(db, role="team_member")
+
+@router.get("/available/models", response_model=List[_schemas.UserInList], tags=["Utility"])
+def list_free_models(db: Session = Depends(_services.get_db), current_user = Depends(get_admin_or_manager)):
+    return _services.get_available_users(db, role="digital_creator")
+
+# --- CRUD Endpoints ---
+
+@router.post("/", response_model=_schemas.UserOut, status_code=status.HTTP_201_CREATED, tags=["User CRUD API"])
 async def create_user(
     user_in: _schemas.UserCreate,
     current_user: _models.User = Depends(get_admin_or_manager),
     db: Session = Depends(_services.get_db)
 ):
-    # Manager restriction logic
     if current_user.role == _models.UserRole.manager and user_in.role == _schemas.UserRoleEnum.admin:
         raise HTTPException(status_code=403, detail="Managers cannot create Admins")
         
-    return _services.create_user_by_admin(db, user_in)
+    return _services.create_user(db, user_in, creator=current_user)
 
-@router.put("/{user_id}", response_model=_schemas.UserOut, tags=["User CURD API"])
+@router.put("/{user_id}", response_model=_schemas.UserOut, tags=["User CRUD API"])
 async def update_user(
     user_id: int,
     user_in: _schemas.UserUpdate,
     current_user: _models.User = Depends(get_current_user),
     db: Session = Depends(_services.get_db)
 ):
-    # 1. Permission Check
-    is_admin = current_user.role in [_models.UserRole.admin, _models.UserRole.manager]
+    is_admin_or_manager = current_user.role in [_models.UserRole.admin, _models.UserRole.manager]
     
-    # If not admin, you can only update yourself
-    if current_user.id != user_id and not is_admin:
+    if current_user.id != user_id and not is_admin_or_manager:
         raise HTTPException(status_code=403, detail="Cannot update other users")
 
-    # 2. Security: Prevent Non-Admins from changing Roles
-    # If the user tries to send "role": "admin", we simply remove it here.
-    if not is_admin and user_in.role:
-        del user_in.role 
+    if not is_admin_or_manager:
+        if user_in.role: del user_in.role
+        if user_in.manager_id: del user_in.manager_id
+        if user_in.assigned_model_id: del user_in.assigned_model_id
 
-    return _services.update_user_details(db, user_id, user_in)
+    return _services.update_user(db, user_id, user_in, current_user)
 
-@router.delete("/{user_id}", tags=["User CURD API"])
+@router.delete("/{user_id}", tags=["User CRUD API"])
 async def delete_user(
     user_id: int,
-    current_user: _models.User = Depends(get_admin_or_manager), # Only admins can delete
+    current_user: _models.User = Depends(get_admin_or_manager),
     db: Session = Depends(_services.get_db)
 ):
     if current_user.id == user_id:
@@ -90,8 +97,7 @@ async def delete_user(
     _services.soft_delete_user(db, user_id)
     return {"message": "User deleted successfully"}
 
-
-@router.get("/", response_model=List[_schemas.UserOut], tags=["User CURD API"])
+@router.get("/", response_model=List[_schemas.UserOut], tags=["User CRUD API"])
 async def get_all_users(
     skip: int = 0,
     limit: int = 100,
@@ -101,24 +107,18 @@ async def get_all_users(
     db: Session = Depends(_services.get_db)
     ):
     try:
-        # --- FIX: Strip quotes AND whitespace ---
+        # Sanitize Inputs
         if role:
-            # Removes ' and " from start/end (e.g., "'admin'" -> "admin")
             role = role.strip("'\" ") 
-            if role.lower() == "null" or role == "":
-                role = None
+            if role.lower() == "null" or role == "": role = None
 
         if search:
-            # Removes ' and " from start/end (e.g., '"za"' -> "za")
             search = search.strip("'\" ")
-            if search.lower() == "null" or search == "":
-                search = None
+            if search.lower() == "null" or search == "": search = None
         
-        print(f"Fetching users with role={role} and search='{search}'")
-
-        return _services.get_all_users_filtered(
+        return _services.get_all_users(
             db=db, 
-            current_user_id=current_user.id, 
+            current_user=current_user,
             skip=skip, 
             limit=limit, 
             role=role, 
@@ -128,7 +128,7 @@ async def get_all_users(
         print(f"Error processing query params: {e}")
         raise HTTPException(status_code=400, detail="Invalid query parameters")
 
-@router.get("/{user_id}", response_model=_schemas.UserOut, tags=["User CURD API"])
+@router.get("/{user_id}", response_model=_schemas.UserOut, tags=["User CRUD API"])
 async def get_user_by_id(
     user_id: int,
     current_user: _models.User = Depends(get_current_user),
@@ -139,15 +139,10 @@ async def get_user_by_id(
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
-
-@router.post("/change-password", status_code=status.HTTP_200_OK, tags=["User CURD API"])
+@router.post("/change-password", status_code=status.HTTP_200_OK, tags=["User CRUD API"])
 async def change_password(
     password_data: _schemas.ChangePassword,
     current_user: _models.User = Depends(get_current_user),
     db: Session = Depends(_services.get_db)
 ):
-    """
-    Resets the logged-in user's password.
-    Requires 'old_password' for security.
-    """
     return _services.change_user_password(db, current_user.id, password_data)
