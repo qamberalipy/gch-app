@@ -1,13 +1,13 @@
+# app/user/models.py
 import datetime as _dt
 from enum import Enum as _PyEnum
 import sqlalchemy as _sql
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 import app.core.db.session as _database
 from passlib.context import CryptContext
 
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-# --- Enums ---
 
 class UserRole(str, _PyEnum):
     admin = "admin"
@@ -25,8 +25,6 @@ class Gender(str, _PyEnum):
     female = "Female"
     other = "Other"
 
-# --- Models ---
-
 class User(_database.Base):
     __tablename__ = "user"
 
@@ -38,11 +36,14 @@ class User(_database.Base):
     bio = _sql.Column(_sql.Text, nullable=True)
     password_hash = _sql.Column(_sql.String(255), nullable=True)
     
-    # Enums
     role = _sql.Column(_sql.Enum(UserRole, name="user_role"), default=UserRole.digital_creator, nullable=False)
     account_status = _sql.Column(_sql.Enum(AccountStatus, name="account_status"), default=AccountStatus.active, nullable=False)
     
-    # Contact & Location
+    # --- Hierarchy Fields ---
+    manager_id = _sql.Column(_sql.Integer, _sql.ForeignKey("user.id"), nullable=True)
+    assigned_model_id = _sql.Column(_sql.Integer, _sql.ForeignKey("user.id"), nullable=True)
+
+    # --- Profile Data ---
     phone = _sql.Column(_sql.String(20), nullable=True)
     mobile_number = _sql.Column(_sql.String(20), nullable=True)
     country_id = _sql.Column(_sql.Integer, nullable=True)
@@ -51,16 +52,11 @@ class User(_database.Base):
     address_1 = _sql.Column(_sql.String(255), nullable=True)
     address_2 = _sql.Column(_sql.String(255), nullable=True)
     timezone = _sql.Column(_sql.String(50), nullable=True)
-    #social media links
     x_link = _sql.Column(_sql.String(255), nullable=True) 
     of_link = _sql.Column(_sql.String(255), nullable=True)
     insta_link = _sql.Column(_sql.String(255), nullable=True)
-
-    # Demographics
-    gender = _sql.Column(_sql.Enum(Gender, name="gender_enum"), nullable=True) # Added Missing Column
+    gender = _sql.Column(_sql.Enum(Gender, name="gender_enum"), nullable=True)
     dob = _sql.Column(_sql.Date, nullable=True)
-
-    # Status Flags
     is_onboarded = _sql.Column(_sql.Boolean, default=False, nullable=False)
     is_deleted = _sql.Column(_sql.Boolean, default=False, nullable=False)
 
@@ -73,6 +69,24 @@ class User(_database.Base):
     created_at = _sql.Column(_sql.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = _sql.Column(_sql.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
+    # --- Relationships ---
+    
+    # 1. Manager Relationship (Many-to-One)
+    # This creates "manager" on the child, and "managed_staff" list on the parent
+    manager = relationship("User", remote_side=[id], foreign_keys=[manager_id], backref="managed_staff")
+    
+    # 2. Assigned Model/Staff Relationship (One-to-One)
+    assigned_model_rel = relationship("User", remote_side=[id], foreign_keys=[assigned_model_id])
+    
+    # 3. FIXED: Python Property for Filtering Digital Creators
+    # This replaces the broken SQL relationship
+    @property
+    def models_under_manager(self):
+        # Return only active Digital Creators from the staff list
+        return [
+            user for user in self.managed_staff 
+            if user.role == UserRole.digital_creator and not user.is_deleted
+        ]
 
     def set_password(self, password: str) -> None:
         try:
@@ -87,7 +101,7 @@ class User(_database.Base):
         except Exception:
             return False
 
-
+# ... (Keep Country, Source, OTP, RefreshToken classes as is)
 class Country(_database.Base):
     __tablename__ = "country"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
@@ -95,25 +109,20 @@ class Country(_database.Base):
     country_code = _sql.Column(_sql.String(10), nullable=True)
     is_deleted = _sql.Column(_sql.Boolean, default=False, nullable=False)
 
-
 class Source(_database.Base):
-  
     __tablename__ = "source"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
     name = _sql.Column(_sql.String(100), nullable=False)
     is_active = _sql.Column(_sql.Boolean, default=True)
 
-
 class OTP(_database.Base):
-   
     __tablename__ = "otp"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
     email = _sql.Column(_sql.String(100), index=True, nullable=False)
     otp = _sql.Column(_sql.String(10), nullable=False)
-    purpose = _sql.Column(_sql.String(20), default="verify") # 'verify', 'reset'
+    purpose = _sql.Column(_sql.String(20), default="verify") 
     used = _sql.Column(_sql.Boolean, default=False)
     created_at = _sql.Column(_sql.DateTime, default=_dt.datetime.utcnow)
-
 
 class RefreshToken(_database.Base):
     __tablename__ = "auth_refresh_tokens"

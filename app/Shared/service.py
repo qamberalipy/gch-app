@@ -1,15 +1,12 @@
-from datetime import datetime
+# app/Shared/service.py
+from datetime import datetime, timedelta
 from typing import Optional, Tuple, List
-import logging
 import sqlalchemy.orm as _orm
 from fastapi import HTTPException
-
 import app.user.models as _models
 import app.Shared.schema as _schemas
 import app.core.db.session as _database
 from app.Shared import helpers as _helpers
-
-logger = logging.getLogger("uvicorn.error")
 
 # DB dependency
 def get_db():
@@ -19,7 +16,9 @@ def get_db():
     finally:
         db.close()
 
-# --- Helpers ---
+# ============================================================================
+#  HELPERS
+# ============================================================================
 
 def get_user_by_email(db: _orm.Session, email: str) -> Optional[_models.User]:
     return db.query(_models.User).filter(_models.User.email == email, _models.User.is_deleted == False).first()
@@ -57,9 +56,11 @@ def verify_otp(db: _orm.Session, email: str, otp_value: str, purpose: str = "ver
         return True
     return False
 
-# --- Core Auth Logic ---
+# ============================================================================
+#  CORE AUTH LOGIC
+# ============================================================================
 
-def login_with_email(db: _orm.Session, email: str, password: str) -> Tuple[_models.User, str, str]:
+def login_with_email(db: _orm.Session, email: str, password: str):
     user = get_user_by_email(db, email)
     
     if not user:
@@ -72,8 +73,21 @@ def login_with_email(db: _orm.Session, email: str, password: str) -> Tuple[_mode
     if not user.password_hash or not user.verify_password(password):
         raise HTTPException(status_code=400, detail="Invalid credentials")
     
-    # Generate Tokens
-    access_token = _helpers.create_access_token(user.id)
+    # --- FIX START: Create Dictionary Payload for Token ---
+
+    token_data = {
+        "sub": str(user.id),
+        "user_id": user.id,
+        "role": user.role.value if hasattr(user.role, 'value') else user.role,
+        "email": user.email,
+        "name": user.full_name or user.username,  # <--- NEW
+        "picture": user.profile_picture_url       # <--- NEW
+    }
+    print(f"Token data being used: {token_data}")  # Debug print
+    # Pass Dictionary (not int) to helpers
+    access_token = _helpers.create_access_token(data=token_data)
+    # --- FIX END ---
+
     refresh_token = _helpers.create_refresh_token(user.id)
     
     # Save Refresh Token
@@ -99,30 +113,36 @@ def create_user_by_admin(db: _orm.Session, payload: _schemas.CreateUserReq) -> _
         email=payload.email,
         full_name=payload.full_name,
         role=payload.role,
-        gender=payload.gender, # Ensure 'gender' column exists in models.py
+        gender=payload.gender,
         phone=payload.phone,
         city=payload.city,
         country_id=payload.country_id,
-        timezone=payload.timezone,
-        is_onboarded=False, # User must setup/change pass on first login if required
-        account_status=_models.AccountStatus.active
+        # timezone=payload.timezone, # Uncomment if in schema
+        is_onboarded=False,
+        account_status=_models.AccountStatus.active,
+        created_at=datetime.utcnow()
     )
     
     new_user.set_password(payload.password)
     
     if payload.dob:
-        # Simple string to date conversion
         try:
-            new_user.dob = datetime.strptime(payload.dob, "%Y-%m-%d").date()
+            # Handle date conversion if payload.dob is string, or assign directly if date
+            if isinstance(payload.dob, str):
+                new_user.dob = datetime.strptime(payload.dob, "%Y-%m-%d").date()
+            else:
+                new_user.dob = payload.dob
         except ValueError:
-            pass # Or raise error
+            pass 
 
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return new_user
 
-# --- Password Management ---
+# ============================================================================
+#  PASSWORD MANAGEMENT
+# ============================================================================
 
 def reset_password_using_otp(db: _orm.Session, email: str, otp_value: str, new_password: str):
     if not verify_otp(db, email, otp_value, purpose="reset"):
@@ -137,7 +157,9 @@ def reset_password_using_otp(db: _orm.Session, email: str, otp_value: str, new_p
     db.commit()
     return True
 
-# --- Token Mgmt ---
+# ============================================================================
+#  TOKEN MANAGEMENT
+# ============================================================================
 
 def refresh_access_token(db: _orm.Session, refresh_token: str) -> str:
     record = db.query(_models.RefreshToken).filter(
@@ -153,7 +175,24 @@ def refresh_access_token(db: _orm.Session, refresh_token: str) -> str:
         raise HTTPException(status_code=401, detail="Invalid token type")
     
     user_id = payload.get("sub")
-    return _helpers.create_access_token(int(user_id))
+    
+    # Fetch user to get current role/email for the new token
+    user = db.query(_models.User).filter(_models.User.id == int(user_id)).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    # --- FIX START: Create Dictionary Payload for Token ---
+
+    token_data = {
+        "sub": str(user.id),
+        "user_id": user.id,
+        "role": user.role.value if hasattr(user.role, 'value') else user.role,
+        "email": user.email,
+        "name": user.full_name or user.username,  # <--- NEW
+        "picture": user.profile_picture_url       # <--- NEW
+    }
+    return _helpers.create_access_token(data=token_data)
+    # --- FIX END ---
 
 def logout_user(db: _orm.Session, refresh_token: Optional[str] = None) -> bool:
     if refresh_token:
@@ -163,3 +202,6 @@ def logout_user(db: _orm.Session, refresh_token: Optional[str] = None) -> bool:
             db.add(record)
             db.commit()
     return True
+
+def get_all_countries(db: _orm.Session):
+    return db.query(_models.Country).filter(_models.Country.is_deleted == False).all()

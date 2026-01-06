@@ -1,56 +1,61 @@
-from typing import Annotated, Literal
+# app/Shared/dependencies.py
+from typing import Annotated
 from fastapi import Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
-
-from app.user.models import Permission, Resource, Role
-
-from .schema import PaginationOptions
-
+import jwt
+import os
 from ..core.db import session as _database
 
+# Try to import MENU
+try:
+    from app.core.menu import MENU
+except ImportError:
+    MENU = {"default": [], "admin": [], "staff": [], "doctor": []}
+
+JWT_SECRET = os.getenv("JWT_SECRET", "secret")
+
+class HTML_LoginRequired(Exception):
+    pass
 
 def get_db():
     db = _database.SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
+    try: yield db
+    finally: db.close()
 
 async def get_user(request: Request, db: Annotated[Session, Depends(get_db)]):
     return request.state.user
 
+def get_menu_context(request: Request):
+    """Reads cookie, extracts role, returns Menu List."""
+    token = request.cookies.get("access_token")
+    role = "default"
+    if token:
+        try:
+            # We decode insecurely here just for UI rendering speed
+            payload = jwt.decode(token, options={"verify_signature": False})
+            role = payload.get("role", "default")
+        except:
+            pass 
+    return MENU.get(role, MENU['default'])
 
-def get_pagination_options(
-    _limit: Annotated[
-        int | None,
-        Query(title="Limit", description="Number of results in response"),
-    ] = None,
-    _offset: Annotated[
-        int | None, Query(description="How many results to skip")
-    ] = None,
-):
-    return PaginationOptions(limit=_limit, offset=_offset)
-
-
-def get_module_permission(module: str, request_type: Literal["read","write","delete"]):
-    def get_permission(request: Request, db: Annotated[Session, Depends(get_db)]):
-        user = request.state.user
-        if user["user_type"] != "staff":
-            return
-        access_type = (
-            db.query(Permission.access_type)
-            .join(Resource, Resource.id == Permission.resource_id)
-            .filter(Resource.name == module, Permission.role_id == user["role_id"])
-            .scalar()
-        )
-        if access_type == "full_access":
-            return
-        if request_type == "delete":
-            raise HTTPException(status_code=403, detail="You don't have access")
-        if access_type == "no_access":
-            raise HTTPException(status_code=403, detail="You don't have access")
-        if access_type == "read" and request_type == "write":
-            raise HTTPException(status_code=403, detail="You don't have access")
-
-    return get_permission
+# --- THE FIX IS HERE ---
+def protected_view(request: Request):
+    """
+    1. Checks if Cookie exists.
+    2. Decodes Token.
+    3. SETS request.state.user (This was missing!)
+    """
+    token = request.cookies.get("access_token")
+    if not token:
+        raise HTML_LoginRequired()
+    
+    try:
+        # Decode and Verify
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        
+        # --- CRITICAL LINE: POPULATE THE STATE ---
+        request.state.user = payload
+        
+    except Exception:
+        # If expired or invalid, force redirect to login
+        raise HTML_LoginRequired()

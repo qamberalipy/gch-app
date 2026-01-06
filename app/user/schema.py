@@ -1,10 +1,9 @@
 # app/user/schema.py
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, EmailStr, Field, validator
 from datetime import datetime, date
 from enum import Enum
 
-# --- Enums (Must match Models) ---
 class UserRoleEnum(str, Enum):
     admin = "admin"
     manager = "manager"
@@ -16,37 +15,47 @@ class GenderEnum(str, Enum):
     female = "Female"
     other = "Other"
 
-# --- CRUD Requests ---
+# Mini schema for nested lists (Manager/Models)
+class UserInList(BaseModel):
+    id: int
+    full_name: Optional[str] = None
+    profile_picture_url: Optional[str] = None
+    role: Optional[str] = None
+    class Config: 
+        orm_mode = True
 
 class UserCreate(BaseModel):
     email: EmailStr
-    username: str = Field(..., min_length=3, max_length=50)
-    password: str = Field(..., min_length=6, description="Min 6 chars")
-    role: Optional[UserRoleEnum] = UserRoleEnum.team_member
+    username: str
+    password: str
+    role: UserRoleEnum
     
-    # Optional Profile Info
-    full_name: Optional[str] = Field(None, max_length=100)
-    phone: Optional[str] = Field(None, max_length=20)
+    # Relationships
+    manager_id: Optional[int] = None
+    assigned_model_id: Optional[int] = None  # For 1:1 (Staff <-> Model)
+    assign_model_ids: Optional[List[int]] = [] # NEW: For Bulk Assign (Manager -> [Models])
+
+    # Profile
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
     gender: Optional[GenderEnum] = None
-    country_id: Optional[int] = None
-    city: Optional[str] = None
-    address_1: Optional[str] = None
-    bio: Optional[str] = None
 
 class UserUpdate(BaseModel):
-    # --- sensitive fields (New) ---
     email: Optional[EmailStr] = None
-    username: Optional[str] = Field(None, min_length=3, max_length=50)
-    password: Optional[str] = Field(None, min_length=6)
-    role: Optional[UserRoleEnum] = None  
+    username: Optional[str] = None
+    password: Optional[str] = None
+    role: Optional[UserRoleEnum] = None
     
-    # --- Profile Info ---
+    # Relationships
+    manager_id: Optional[int] = None
+    assigned_model_id: Optional[int] = None
+    assign_model_ids: Optional[List[int]] = None # NEW: Bulk re-assign
+
+    # Profile
     full_name: Optional[str] = None
     bio: Optional[str] = None
     gender: Optional[GenderEnum] = None
     dob: Optional[date] = None
-
-    # Contact & Address
     phone: Optional[str] = None
     mobile_number: Optional[str] = None
     country_id: Optional[int] = None
@@ -54,16 +63,10 @@ class UserUpdate(BaseModel):
     zipcode: Optional[str] = None
     address_1: Optional[str] = None
     address_2: Optional[str] = None
-
-    # Media & Socials
     profile_picture_url: Optional[str] = None
     x_link: Optional[str] = None
     of_link: Optional[str] = None
     insta_link: Optional[str] = None
-
-    class Config:
-        orm_mode = True
-# --- Responses ---
 
 class UserOut(BaseModel):
     id: int
@@ -72,6 +75,11 @@ class UserOut(BaseModel):
     full_name: Optional[str] = None
     role: Optional[str] = None
     account_status: Optional[str] = None
+    
+    # Hierarchy Data
+    manager: Optional[UserInList] = None 
+    assigned_model_rel: Optional[UserInList] = None 
+    models_under_manager: List[UserInList] = [] 
     
     # Contact & Profile
     phone: Optional[str] = None
@@ -100,13 +108,13 @@ class UserOut(BaseModel):
 
     class Config:
         orm_mode = True
-class ChangePassword(BaseModel):
-    old_password: str = Field(..., description="Required for security verification")
-    new_password: str = Field(..., min_length=6, description="Min 6 chars")
-    confirm_password: str = Field(..., min_length=6)
 
+class ChangePassword(BaseModel):
+    old_password: str
+    new_password: str
+    confirm_password: str
     @validator('confirm_password')
-    def passwords_match(cls, v, values, **kwargs):
+    def passwords_match(cls, v, values):
         if 'new_password' in values and v != values['new_password']:
             raise ValueError('Passwords do not match')
         return v

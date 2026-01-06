@@ -42,18 +42,22 @@ def verify_password(plain: str, hashed: str) -> bool:
     except Exception:
         return False
 
-def create_access_token(user_id: int) -> str:
+def create_access_token(data: Dict[str, Any]) -> str:
     try:
+        to_encode = data.copy()
         now = datetime.utcnow()
-        payload = {
-            "sub": str(user_id),
-            "type": "access",
-            "iat": now,
-            "exp": now + timedelta(seconds=ACCESS_TOKEN_EXPIRE_SECONDS)
-        }
-        token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+        expire = now + timedelta(seconds=ACCESS_TOKEN_EXPIRE_SECONDS)
+        
+        # Ensure 'sub' is present if not passed (fallback logic)
+        if "sub" not in to_encode and "user_id" in to_encode:
+             to_encode["sub"] = str(to_encode["user_id"])
+
+        to_encode.update({"type": "access", "exp": expire, "iat": now})
+        
+        token = jwt.encode(to_encode, JWT_SECRET, algorithm="HS256")
         return token
-    except Exception:
+    except Exception as e:
+        print(f"Token creation error: {e}")
         raise _fastapi.HTTPException(status_code=500, detail="Failed to create access token")
 
 def create_refresh_token(user_id: int) -> str:

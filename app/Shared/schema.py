@@ -1,7 +1,12 @@
+# app/Shared/schema.py
 from typing import Optional
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 from enum import Enum
+
+# --- IMPORT FULL SCHEMA ---
+# This ensures consistency between Login response and User API response
+from app.user.schema import UserOut 
 
 # --- Enums (Matching models.py) ---
 class UserRole(str, Enum):
@@ -33,7 +38,6 @@ class RefreshReq(BaseModel):
     refresh_token: str
 
 class CreateUserReq(BaseModel):
-  
     full_name: str = Field(..., min_length=2)
     email: EmailStr
     password: str = Field(..., min_length=6)
@@ -49,28 +53,13 @@ class CreateUserReq(BaseModel):
 
 # ---- Responses ----
 
-class UserOut(BaseModel):
-    id: int
-    email: str
-    username: Optional[str] = None
-    full_name: Optional[str] = None
-    role: UserRole
-    is_onboarded: bool
-    timezone: Optional[str] = None
-    profile_picture_url: Optional[str] = None
-    # Additional info
-    phone: Optional[str] = None
-    gender: Optional[str] = None
-    created_at: Optional[datetime] = None
-
-    class Config:
-        orm_mode = True
+# Note: UserOut is now imported from app.user.schema
 
 class AuthLoginResp(BaseModel):
     message: str
     access_token: str
     refresh_token: str
-    user: UserOut
+    user: UserOut # This now uses the full schema with all profile fields
 
 class MessageResp(BaseModel):
     message: str
