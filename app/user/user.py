@@ -46,12 +46,16 @@ def list_managers(db: Session = Depends(_services.get_db), current_user = Depend
     return db.query(_models.User).filter(_models.User.role == "manager", _models.User.is_deleted == False).all()
 
 @router.get("/available/team-members", response_model=List[_schemas.UserInList], tags=["Utility"])
-def list_free_team_members(db: Session = Depends(_services.get_db), current_user = Depends(get_admin_or_manager)):
-    return _services.get_available_users(db, role="team_member")
+def list_free_team_members(db: Session = Depends(_services.get_db), current_user: _models.User = Depends(get_admin_or_manager)):
+    # [UPDATED] If Manager, scope to their ID. If Admin, mgr_id is None (returns all).
+    mgr_id = current_user.id if current_user.role == _models.UserRole.manager else None
+    return _services.get_available_users(db, role="team_member", manager_id=mgr_id)
 
 @router.get("/available/models", response_model=List[_schemas.UserInList], tags=["Utility"])
-def list_free_models(db: Session = Depends(_services.get_db), current_user = Depends(get_admin_or_manager)):
-    return _services.get_available_users(db, role="digital_creator")
+def list_free_models(db: Session = Depends(_services.get_db), current_user: _models.User = Depends(get_admin_or_manager)):
+    # [UPDATED] If Manager, scope to their ID.
+    mgr_id = current_user.id if current_user.role == _models.UserRole.manager else None
+    return _services.get_available_users(db, role="digital_creator", manager_id=mgr_id)
 
 # --- CRUD Endpoints ---
 
