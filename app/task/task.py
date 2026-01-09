@@ -16,29 +16,40 @@ def get_db():
     try: yield db
     finally: db.close()
 
+# --- Utility: Get Assignees (Bypass User Module restrictions) ---
+@router.get("/assignees", response_model=List[_schemas.UserMinimal],tags=["TASK API"])
+def get_available_creators(
+    current_user: _user_models.User = Depends(_user_auth.get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns valid models for the logged-in user (Manager or Team Member).
+    """
+    return _services.get_my_assignees(db, current_user)
+
 # --- Task CRUD ---
 
-@router.get("/", response_model=List[_schemas.TaskOut])
+@router.get("/", response_model=List[_schemas.TaskOut],tags=["TASK API"])
 def list_tasks(
     status: Optional[str] = None,
     current_user: _user_models.User = Depends(_user_auth.get_current_user),
     db: Session = Depends(get_db)
 ):
-    """View tasks. Includes all attachments (Instructions + Submissions)."""
+    """View tasks. Managers/Team see tasks for their models."""
     return _services.get_all_tasks(db, current_user, status)
 
-@router.post("/", response_model=_schemas.TaskOut, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=_schemas.TaskOut, status_code=status.HTTP_201_CREATED,tags=["TASK API"])
 def create_task(
     task_in: _schemas.TaskCreate,
     current_user: _user_models.User = Depends(_user_auth.get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Admin/Manager creates task & uploads reference material."""
+    """Admin/Manager/Team Member creates task."""
     if current_user.role == _user_models.UserRole.digital_creator:
         raise HTTPException(status_code=403, detail="Creators cannot assign tasks.")
     return _services.create_task(db, task_in, current_user)
 
-@router.get("/{task_id}", response_model=_schemas.TaskOut)
+@router.get("/{task_id}", response_model=_schemas.TaskOut,tags=["TASK API"])
 def get_task(
     task_id: int,
     current_user: _user_models.User = Depends(_user_auth.get_current_user),
@@ -46,7 +57,7 @@ def get_task(
 ):
     return _services.get_task_or_404(db, task_id)
 
-@router.put("/{task_id}", response_model=_schemas.TaskOut)
+@router.put("/{task_id}", response_model=_schemas.TaskOut,tags=["TASK API"])
 def update_task(
     task_id: int,
     updates: _schemas.TaskUpdate,
@@ -57,23 +68,18 @@ def update_task(
 
 # --- WORK SUBMISSION (For Creators) ---
 
-@router.post("/{task_id}/submit", response_model=_schemas.TaskOut)
+@router.post("/{task_id}/submit", response_model=_schemas.TaskOut,tags=["TASK API"])
 def submit_work(
     task_id: int,
     submission: _schemas.TaskSubmission,
     current_user: _user_models.User = Depends(_user_auth.get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Creator uploads proof of work (Deliverables).
-    - Saves files to ContentVault.
-    - Updates Status to 'In Review'.
-    """
     return _services.submit_task_work(db, task_id, submission, current_user)
 
 # --- Chat ---
 
-@router.get("/{task_id}/chat", response_model=List[_schemas.ChatMsgOut])
+@router.get("/{task_id}/chat", response_model=List[_schemas.ChatMsgOut],tags=["TASK API"])
 def get_chat(
     task_id: int,
     current_user: _user_models.User = Depends(_user_auth.get_current_user),
@@ -81,7 +87,7 @@ def get_chat(
 ):
     return _services.get_chat_history(db, task_id)
 
-@router.post("/{task_id}/chat", response_model=_schemas.ChatMsgOut)
+@router.post("/{task_id}/chat", response_model=_schemas.ChatMsgOut,tags=["TASK API"])
 def send_chat(
     task_id: int,
     chat_in: _schemas.ChatMsgCreate,

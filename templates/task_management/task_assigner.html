@@ -2,26 +2,37 @@
 
 {% block stylesheets %}
 <style>
-    /* --- Shared Theme (Matches admin_users.html) --- */
+    /* --- Shared Theme (Matches manager_users.html) --- */
     .grail-table-card {
         background: #fff;
         border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.03);
         padding: 20px;
         border: 1px solid #f1f1f1;
         min-height: 400px;
     }
     
-    .page-title { font-weight: 600; color: #333; margin: 0; }
+    .page-title { font-weight: 600; color: #333; margin: 0; font-size: 1.25rem; }
     
     .btn-grail-gold {
-        background-color: #C89E47; color: white; border: none;
-        padding: 8px 24px; border-radius: 50px; font-weight: 500;
+        background-color: #C89E47; color: white; border: 2px solid #C89E47;
+        padding: 8px 24px; border-radius: 50px; font-weight: 500; font-size: 0.85rem;
         transition: all 0.2s;
     }
-    .btn-grail-gold:hover { background-color: #B08A3D; color: white; transform: translateY(-1px); }
+    .btn-grail-gold:hover { background-color: #B08A3D; border-color: #B08A3D; color: white; transform: translateY(-1px); }
 
-    /* --- Priority Toggles --- */
+    /* Table Styling */
+    .table-grail { margin-bottom: 0; border-collapse: separate; border-spacing: 0; width: 100%; }
+    .table-grail thead th {
+        background-color: #EDF9FE; color: #6B7280; font-weight: 600;
+        font-size: 0.8rem; text-transform: uppercase; border: none; padding: 12px 15px;
+    }
+    .table-grail thead th:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+    .table-grail thead th:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+    .table-grail tbody td { vertical-align: middle; padding: 12px 15px; border-bottom: 1px solid #F3F4F6; color: #374151; font-size: 0.9rem; }
+    
+    .user-avatar-small { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; margin-right: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+
+    /* --- Priority Toggles (Modal) --- */
     .priority-group {
         background: #F9FAFB; border-radius: 8px; padding: 4px; display: flex;
     }
@@ -49,7 +60,7 @@
         background: #fff; border: 1px solid #eee; border-radius: 8px; margin-top: 10px;
     }
     .file-preview-icon {
-        width: 40px; height: 40px; border-radius: 6px; object-fit: cover;
+        width: 40px; height: 40px; border-radius: 6px; 
         background: #eee; display: flex; align-items: center; justify-content: center;
         margin-right: 12px; color: #666;
     }
@@ -70,7 +81,6 @@
         align-self: flex-start; background-color: white; color: #374151;
         border-bottom-left-radius: 2px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
-    .chat-meta { font-size: 0.65rem; margin-top: 4px; opacity: 0.8; text-align: right; }
     .chat-input-area {
         padding: 15px; background: white; border-top: 1px solid #eee; display: flex; gap: 10px;
     }
@@ -97,12 +107,12 @@
         </div>
     </div>
 
-    <div class="grail-table-card pt-0 mx-3">
+    <div class="border-0 grail-table-card pt-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead class="bg-light">
-                    <tr class="text-muted small text-uppercase">
-                        <th>Task</th>
+            <table class="table table-grail">
+                <thead>
+                    <tr>
+                        <th>Task Details</th>
                         <th>Assignee</th>
                         <th>Context</th>
                         <th>Status</th>
@@ -119,7 +129,7 @@
 
 </div>
 
-<div class="modal fade" id="taskModal" tabindex="-1" data-bs-backdrop="static">
+<div class="modal fade" id="taskModal" tabindex="-1" data-bs-backdrop="static" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header border-0 pb-0 pt-4 px-4">
@@ -221,7 +231,7 @@
                     </div>
 
                     <div class="d-grid mt-4">
-                        <button type="button" class="btn btn-grail-gold" id="btnSaveTask">Create Task</button>
+                        <button type="button" class="btn btn-grail-gold" onclick="createAtomicTask()">Create Task</button>
                     </div>
                 </form>
             </div>
@@ -234,7 +244,7 @@
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
             <div class="modal-header bg-white border-bottom p-3">
                 <div class="d-flex align-items-center">
-                    <img id="chatAvatar" src="" class="rounded-circle me-2" width="30" height="30">
+                    <img id="chatAvatar" src="" class="rounded-circle me-2 d-none" width="30" height="30">
                     <div>
                         <h6 class="mb-0 fw-bold" id="chatTaskTitle">Task Chat</h6>
                         <span class="small text-muted">Real-time</span>
@@ -256,7 +266,6 @@
         </div>
     </div>
 </div>
-
 {% endblock %}
 
 {% block javascript %}

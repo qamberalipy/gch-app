@@ -1,246 +1,282 @@
-/* static/js/task_assigner.js */
+/* static/js/task_management/task_assigner.js */
 
-// --- Global State ---
-let uploadedAttachments = []; // Stores {file_url, mime_type...} ready for API
+let uploadedAttachments = [];
 let currentChatTaskId = null;
 let chatPollInterval = null;
-let currentUser = null; // Loaded from token
 
-$(document).ready(function() {
+document.addEventListener('DOMContentLoaded', function() {
     initPage();
-
-    // --- Drag & Drop Event Listeners ---
-    const dropZone = document.getElementById('dropZone');
+    setupUploadHandlers();
     
-    $('#dropZone').on('click', () => $('#fileInput').click());
-    
-    $('#fileInput').on('change', function(e) {
-        handleFiles(e.target.files);
-    });
-
-    // Drag effects
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, preventDefaults, false);
-    });
-    
-    function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
-    
-    ['dragenter', 'dragover'].forEach(eventName => {
-        dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
-    });
-    
-    ['dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
-    });
-    
-    dropZone.addEventListener('drop', (e) => {
-        const dt = e.dataTransfer;
-        handleFiles(dt.files);
-    }, false);
-
-    // Save Task Button
-    $('#btnSaveTask').on('click', createAtomicTask);
-
     // Chat Enter Key
-    $('#chatInput').on('keypress', function(e) {
-        if(e.which === 13) sendMessage();
-    });
-
-    // Stop Chat polling when modal closes
-    $('#chatModal').on('hidden.bs.modal', function () {
-        if(chatPollInterval) clearInterval(chatPollInterval);
-    });
-});
-
-// --- 1. Initialization ---
-async function initPage() {
-    // 1. Get User from Token (Shared logic)
-    const token = localStorage.getItem('access_token');
-    if(token) {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        // Assuming sub is {user_id: 1, role: '...'} or just ID depending on your login logic
-        currentUser = typeof payload.sub === 'string' ? JSON.parse(payload.sub) : payload.sub;
+    const chatInput = document.getElementById('chatInput');
+    if(chatInput){
+        chatInput.addEventListener('keypress', function(e) {
+            if(e.key === 'Enter') sendMessage();
+        });
     }
 
+    // Clean up interval
+    const chatModal = document.getElementById('chatModal');
+    if(chatModal){
+        chatModal.addEventListener('hidden.bs.modal', function () {
+            if(chatPollInterval) clearInterval(chatPollInterval);
+        });
+    }
+});
+
+async function initPage() {
     await loadAssignees();
     loadTasks();
 }
 
-// --- 2. Load Assignees (Creators) ---
+// --- 1. Load Assignees ---
 async function loadAssignees() {
+    const select = document.getElementById('assigneeSelect');
+    if(!select) return;
+
     try {
-        // Use the utility endpoint provided in user.py
-        const res = await axios.get('/api/users/available/models');
+        const res = await axios.get('/api/tasks/assignees');
         const creators = res.data;
         
-        const $select = $('#assigneeSelect');
-        $select.empty().append('<option value="">Select Creator...</option>');
-        
+        select.innerHTML = '<option value="">Select Creator...</option>';
+        if(creators.length === 0) {
+            select.innerHTML += '<option disabled>No models found for your team</option>';
+        }
+
         creators.forEach(c => {
-            $select.append(`<option value="${c.id}">${c.full_name || c.username}</option>`);
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.text = c.full_name || c.username;
+            select.appendChild(opt);
         });
     } catch (err) {
         console.error("Failed to load creators", err);
+        select.innerHTML = '<option disabled>Error loading list</option>';
     }
 }
 
-// --- 3. Load Tasks List ---
+// --- 2. Load Tasks (Updated for UI Consistency) ---
 async function loadTasks() {
-    const $tbody = $('#taskTableBody');
-    $tbody.html('<tr><td colspan="6" class="text-center py-5">Loading...</td></tr>');
+    const tbody = document.getElementById('taskTableBody');
+    if(!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5"><div class="spinner-border text-warning"></div></td></tr>';
 
     try {
         const res = await axios.get('/api/tasks/');
         const tasks = res.data;
 
         if(tasks.length === 0) {
-            $tbody.html('<tr><td colspan="6" class="text-center py-5 text-muted">No tasks found. Create one!</td></tr>');
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-muted">No tasks found.</td></tr>';
             return;
         }
 
-        $tbody.empty();
+        tbody.innerHTML = '';
         tasks.forEach(task => {
             const assigneeName = task.assignee?.full_name || "Unknown";
-            const assigneePic = task.assignee?.profile_picture_url || `https://ui-avatars.com/api/?name=${assigneeName}`;
+            const assigneePic = task.assignee?.profile_picture_url || `https://ui-avatars.com/api/?name=${assigneeName}&background=random`;
             const dateStr = task.due_date ? new Date(task.due_date).toLocaleDateString() : '-';
             
+            let statusClass = 'badge-todo';
+            if(task.status === 'In Progress') statusClass = 'badge-in_progress';
+            if(task.status === 'In Review') statusClass = 'badge-review';
+            if(task.status === 'Completed') statusClass = 'badge-completed';
+            if(task.status === 'Blocked') statusClass = 'badge-blocked';
+
             const row = `
                 <tr>
                     <td>
-                        <div class="fw-bold text-dark">${task.title}</div>
+                        <div class="fw-bold text-dark" style="font-size:0.95rem;">${task.title}</div>
                         <div class="small text-muted text-truncate" style="max-width: 200px;">${task.description || ''}</div>
                     </td>
                     <td>
                         <div class="d-flex align-items-center">
-                            <img src="${assigneePic}" class="rounded-circle me-2" width="30" height="30" style="object-fit:cover;">
+                            <img src="${assigneePic}" class="user-avatar-small">
                             <span class="small fw-medium">${assigneeName}</span>
                         </div>
                     </td>
-                    <td><span class="badge bg-light text-dark border">${task.context}</span></td>
-                    <td><span class="badge-status badge-${task.status.toLowerCase().replace(' ', '_')}">${task.status}</span></td>
-                    <td class="small">${dateStr}</td>
+                    <td><span class="badge bg-light text-dark border fw-normal">${task.context}</span></td>
+                    <td><span class="badge-status ${statusClass}">${task.status}</span></td>
+                    <td class="small text-muted">${dateStr}</td>
                     <td class="text-end">
-                        <button class="btn btn-sm btn-light text-muted" onclick="openChat(${task.id}, '${task.title}')">
-                            <i class="ri-message-3-line"></i> 
-                            ${task.chat_count > 0 ? `<span class="badge bg-danger rounded-pill" style="font-size:0.6rem;">${task.chat_count}</span>` : ''}
+                        <button class="btn btn-sm btn-light text-muted border-0" onclick="openChat(${task.id}, '${task.title}')">
+                            <i class="ri-message-3-line fs-5"></i> 
+                            ${task.chat_count > 0 ? `<span class="badge bg-danger rounded-pill position-absolute" style="font-size:0.6rem; transform:translate(-10px, -5px)">${task.chat_count}</span>` : ''}
                         </button>
-                        <button class="btn btn-sm btn-light text-muted ms-1"><i class="ri-pencil-line"></i></button>
                     </td>
                 </tr>
             `;
-            $tbody.append(row);
+            tbody.insertAdjacentHTML('beforeend', row);
         });
 
     } catch (err) {
-        $tbody.html('<tr><td colspan="6" class="text-center text-danger">Error loading tasks.</td></tr>');
+        console.error(err);
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error loading tasks.</td></tr>';
     }
 }
 
-// --- 4. File Upload Handlers (Presigned URL) ---
+// --- 3. Upload Logic (Fix for "Nothing Happening") ---
+function setupUploadHandlers() {
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+
+    if(!dropZone || !fileInput) return;
+
+    // Trigger file input on click
+    dropZone.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    // Handle File Selection
+    fileInput.addEventListener('change', (e) => {
+        if(e.target.files.length > 0){
+            handleFiles(e.target.files);
+        }
+    });
+
+    // Drag & Drop Visuals
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        handleFiles(e.dataTransfer.files);
+    });
+}
+
 async function handleFiles(files) {
-    const $list = $('#filePreviewList');
+    const list = document.getElementById('filePreviewList');
     
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        const tempId = `file-${Date.now()}-${i}`;
         
-        // UI: Add loading state
-        const tempId = `file-${Date.now()}`;
-        const itemHtml = `
+        const html = `
             <div class="file-preview-item" id="${tempId}">
-                <div class="file-preview-icon"><div class="spinner-border spinner-border-sm"></div></div>
-                <div class="flex-grow-1 small text-truncate">${file.name}</div>
+                <div class="file-preview-icon"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+                <div class="flex-grow-1 small text-truncate ps-2">${file.name}</div>
             </div>`;
-        $list.append(itemHtml);
+        list.insertAdjacentHTML('beforeend', html);
 
         try {
             // 1. Get Presigned URL
             const ticketRes = await axios.post('/api/upload/presigned-url', {
                 filename: file.name,
-                content_type: file.type,
+                content_type: file.type || 'application/octet-stream',
                 category: "vault" 
             });
             
             const { upload_url, public_url } = ticketRes.data.ticket;
 
-            // 2. Upload to R2 (Direct)
+            // 2. Upload to R2 (This triggers CORS if bucket settings are wrong)
             await axios.put(upload_url, file, {
-                headers: { 'Content-Type': file.type }
+                headers: { 'Content-Type': file.type || 'application/octet-stream' }
             });
 
-            // 3. Success! Add to global array for the final POST
-            // Note: For videos, you ideally generate a thumbnail on client side here.
-            // For now, we leave thumbnail_url null or a placeholder.
+            // 3. Success
             uploadedAttachments.push({
                 file_url: public_url,
                 file_size_mb: parseFloat((file.size / (1024*1024)).toFixed(2)),
-                mime_type: file.type,
-                thumbnail_url: null, // If you implement JS canvas thumb gen, put it here
+                mime_type: file.type || 'application/octet-stream',
                 tags: "Reference"
             });
 
-            // Update UI
-            $(`#${tempId} .file-preview-icon`).html('<i class="ri-check-line text-success"></i>');
+            const iconEl = document.querySelector(`#${tempId} .file-preview-icon`);
+            if(iconEl) iconEl.innerHTML = '<i class="ri-check-line text-success fs-5"></i>';
 
         } catch (err) {
-            console.error(err);
-            $(`#${tempId} .file-preview-icon`).html('<i class="ri-error-warning-line text-danger"></i>');
-            showToastMessage('error', `Failed to upload ${file.name}`);
+            console.error("Upload failed", err);
+            toastr.error(`Failed to upload ${file.name}. Check Console.`);
+            
+            const iconEl = document.querySelector(`#${tempId} .file-preview-icon`);
+            if(iconEl) iconEl.innerHTML = '<i class="ri-error-warning-line text-danger fs-5"></i>';
         }
     }
 }
 
-// --- 5. Create Task (Atomic) ---
+// --- 4. Create Task ---
 async function createAtomicTask() {
-    const payload = {
-        title: $('#taskTitle').val(),
-        description: $('#taskDescription').val(),
-        assignee_id: $('#assigneeSelect').val(),
-        priority: $('#taskPriority').val(),
-        due_date: $('#dueDate').val() || null, // Ensure null if empty
-        context: $('#taskContext').val(),
-        req_content_type: $('#contentType').val(),
-        req_length: $('#contentLength').val(),
-        req_face_visible: $('#reqFace').is(':checked'),
-        req_watermark: $('#reqWatermark').is(':checked'),
-        
-        // The Atomic Magic: Send files WITH the task
-        attachments: uploadedAttachments 
-    };
+    const title = document.getElementById('taskTitle').value;
+    const assignee = document.getElementById('assigneeSelect').value;
 
-    if(!payload.title || !payload.assignee_id) {
-        showToastMessage('warning', 'Title and Assignee are required.');
+    if(!title || !assignee) {
+        toastr.warning('Title and Assignee are required.');
         return;
     }
 
-    myshowLoader();
+    // Gather Switches
+    const reqFace = document.getElementById('reqFace').checked;
+    const reqWatermark = document.getElementById('reqWatermark').checked;
+
+    const payload = {
+        title: title,
+        description: document.getElementById('taskDescription').value,
+        assignee_id: parseInt(assignee),
+        priority: document.getElementById('taskPriority').value,
+        due_date: document.getElementById('dueDate').value || null,
+        context: document.getElementById('taskContext').value,
+        req_content_type: document.getElementById('contentType').value,
+        req_length: document.getElementById('contentLength').value,
+        req_face_visible: reqFace,
+        req_watermark: reqWatermark,
+        attachments: uploadedAttachments 
+    };
+
+    if(typeof myshowLoader === 'function') myshowLoader();
+
     try {
         await axios.post('/api/tasks/', payload);
         
-        $('#taskModal').modal('hide');
-        showToastMessage('success', 'Task assigned successfully!');
+        // Success
+        const modalEl = document.getElementById('taskModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        modal.hide();
+        toastr.success('Task assigned successfully!');
         
         // Reset Form
-        $('#taskForm')[0].reset();
-        $('#filePreviewList').empty();
+        document.getElementById('taskForm').reset();
+        document.getElementById('filePreviewList').innerHTML = '';
         uploadedAttachments = [];
         
-        loadTasks(); // Refresh table
+        // Refresh Table
+        loadTasks();
+
     } catch (err) {
-        showToastMessage('error', err.response?.data?.detail || "Failed to create task");
+        const msg = err.response?.data?.detail || "Failed to create task";
+        toastr.error(msg);
     } finally {
-        myhideLoader();
+        if(typeof myhideLoader === 'function') myhideLoader();
     }
 }
 
-// --- 6. Chat System ---
-function openChat(taskId, taskTitle) {
+// --- 5. Helpers ---
+function openCreateTaskModal() {
+    new bootstrap.Modal(document.getElementById('taskModal')).show();
+}
+
+function setPriority(el) {
+    document.querySelectorAll('.priority-option').forEach(d => d.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('taskPriority').value = el.getAttribute('data-value');
+}
+
+function openChat(taskId, title) {
     currentChatTaskId = taskId;
-    $('#chatTaskTitle').text(taskTitle);
-    $('#chatContainer').html('<div class="text-center small text-muted mt-5">Loading chat...</div>');
-    $('#chatModal').modal('show');
+    const titleEl = document.getElementById('chatTaskTitle');
+    if(titleEl) titleEl.innerText = title;
     
+    new bootstrap.Modal(document.getElementById('chatModal')).show();
     loadChatHistory();
-    // Poll every 3 seconds
+    
     if(chatPollInterval) clearInterval(chatPollInterval);
     chatPollInterval = setInterval(loadChatHistory, 3000);
 }
@@ -249,72 +285,51 @@ async function loadChatHistory() {
     if(!currentChatTaskId) return;
     try {
         const res = await axios.get(`/api/tasks/${currentChatTaskId}/chat`);
-        renderChat(res.data);
-    } catch (err) {
-        console.error("Chat load failed");
-    }
-}
-
-function renderChat(messages) {
-    const $container = $('#chatContainer');
-    // Simple diffing: If count changed, re-render (Enhancement: append only new)
-    // For simplicity in this demo, we re-render (it's fast for text)
-    $container.empty();
-
-    if(messages.length === 0) {
-        $container.html('<div class="text-center small text-muted mt-5">No messages yet. Start the conversation!</div>');
-        return;
-    }
-
-    messages.forEach(msg => {
-        // Assume currentUser ID is available via token logic or API
-        // For this demo, let's look at the 'author' object
-        // NOTE: You need to know YOUR user ID. 
-        // We set 'currentUser' in initPage().
+        const container = document.getElementById('chatContainer');
+        if(!container) return;
         
-        const isMe = (msg.author.id === currentUser?.user_id) || (msg.author.id === currentUser?.id);
+        container.innerHTML = '';
         
-        const bubbleClass = isMe ? 'sent' : 'received';
-        const time = new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        
-        let html = '';
-        if(msg.is_system_log) {
-            html = `<div class="text-center small text-muted fst-italic my-2">${msg.message}</div>`;
-        } else {
-            html = `
-                <div class="chat-bubble ${bubbleClass}">
-                    ${msg.message}
-                    <div class="chat-meta">${time}</div>
-                </div>
-            `;
+        if(res.data.length === 0) {
+            container.innerHTML = '<div class="text-center small text-muted mt-5">No messages yet.</div>';
+            return;
         }
-        $container.append(html);
-    });
-    
-    // Scroll to bottom
-    // $container.scrollTop($container[0].scrollHeight);
+
+        res.data.forEach(msg => {
+            if(msg.is_system_log) {
+                container.insertAdjacentHTML('beforeend', `<div class="text-center small text-muted fst-italic my-2" style="font-size:0.75rem;">${msg.message}</div>`);
+            } else {
+                // Determine alignment (Need a way to know "my" ID, usually stored in meta tag)
+                const myId = document.querySelector('meta[name="user-id"]')?.content;
+                const isMe = myId && parseInt(myId) === msg.author.id;
+                
+                const bubbleClass = isMe ? 'sent' : 'received';
+                
+                const bubble = `
+                    <div class="d-flex flex-column ${isMe ? 'align-items-end' : 'align-items-start'}">
+                        <div class="chat-bubble ${bubbleClass}">
+                            ${msg.message}
+                        </div>
+                        <span class="text-muted" style="font-size:0.65rem; margin-top:2px;">${msg.author.full_name || 'User'}</span>
+                    </div>`;
+                container.insertAdjacentHTML('beforeend', bubble);
+            }
+        });
+        
+        // Auto scroll to bottom
+        container.scrollTop = container.scrollHeight;
+
+    } catch(err) { console.error(err); }
 }
 
 async function sendMessage() {
-    const text = $('#chatInput').val().trim();
-    if(!text || !currentChatTaskId) return;
+    const input = document.getElementById('chatInput');
+    const val = input.value.trim();
+    if(!val || !currentChatTaskId) return;
 
     try {
-        await axios.post(`/api/tasks/${currentChatTaskId}/chat`, { message: text });
-        $('#chatInput').val('');
-        loadChatHistory(); // Refresh immediately
-    } catch (err) {
-        showToastMessage('error', "Failed to send message");
-    }
-}
-
-// --- Helpers ---
-function openCreateTaskModal() {
-    $('#taskModal').modal('show');
-}
-
-function setPriority(el) {
-    $('.priority-option').removeClass('active');
-    $(el).addClass('active');
-    $('#taskPriority').val($(el).data('value'));
+        await axios.post(`/api/tasks/${currentChatTaskId}/chat`, { message: val });
+        input.value = '';
+        loadChatHistory();
+    } catch(err) { toastr.error("Failed to send"); }
 }

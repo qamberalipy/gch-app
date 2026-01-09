@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.user.user import router
+from app.task.task import router
 
 API_STR = "/api/tasks"
 

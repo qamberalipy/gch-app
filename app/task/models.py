@@ -27,9 +27,9 @@ class ContentType(str, _PyEnum):
 
 class ContentStatus(str, _PyEnum):
     pending = "Pending Review" 
-    approved = "Approved"      
-    rejected = "Rejected"      
-    archived = "Archived"      
+    approved = "Approved"       
+    rejected = "Rejected"       
+    archived = "Archived"       
 
 # --- Models ---
 
@@ -65,9 +65,11 @@ class Task(_database.Base):
     updated_at = _sql.Column(_sql.DateTime(timezone=True), onupdate=func.now())
 
     # Relationships
-    assigner = relationship("User", foreign_keys=[assigner_id], back_populates="tasks_created")
-    assignee = relationship("User", foreign_keys=[assignee_id], back_populates="tasks_assigned")
+    # [FIX]: Changed back_populates to backref so 'User' model doesn't need changes
+    assigner = relationship("User", foreign_keys=[assigner_id], backref="tasks_created")
+    assignee = relationship("User", foreign_keys=[assignee_id], backref="tasks_assigned")
     
+    # Internal relationships (within this module) can keep back_populates
     chat_messages = relationship("TaskChat", back_populates="task", cascade="all, delete-orphan")
     attachments = relationship("ContentVault", back_populates="task") 
 
@@ -82,7 +84,8 @@ class TaskChat(_database.Base):
     created_at = _sql.Column(_sql.DateTime(timezone=True), server_default=func.now())
 
     task = relationship("Task", back_populates="chat_messages")
-    author = relationship("User", back_populates="task_comments")
+    # [FIX]: Changed back_populates to backref
+    author = relationship("User", backref="task_comments")
 
 
 class ContentVault(_database.Base):
@@ -115,5 +118,6 @@ class ContentVault(_database.Base):
     approved_at = _sql.Column(_sql.DateTime, nullable=True)
     approved_by = _sql.Column(_sql.Integer, _sql.ForeignKey("user.id"), nullable=True)
 
-    uploader = relationship("User", foreign_keys=[uploader_id], back_populates="uploads")
+    # [FIX]: Changed back_populates to backref
+    uploader = relationship("User", foreign_keys=[uploader_id], backref="uploads")
     task = relationship("Task", back_populates="attachments")
