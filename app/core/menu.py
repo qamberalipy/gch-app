@@ -6,10 +6,12 @@ MENU = {
     ],
     "manager": [
         {"label": "Dashboard", "icon": "ri-home-4-line", "path": "/dashboard", "children": []},
-         {"label": "Users", "icon": "ri-user-line", "path": "/manager_users", "children": []},
+        {"label": "Users", "icon": "ri-user-line", "path": "/manager_users", "children": []},
+        {"label": "Task Assigner", "icon": "ri-task-line", "path": "/task_assigner", "children": []},
     ],
     "team_member": [
         {"label": "Dashboard", "icon": "ri-home-4-line", "path": "/dashboard", "children": []},
+        {"label": "Task Assigner", "icon": "ri-task-line", "path": "/task_assigner", "children": []},
     ],
     "digital_creator": [
         {"label": "Dashboard", "icon": "ri-home-4-line", "path": "/dashboard", "children": []},

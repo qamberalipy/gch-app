@@ -25,6 +25,7 @@ from app.core.db.session import Base
 # MUST Import all your models here so Alembic can "see" the tables
 # If you create new model files later, add them here!
 import app.user.models 
+import app.task.models
 # import app.order.models  <-- Example for future modules
 
 # ------------------------------------------------------------------------

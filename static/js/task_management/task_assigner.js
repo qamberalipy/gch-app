@@ -1,0 +1,522 @@
+/**
+ * task_assigner.js
+ * Heavy-duty frontend logic for Task Assignment.
+ * Fixes: Chat Locking, Recursion, Loaders, UI Alignment.
+ */
+
+// --- Global State ---
+let taskTags = [];           
+let newAttachments = [];     
+let existingAttachments = [];
+let activeChatTaskId = null;
+let currentAssignees = [];
+let isChatSending = false; // Prevents double-send
+
+$(document).ready(function() {
+    loadAssignees();
+    loadTasks();
+
+    // --- Event Listeners ---
+    
+    // 1. Tag System
+    $("#tagContainer").on("click", function() { $("#tagInput").focus(); });
+    $("#tagInput").on("keydown", handleTagInput);
+
+    // 2. Priority Toggle
+    $(".priority-option").on("click", function() {
+        $(".priority-option").removeClass("active");
+        $(this).addClass("active");
+        $("#taskPriority").val($(this).data("value"));
+    });
+
+    // 3. File Upload (FIXED RECURSION)
+    $("#uploadZone").on("click", function(e) {
+        if (e.target.id !== 'fileInput') {
+            $("#fileInput").click(); 
+        }
+    });
+    $("#fileInput").on("click", function(e) {
+        e.stopPropagation(); 
+    });
+    $("#fileInput").on("change", handleFileUpload);
+
+    // 4. Form Submit
+    $("#taskForm").on("submit", handleTaskSubmit);
+
+    // 5. Chat Submit
+    $("#chatForm").on("submit", sendMessage);
+});
+
+// ==========================================
+// 0. LOADER HELPERS
+// ==========================================
+function showLoader() {
+    if ($("#loader").length) $("#loader").show();
+}
+function hideLoader() {
+    if ($("#loader").length) $("#loader").hide();
+}
+
+// ==========================================
+// 1. DATA LOADING
+// ==========================================
+
+function loadAssignees() {
+    axios.get('/api/tasks/assignees')
+        .then(res => {
+            currentAssignees = res.data;
+            const select = $("#assigneeSelect");
+            select.empty().append('<option value="" disabled selected>Select Creator...</option>');
+            
+            if (currentAssignees.length === 0) {
+                select.append('<option disabled>No creators found in your team</option>');
+            }
+            
+            currentAssignees.forEach(u => {
+                select.append(`<option value="${u.id}">${u.full_name || u.username}</option>`);
+            });
+        })
+        .catch(err => console.error("Assignees Error:", err));
+}
+
+function loadTasks() {
+    const tbody = $("#taskTableBody");
+    axios.get('/api/tasks/')
+        .then(res => {
+            renderTable(res.data);
+        })
+        .catch(err => {
+            console.error("Load Tasks Error:", err);
+            tbody.html(`<tr><td colspan="6" class="text-center text-danger py-4">Failed to load tasks.</td></tr>`);
+        });
+}
+
+function renderTable(tasks) {
+    const tbody = $("#taskTableBody");
+    tbody.empty();
+
+    if (tasks.length === 0) {
+        tbody.html(`<tr><td colspan="6" class="text-center text-muted py-5">No assignments found.</td></tr>`);
+        return;
+    }
+
+    tasks.forEach(task => {
+        let badgeClass = 'badge-todo';
+        if (task.status === 'In Progress') badgeClass = 'badge-in_progress';
+        if (task.status === 'In Review') badgeClass = 'badge-review';
+        if (task.status === 'Completed') badgeClass = 'badge-completed';
+        if (task.status === 'Blocked') badgeClass = 'badge-blocked';
+
+        const assigneeName = task.assignee ? (task.assignee.full_name || task.assignee.username) : 'Unknown';
+        const assigneePic = task.assignee?.profile_picture_url || `https://ui-avatars.com/api/?name=${assigneeName}&background=random`;
+
+        const row = `
+            <tr>
+                <td>
+                    <div class="d-flex flex-column">
+                        <span class="fw-bold text-dark">${task.title}</span>
+                        <div class="d-flex gap-2 mt-1">
+                            <span class="badge bg-light text-dark border fw-normal">${task.req_content_type}</span>
+                            <span class="text-xs text-muted"><i class="ri-attachment-line"></i> ${task.attachments.length}</span>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <img src="${assigneePic}" class="user-avatar-small" alt="u">
+                        <span class="small fw-medium text-dark">${assigneeName}</span>
+                    </div>
+                </td>
+                <td><span class="small text-muted">${task.context}</span></td>
+                <td><span class="badge-status ${badgeClass}">${task.status}</span></td>
+                <td><span class="small text-dark">${formatDate(task.due_date)}</span></td>
+                <td class="text-end">
+                    <i class="ri-message-3-line action-icon me-2 text-primary" title="Chat" onclick="openChatModal(${task.id}, '${task.title}')"></i>
+                    <i class="ri-pencil-line action-icon me-2" title="Edit" onclick="openEditModal(${task.id})"></i>
+                    <i class="ri-delete-bin-line action-icon delete" title="Delete" onclick="deleteTask(${task.id})"></i>
+                </td>
+            </tr>
+        `;
+        tbody.append(row);
+    });
+}
+
+// ==========================================
+// 2. FORM & MODAL LOGIC
+// ==========================================
+
+function openCreateTaskModal() {
+    resetForm();
+    $("#taskId").val(""); 
+    $("#taskModalLabel").text("Create Assignment");
+    $("#btnSaveTask").text("Confirm Assignment");
+    $("#taskModal").modal("show");
+}
+
+function openEditModal(id) {
+    showLoader();
+    axios.get(`/api/tasks/${id}`)
+        .then(res => {
+            hideLoader();
+            populateForm(res.data);
+            $("#taskModal").modal("show");
+        })
+        .catch(err => {
+            hideLoader();
+            console.error("Edit Fetch Error:", err); 
+            toastr.error("Failed to fetch task details");
+        });
+}
+
+function resetForm() {
+    $("#taskForm")[0].reset();
+    $("#filePreviewList").empty();
+    taskTags = [];
+    newAttachments = [];
+    existingAttachments = [];
+    renderTags();
+    
+    $(".priority-option").removeClass("active");
+    $(`.priority-option[data-value="Low"]`).addClass("active");
+    $("#taskPriority").val("Low");
+    $("#uploadText").removeClass("d-none");
+    $("#uploadSpinner").addClass("d-none");
+}
+
+function populateForm(task) {
+    resetForm();
+    
+    $("#taskId").val(task.id);
+    $("#taskTitle").val(task.title);
+    
+    if ($(`#assigneeSelect option[value='${task.assignee.id}']`).length > 0) {
+        $("#assigneeSelect").val(task.assignee.id);
+    } else {
+        $("#assigneeSelect").append(`<option value="${task.assignee.id}" selected>${task.assignee.full_name} (Linked)</option>`);
+    }
+
+    $("#taskDescription").val(task.description);
+    $("#taskContext").val(task.context);
+    $("#contentType").val(task.req_content_type);
+    $("#reqQuantity").val(task.req_quantity || 1);
+    $("#reqDuration").val(task.req_duration_min || "");
+    
+    $(".priority-option").removeClass("active");
+    $(`.priority-option[data-value="${task.priority}"]`).addClass("active");
+    $("#taskPriority").val(task.priority);
+
+    $("#reqFace").prop("checked", task.req_face_visible);
+    $("#reqWatermark").prop("checked", task.req_watermark);
+
+    if (task.due_date) {
+        const d = new Date(task.due_date);
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        $("#dueDate").val(d.toISOString().slice(0, 16));
+    }
+
+    if (task.req_outfit_tags) {
+        taskTags = task.req_outfit_tags.split(',').filter(t => t);
+        renderTags();
+    }
+
+    existingAttachments = task.attachments || []; 
+    renderAllAttachments(); 
+
+    $("#taskModalLabel").text("Edit Assignment");
+    $("#btnSaveTask").text("Update Assignment");
+}
+
+// ==========================================
+// 3. TAGS & ATTACHMENTS
+// ==========================================
+
+function handleTagInput(e) {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        const val = $(this).val().trim();
+        if (val && !taskTags.includes(val)) {
+            taskTags.push(val);
+            renderTags();
+        }
+        $(this).val("");
+    } else if (e.key === "Backspace" && $(this).val() === "") {
+        taskTags.pop();
+        renderTags();
+    }
+}
+
+function renderTags() {
+    $(".tag-chip").remove();
+    taskTags.forEach((tag, index) => {
+        $(`<div class="tag-chip"><span>${tag}</span><i class="ri-close-line" onclick="removeTag(${index})"></i></div>`).insertBefore("#tagInput");
+    });
+}
+function removeTag(index) { taskTags.splice(index, 1); renderTags(); }
+
+async function handleFileUpload(e) {
+    const files = e.target.files;
+    if (!files.length) return;
+
+    $("#uploadText").addClass("d-none");
+    $("#uploadSpinner").removeClass("d-none");
+
+    for (let file of files) {
+        try {
+            const thumbData = await generateThumbnail(file);
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("type_group", "image"); 
+
+            const res = await axios.post('/api/upload/small-file', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            if (res.data.status === 'success') {
+                let finalThumb = file.type.startsWith("image") ? res.data.url : thumbData;
+                newAttachments.push({
+                    file_url: res.data.url,
+                    thumbnail_url: finalThumb, 
+                    file_size_mb: (file.size / (1024*1024)).toFixed(2),
+                    mime_type: file.type,
+                    tags: file.name
+                });
+            }
+        } catch (err) {
+            console.error(err);
+            toastr.error(`Failed to upload ${file.name}`);
+        }
+    }
+    $("#uploadText").removeClass("d-none");
+    $("#uploadSpinner").addClass("d-none");
+    $("#fileInput").val(""); 
+    renderAllAttachments();
+}
+
+function renderAllAttachments() {
+    const container = $("#filePreviewList");
+    container.empty();
+
+    existingAttachments.forEach(file => {
+        const icon = getIconForMime(file.mime_type);
+        const thumb = (file.mime_type && file.mime_type.startsWith("image")) ? file.file_url : icon;
+        container.append(`
+            <div class="file-preview-item bg-light border-0">
+                ${(file.mime_type && file.mime_type.startsWith("image")) ? `<img src="${thumb}" class="preview-thumb">` : `<div class="preview-icon">${icon}</div>`}
+                <div class="flex-grow-1 overflow-hidden">
+                    <div class="small fw-bold text-truncate">Existing File</div>
+                    <div class="text-xs text-muted"><a href="${file.file_url}" target="_blank" class="text-decoration-none">View File</a></div>
+                </div>
+                <span class="badge bg-white text-muted border">Saved</span>
+            </div>
+        `);
+    });
+
+    newAttachments.forEach((file, index) => {
+        const icon = getIconForMime(file.mime_type);
+        const thumb = file.mime_type.startsWith("image") ? file.thumbnail_url : icon;
+        container.append(`
+            <div class="file-preview-item">
+                ${file.mime_type.startsWith("image") ? `<img src="${thumb}" class="preview-thumb">` : `<div class="preview-icon">${icon}</div>`}
+                <div class="flex-grow-1 overflow-hidden">
+                    <div class="small fw-bold text-truncate">${file.tags}</div>
+                    <div class="text-xs text-muted">${file.file_size_mb} MB</div>
+                </div>
+                <i class="ri-close-circle-fill text-danger fs-5" style="cursor:pointer" onclick="removeNewAttachment(${index})"></i>
+            </div>
+        `);
+    });
+}
+function removeNewAttachment(index) { newAttachments.splice(index, 1); renderAllAttachments(); }
+
+// Helpers
+function generateThumbnail(file) {
+    return new Promise((resolve) => {
+        if (file.type.startsWith("image/")) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement("canvas");
+                    const ctx = canvas.getContext("2d");
+                    const maxSize = 100;
+                    let w = img.width, h = img.height;
+                    if (w > h) { if (w > maxSize) { h *= maxSize/w; w=maxSize; }}
+                    else { if (h > maxSize) { w *= maxSize/h; h=maxSize; }}
+                    canvas.width = w; canvas.height = h;
+                    ctx.drawImage(img, 0, 0, w, h);
+                    resolve(canvas.toDataURL("image/jpeg", 0.7));
+                };
+            };
+            reader.readAsDataURL(file);
+        } else { resolve(null); }
+    });
+}
+function getIconForMime(mime) {
+    if (!mime) return '<i class="ri-file-line"></i>';
+    if (mime.includes("video")) return '<i class="ri-movie-line"></i>';
+    if (mime.includes("pdf")) return '<i class="ri-file-pdf-line"></i>';
+    return '<i class="ri-file-list-2-line"></i>';
+}
+
+// ==========================================
+// 4. SUBMIT TASK
+// ==========================================
+
+function handleTaskSubmit(e) {
+    e.preventDefault();
+    if (!$("#taskTitle").val()) { toastr.warning("Title is required"); return; }
+    if (!$("#assigneeSelect").val()) { toastr.warning("Please select an assignee"); return; }
+
+    const taskId = $("#taskId").val();
+    const isEdit = !!taskId;
+
+    const payload = {
+        title: $("#taskTitle").val(),
+        description: $("#taskDescription").val(),
+        assignee_id: parseInt($("#assigneeSelect").val()),
+        req_content_type: $("#contentType").val(),
+        req_quantity: parseInt($("#reqQuantity").val()) || 1,
+        req_duration_min: parseInt($("#reqDuration").val()) || 0,
+        req_outfit_tags: taskTags,
+        req_face_visible: $("#reqFace").is(":checked"),
+        req_watermark: $("#reqWatermark").is(":checked"),
+        priority: $("#taskPriority").val(),
+        context: $("#taskContext").val()
+    };
+    if ($("#dueDate").val()) payload.due_date = new Date($("#dueDate").val()).toISOString();
+
+    const btn = $("#btnSaveTask");
+    const origText = btn.text();
+    btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm"></span> Saving...');
+
+    let promise;
+    if (isEdit) {
+        if (newAttachments.length > 0) toastr.info("New files are not added in Edit mode. Use Chat.");
+        promise = axios.put(`/api/tasks/${taskId}`, payload);
+    } else {
+        payload.attachments = newAttachments;
+        promise = axios.post('/api/tasks/', payload);
+    }
+
+    promise
+        .then(() => {
+            toastr.success(isEdit ? "Task Updated!" : "Task Created!");
+            $("#taskModal").modal("hide");
+            loadTasks();
+        })
+        .catch(err => toastr.error(err.response?.data?.detail || "Operation failed"))
+        .finally(() => btn.prop("disabled", false).text(origText));
+}
+
+function deleteTask(id) {
+    Swal.fire({
+        title: 'Delete?', text: "This cannot be undone.", icon: 'warning',
+        showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Delete'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            axios.delete(`/api/tasks/${id}`)
+                .then(() => { toastr.success("Deleted"); loadTasks(); })
+                .catch(() => toastr.error("Failed to delete"));
+        }
+    });
+}
+function formatDate(d) {
+    if (!d) return '<span class="text-muted">-</span>';
+    return new Date(d).toLocaleDateString() + ' ' + new Date(d).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+
+// ==========================================
+// 5. CHAT (IMPROVED)
+// ==========================================
+
+function openChatModal(id, title) {
+    activeChatTaskId = id;
+    $("#chatTaskTitle").text(title);
+    $("#chatContainer").html('<div class="text-center py-5"><div class="spinner-border text-secondary spinner-border-sm"></div><p class="text-muted small mt-2">Loading history...</p></div>');
+    $("#chatModal").modal("show");
+    enableChatInput();
+    loadChat();
+}
+
+function loadChat() {
+    if (!activeChatTaskId) return;
+    axios.get(`/api/tasks/${activeChatTaskId}/chat`)
+        .then(res => {
+            const container = $("#chatContainer");
+            container.empty();
+            const myId = parseInt($('meta[name="user-id"]').attr('content')) || 0;
+
+            if (res.data.length === 0) {
+                container.html('<div class="text-center text-muted small mt-5 opacity-50">No messages yet.<br>Start the conversation!</div>');
+                return;
+            }
+
+            res.data.forEach(msg => {
+                if (msg.is_system_log) {
+                    container.append(`
+                        <div class="text-center my-3">
+                            <span class="badge bg-light text-muted fw-normal border px-3 py-1 rounded-pill" style="font-size: 0.7rem;">
+                                ${msg.message} &bull; ${formatTimeShort(msg.created_at)}
+                            </span>
+                        </div>
+                    `);
+                } else {
+                    const isMe = msg.author.id === myId;
+                    container.append(`
+                        <div class="chat-bubble ${isMe ? 'sent' : 'received'}">
+                            ${!isMe ? `<div class="small fw-bold mb-1 text-primary">${msg.author.full_name || 'User'}</div>` : ''}
+                            <div class="message-text">${msg.message}</div>
+                            <div class="text-end mt-1" style="font-size:0.6rem; opacity:0.6;">${formatTimeShort(msg.created_at)}</div>
+                        </div>
+                    `);
+                }
+            });
+            container.scrollTop(container[0].scrollHeight);
+        })
+        .catch(() => $("#chatContainer").html('<div class="text-center text-danger py-4 small">Failed to load messages.</div>'));
+}
+
+function sendMessage(e) {
+    e.preventDefault();
+    const input = $("#chatInput");
+    const txt = input.val().trim();
+    
+    if (!txt) return; 
+    if (isChatSending) return; // Block double-send
+
+    isChatSending = true;
+    disableChatInput();
+
+    axios.post(`/api/tasks/${activeChatTaskId}/chat`, { message: txt })
+        .then(() => {
+            input.val(""); 
+            loadChat();    
+        })
+        .catch(err => {
+            toastr.error("Failed to send message.");
+            console.error(err);
+        })
+        .finally(() => {
+            isChatSending = false;
+            enableChatInput();
+            setTimeout(() => input.focus(), 100); 
+        });
+}
+
+function disableChatInput() {
+    $("#chatInput").prop("disabled", true);
+    $("#btnSendChat").prop("disabled", true);
+    $("#iconSend").addClass("d-none");
+    $("#spinnerSend").removeClass("d-none");
+}
+function enableChatInput() {
+    $("#chatInput").prop("disabled", false);
+    $("#btnSendChat").prop("disabled", false);
+    $("#iconSend").removeClass("d-none");
+    $("#spinnerSend").addClass("d-none");
+}
+function formatTimeShort(dateStr) {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+}

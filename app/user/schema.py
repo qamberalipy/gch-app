@@ -1,6 +1,6 @@
 # app/user/schema.py
 from typing import Optional, List
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, validator
 from datetime import datetime, date
 from enum import Enum
 
@@ -33,7 +33,7 @@ class UserCreate(BaseModel):
     # Relationships
     manager_id: Optional[int] = None
     assigned_model_id: Optional[int] = None  # For 1:1 (Staff <-> Model)
-    assign_model_ids: Optional[List[int]] = [] # NEW: For Bulk Assign (Manager -> [Models])
+    assign_model_ids: Optional[List[int]] = [] # For Bulk Assign (Manager -> [Models])
 
     # Profile
     full_name: Optional[str] = None
@@ -49,7 +49,7 @@ class UserUpdate(BaseModel):
     # Relationships
     manager_id: Optional[int] = None
     assigned_model_id: Optional[int] = None
-    assign_model_ids: Optional[List[int]] = None # NEW: Bulk re-assign
+    assign_model_ids: Optional[List[int]] = None
 
     # Profile
     full_name: Optional[str] = None
