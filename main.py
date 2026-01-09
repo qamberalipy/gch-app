@@ -31,6 +31,7 @@ ROOT_PATH = os.getenv("ROOT_PATH", "")
 # --- 1. IMPORT API ROUTERS ---
 from app.core.main_router import router as main_router
 from app.user import user_router
+from app.task import task_router
 from app.upload import upload_router
 
 # --- 2. IMPORT WEB (HTML) ROUTERS ---
@@ -114,6 +115,7 @@ app.include_router(user_views.user_view)
 
 app.include_router(main_router)         
 root_router.include_router(user_router) 
+root_router.include_router(task_router)
 root_router.include_router(upload_router)
 app.include_router(root_router)        
 
