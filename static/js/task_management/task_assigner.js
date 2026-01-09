@@ -1,7 +1,7 @@
 /**
  * task_assigner.js
- * Heavy-duty frontend logic for Task Assignment (Admin/Manager/Team View)
- * Fixes: Recursion on upload, Edit Fetching, and Loader Reference Errors.
+ * Heavy-duty frontend logic for Task Assignment.
+ * Fixes: Chat Locking, Recursion, Loaders, UI Alignment.
  */
 
 // --- Global State ---
@@ -10,6 +10,7 @@ let newAttachments = [];
 let existingAttachments = [];
 let activeChatTaskId = null;
 let currentAssignees = [];
+let isChatSending = false; // Prevents double-send
 
 $(document).ready(function() {
     loadAssignees();
@@ -30,41 +31,30 @@ $(document).ready(function() {
 
     // 3. File Upload (FIXED RECURSION)
     $("#uploadZone").on("click", function(e) {
-        // Only trigger input click if the click wasn't already on the input
         if (e.target.id !== 'fileInput') {
             $("#fileInput").click(); 
         }
     });
-    
     $("#fileInput").on("click", function(e) {
-        e.stopPropagation(); // STOP event from bubbling up to #uploadZone
+        e.stopPropagation(); 
     });
-
     $("#fileInput").on("change", handleFileUpload);
 
     // 4. Form Submit
     $("#taskForm").on("submit", handleTaskSubmit);
 
-    // 5. Chat
+    // 5. Chat Submit
     $("#chatForm").on("submit", sendMessage);
 });
 
 // ==========================================
-// 0. LOADER HELPERS (Safe Implementation)
+// 0. LOADER HELPERS
 // ==========================================
 function showLoader() {
-    // Checks if base.html loader exists, otherwise creates a temporary one
-    if ($("#loader").length) {
-        $("#loader").show();
-    } else {
-        console.warn("Loader element #loader not found in DOM");
-    }
+    if ($("#loader").length) $("#loader").show();
 }
-
 function hideLoader() {
-    if ($("#loader").length) {
-        $("#loader").hide();
-    }
+    if ($("#loader").length) $("#loader").hide();
 }
 
 // ==========================================
@@ -111,14 +101,12 @@ function renderTable(tasks) {
     }
 
     tasks.forEach(task => {
-        // Status Badge Logic
         let badgeClass = 'badge-todo';
         if (task.status === 'In Progress') badgeClass = 'badge-in_progress';
         if (task.status === 'In Review') badgeClass = 'badge-review';
         if (task.status === 'Completed') badgeClass = 'badge-completed';
         if (task.status === 'Blocked') badgeClass = 'badge-blocked';
 
-        // Assignee Avatar
         const assigneeName = task.assignee ? (task.assignee.full_name || task.assignee.username) : 'Unknown';
         const assigneePic = task.assignee?.profile_picture_url || `https://ui-avatars.com/api/?name=${assigneeName}&background=random`;
 
@@ -167,19 +155,15 @@ function openCreateTaskModal() {
 
 function openEditModal(id) {
     showLoader();
-    
     axios.get(`/api/tasks/${id}`)
         .then(res => {
             hideLoader();
-            const task = res.data;
-            populateForm(task);
+            populateForm(res.data);
             $("#taskModal").modal("show");
         })
         .catch(err => {
             hideLoader();
-            console.error("Edit Fetch Error:", err.response || err); // Check Console for this!
-            // If 422, it means Schema mismatch. 
-            // If 500, it means backend crashed.
+            console.error("Edit Fetch Error:", err); 
             toastr.error("Failed to fetch task details");
         });
 }
@@ -187,14 +171,11 @@ function openEditModal(id) {
 function resetForm() {
     $("#taskForm")[0].reset();
     $("#filePreviewList").empty();
-    
-    // Reset Globals
     taskTags = [];
     newAttachments = [];
     existingAttachments = [];
     renderTags();
     
-    // Reset UI states
     $(".priority-option").removeClass("active");
     $(`.priority-option[data-value="Low"]`).addClass("active");
     $("#taskPriority").val("Low");
@@ -208,11 +189,9 @@ function populateForm(task) {
     $("#taskId").val(task.id);
     $("#taskTitle").val(task.title);
     
-    // Safely set assignee (ensure ID exists in list, otherwise might be deleted user)
     if ($(`#assigneeSelect option[value='${task.assignee.id}']`).length > 0) {
         $("#assigneeSelect").val(task.assignee.id);
     } else {
-        // Fallback for visual indication if user not in list (e.g. diff team)
         $("#assigneeSelect").append(`<option value="${task.assignee.id}" selected>${task.assignee.full_name} (Linked)</option>`);
     }
 
@@ -222,30 +201,24 @@ function populateForm(task) {
     $("#reqQuantity").val(task.req_quantity || 1);
     $("#reqDuration").val(task.req_duration_min || "");
     
-    // Priority
     $(".priority-option").removeClass("active");
     $(`.priority-option[data-value="${task.priority}"]`).addClass("active");
     $("#taskPriority").val(task.priority);
 
-    // Toggles
     $("#reqFace").prop("checked", task.req_face_visible);
     $("#reqWatermark").prop("checked", task.req_watermark);
 
-    // Date
     if (task.due_date) {
-        // Format YYYY-MM-DDTHH:MM for datetime-local input
         const d = new Date(task.due_date);
-        d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); // Adjust to local
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
         $("#dueDate").val(d.toISOString().slice(0, 16));
     }
 
-    // Tags (Parse CSV)
     if (task.req_outfit_tags) {
         taskTags = task.req_outfit_tags.split(',').filter(t => t);
         renderTags();
     }
 
-    // Existing Attachments
     existingAttachments = task.attachments || []; 
     renderAllAttachments(); 
 
@@ -254,7 +227,7 @@ function populateForm(task) {
 }
 
 // ==========================================
-// 3. TAGS (CHIPS) LOGIC
+// 3. TAGS & ATTACHMENTS
 // ==========================================
 
 function handleTagInput(e) {
@@ -278,30 +251,18 @@ function renderTags() {
         $(`<div class="tag-chip"><span>${tag}</span><i class="ri-close-line" onclick="removeTag(${index})"></i></div>`).insertBefore("#tagInput");
     });
 }
-
-function removeTag(index) {
-    taskTags.splice(index, 1);
-    renderTags();
-}
-
-// ==========================================
-// 4. ATTACHMENTS (NEW & EXISTING)
-// ==========================================
+function removeTag(index) { taskTags.splice(index, 1); renderTags(); }
 
 async function handleFileUpload(e) {
     const files = e.target.files;
     if (!files.length) return;
 
-    // UI Loading
     $("#uploadText").addClass("d-none");
     $("#uploadSpinner").removeClass("d-none");
 
     for (let file of files) {
         try {
-            // 1. Generate Thumbnail
             const thumbData = await generateThumbnail(file);
-
-            // 2. Upload
             const formData = new FormData();
             formData.append("file", file);
             formData.append("type_group", "image"); 
@@ -311,14 +272,7 @@ async function handleFileUpload(e) {
             });
 
             if (res.data.status === 'success') {
-                // Determine display thumbnail
-                let finalThumb = null;
-                if (file.type.startsWith("image")) {
-                    finalThumb = res.data.url; // Use public URL for images
-                } else {
-                    finalThumb = thumbData; // Use generated icon/placeholder
-                }
-
+                let finalThumb = file.type.startsWith("image") ? res.data.url : thumbData;
                 newAttachments.push({
                     file_url: res.data.url,
                     thumbnail_url: finalThumb, 
@@ -332,11 +286,9 @@ async function handleFileUpload(e) {
             toastr.error(`Failed to upload ${file.name}`);
         }
     }
-
-    // Reset UI
     $("#uploadText").removeClass("d-none");
     $("#uploadSpinner").addClass("d-none");
-    $("#fileInput").val(""); // Allow re-select
+    $("#fileInput").val(""); 
     renderAllAttachments();
 }
 
@@ -344,12 +296,10 @@ function renderAllAttachments() {
     const container = $("#filePreviewList");
     container.empty();
 
-    // 1. Render Existing (Read-onlyish)
     existingAttachments.forEach(file => {
         const icon = getIconForMime(file.mime_type);
         const thumb = (file.mime_type && file.mime_type.startsWith("image")) ? file.file_url : icon;
-        
-        const html = `
+        container.append(`
             <div class="file-preview-item bg-light border-0">
                 ${(file.mime_type && file.mime_type.startsWith("image")) ? `<img src="${thumb}" class="preview-thumb">` : `<div class="preview-icon">${icon}</div>`}
                 <div class="flex-grow-1 overflow-hidden">
@@ -358,32 +308,25 @@ function renderAllAttachments() {
                 </div>
                 <span class="badge bg-white text-muted border">Saved</span>
             </div>
-        `;
-        container.append(html);
+        `);
     });
 
-    // 2. Render New (Removable)
     newAttachments.forEach((file, index) => {
         const icon = getIconForMime(file.mime_type);
         const thumb = file.mime_type.startsWith("image") ? file.thumbnail_url : icon;
-
-        const html = `
+        container.append(`
             <div class="file-preview-item">
                 ${file.mime_type.startsWith("image") ? `<img src="${thumb}" class="preview-thumb">` : `<div class="preview-icon">${icon}</div>`}
                 <div class="flex-grow-1 overflow-hidden">
-                    <div class="small fw-bold text-truncate">${file.tags}</div> <div class="text-xs text-muted">${file.file_size_mb} MB</div>
+                    <div class="small fw-bold text-truncate">${file.tags}</div>
+                    <div class="text-xs text-muted">${file.file_size_mb} MB</div>
                 </div>
                 <i class="ri-close-circle-fill text-danger fs-5" style="cursor:pointer" onclick="removeNewAttachment(${index})"></i>
             </div>
-        `;
-        container.append(html);
+        `);
     });
 }
-
-function removeNewAttachment(index) {
-    newAttachments.splice(index, 1);
-    renderAllAttachments();
-}
+function removeNewAttachment(index) { newAttachments.splice(index, 1); renderAllAttachments(); }
 
 // Helpers
 function generateThumbnail(file) {
@@ -406,12 +349,9 @@ function generateThumbnail(file) {
                 };
             };
             reader.readAsDataURL(file);
-        } else {
-            resolve(null);
-        }
+        } else { resolve(null); }
     });
 }
-
 function getIconForMime(mime) {
     if (!mime) return '<i class="ri-file-line"></i>';
     if (mime.includes("video")) return '<i class="ri-movie-line"></i>';
@@ -420,13 +360,11 @@ function getIconForMime(mime) {
 }
 
 // ==========================================
-// 5. SUBMIT TASK
+// 4. SUBMIT TASK
 // ==========================================
 
 function handleTaskSubmit(e) {
     e.preventDefault();
-    
-    // Validations
     if (!$("#taskTitle").val()) { toastr.warning("Title is required"); return; }
     if (!$("#assigneeSelect").val()) { toastr.warning("Please select an assignee"); return; }
 
@@ -440,57 +378,41 @@ function handleTaskSubmit(e) {
         req_content_type: $("#contentType").val(),
         req_quantity: parseInt($("#reqQuantity").val()) || 1,
         req_duration_min: parseInt($("#reqDuration").val()) || 0,
-        req_outfit_tags: taskTags, // Array
+        req_outfit_tags: taskTags,
         req_face_visible: $("#reqFace").is(":checked"),
         req_watermark: $("#reqWatermark").is(":checked"),
         priority: $("#taskPriority").val(),
         context: $("#taskContext").val()
     };
+    if ($("#dueDate").val()) payload.due_date = new Date($("#dueDate").val()).toISOString();
 
-    if ($("#dueDate").val()) {
-        payload.due_date = new Date($("#dueDate").val()).toISOString();
-    }
-
-    // Button Loading State
     const btn = $("#btnSaveTask");
     const origText = btn.text();
     btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm"></span> Saving...');
 
     let promise;
     if (isEdit) {
-        if (newAttachments.length > 0) {
-            toastr.info("Note: New files are not added in 'Update Mode'. Use Chat to send files.");
-        }
+        if (newAttachments.length > 0) toastr.info("New files are not added in Edit mode. Use Chat.");
         promise = axios.put(`/api/tasks/${taskId}`, payload);
     } else {
-        // Create: Include attachments
         payload.attachments = newAttachments;
         promise = axios.post('/api/tasks/', payload);
     }
 
     promise
-        .then(res => {
+        .then(() => {
             toastr.success(isEdit ? "Task Updated!" : "Task Created!");
             $("#taskModal").modal("hide");
             loadTasks();
         })
-        .catch(err => {
-            console.error(err);
-            toastr.error(err.response?.data?.detail || "Operation failed");
-        })
-        .finally(() => {
-            btn.prop("disabled", false).text(origText);
-        });
+        .catch(err => toastr.error(err.response?.data?.detail || "Operation failed"))
+        .finally(() => btn.prop("disabled", false).text(origText));
 }
 
 function deleteTask(id) {
     Swal.fire({
-        title: 'Delete Task?',
-        text: "This cannot be undone.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        confirmButtonText: 'Delete'
+        title: 'Delete?', text: "This cannot be undone.", icon: 'warning',
+        showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Delete'
     }).then((result) => {
         if (result.isConfirmed) {
             axios.delete(`/api/tasks/${id}`)
@@ -499,21 +421,21 @@ function deleteTask(id) {
         }
     });
 }
-
 function formatDate(d) {
     if (!d) return '<span class="text-muted">-</span>';
     return new Date(d).toLocaleDateString() + ' ' + new Date(d).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
 }
 
 // ==========================================
-// 6. CHAT
+// 5. CHAT (IMPROVED)
 // ==========================================
 
 function openChatModal(id, title) {
     activeChatTaskId = id;
     $("#chatTaskTitle").text(title);
-    $("#chatContainer").html('<div class="text-center py-5"><div class="spinner-border text-secondary spinner-border-sm"></div></div>');
+    $("#chatContainer").html('<div class="text-center py-5"><div class="spinner-border text-secondary spinner-border-sm"></div><p class="text-muted small mt-2">Loading history...</p></div>');
     $("#chatModal").modal("show");
+    enableChatInput();
     loadChat();
 }
 
@@ -523,42 +445,78 @@ function loadChat() {
         .then(res => {
             const container = $("#chatContainer");
             container.empty();
-            // Try to find user ID from meta tag, else default 0
             const myId = parseInt($('meta[name="user-id"]').attr('content')) || 0;
 
             if (res.data.length === 0) {
-                container.html('<div class="text-center text-muted small mt-5">No messages yet.</div>');
+                container.html('<div class="text-center text-muted small mt-5 opacity-50">No messages yet.<br>Start the conversation!</div>');
                 return;
             }
 
             res.data.forEach(msg => {
                 if (msg.is_system_log) {
-                    container.append(`<div class="text-center small text-muted my-2 fst-italic">${msg.message}</div>`);
+                    container.append(`
+                        <div class="text-center my-3">
+                            <span class="badge bg-light text-muted fw-normal border px-3 py-1 rounded-pill" style="font-size: 0.7rem;">
+                                ${msg.message} &bull; ${formatTimeShort(msg.created_at)}
+                            </span>
+                        </div>
+                    `);
                 } else {
                     const isMe = msg.author.id === myId;
-                    const html = `
+                    container.append(`
                         <div class="chat-bubble ${isMe ? 'sent' : 'received'}">
-                            <div class="small fw-bold mb-1 ${isMe?'text-white-50':'text-primary'}">${isMe ? 'You' : (msg.author.full_name || 'User')}</div>
-                            ${msg.message}
-                            <div class="text-end mt-1" style="font-size:0.65rem; opacity:0.8">${new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                            ${!isMe ? `<div class="small fw-bold mb-1 text-primary">${msg.author.full_name || 'User'}</div>` : ''}
+                            <div class="message-text">${msg.message}</div>
+                            <div class="text-end mt-1" style="font-size:0.6rem; opacity:0.6;">${formatTimeShort(msg.created_at)}</div>
                         </div>
-                    `;
-                    container.append(html);
+                    `);
                 }
             });
             container.scrollTop(container[0].scrollHeight);
-        });
+        })
+        .catch(() => $("#chatContainer").html('<div class="text-center text-danger py-4 small">Failed to load messages.</div>'));
 }
 
 function sendMessage(e) {
     e.preventDefault();
-    const txt = $("#chatInput").val().trim();
-    if (!txt) return;
+    const input = $("#chatInput");
+    const txt = input.val().trim();
     
+    if (!txt) return; 
+    if (isChatSending) return; // Block double-send
+
+    isChatSending = true;
+    disableChatInput();
+
     axios.post(`/api/tasks/${activeChatTaskId}/chat`, { message: txt })
         .then(() => {
-            $("#chatInput").val("");
-            loadChat();
+            input.val(""); 
+            loadChat();    
         })
-        .catch(() => toastr.error("Send failed"));
+        .catch(err => {
+            toastr.error("Failed to send message.");
+            console.error(err);
+        })
+        .finally(() => {
+            isChatSending = false;
+            enableChatInput();
+            setTimeout(() => input.focus(), 100); 
+        });
+}
+
+function disableChatInput() {
+    $("#chatInput").prop("disabled", true);
+    $("#btnSendChat").prop("disabled", true);
+    $("#iconSend").addClass("d-none");
+    $("#spinnerSend").removeClass("d-none");
+}
+function enableChatInput() {
+    $("#chatInput").prop("disabled", false);
+    $("#btnSendChat").prop("disabled", false);
+    $("#iconSend").removeClass("d-none");
+    $("#spinnerSend").addClass("d-none");
+}
+function formatTimeShort(dateStr) {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 }

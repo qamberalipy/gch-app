@@ -6,7 +6,6 @@
     .grail-table-card {
         background: #fff; border-radius: 12px; padding: 20px;
         border: 1px solid #f1f1f1; min-height: 400px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.03);
     }
     .page-title { font-weight: 600; color: #333; margin: 0; font-size: 1.25rem; }
     
@@ -16,6 +15,7 @@
         transition: all 0.2s;
     }
     .btn-grail-gold:hover { background-color: #B08A3D; border-color: #B08A3D; color: white; transform: translateY(-1px); }
+    .btn-grail-gold:disabled { background-color: #e0e0e0; border-color: #e0e0e0; color: #999; transform: none; }
 
     /* Table */
     .table-grail { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 0; }
@@ -88,11 +88,10 @@
     .action-icon:hover { background-color: #F3F4F6; color: #111; }
     .action-icon.delete:hover { background-color: #FEF2F2; color: #DC2626; }
     
-    /* Chat */
+    /* Chat Styling */
     .chat-modal-body { background: #f3f4f6; padding: 0; }
     .chat-container { height: 400px; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-    .chat-input-area { padding: 15px; background: #fff; border-top: 1px solid #eee; display: flex; gap: 10px; }
-    .chat-bubble { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 0.9rem; position: relative; }
+    .chat-bubble { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 0.9rem; position: relative; word-wrap: break-word; }
     .chat-bubble.sent { align-self: flex-end; background-color: #C89E47; color: white; border-bottom-right-radius: 2px; }
     .chat-bubble.received { align-self: flex-start; background-color: white; border: 1px solid #e5e7eb; color: #374151; border-bottom-left-radius: 2px; }
 </style>
@@ -242,32 +241,44 @@
     </div>
 </div>
 
-<div class="modal fade" id="chatModal" tabindex="-1">
+<div class="modal fade" id="chatModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+            
             <div class="modal-header bg-white border-bottom p-3">
                 <div class="d-flex align-items-center">
-                    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3" style="width:36px;height:36px;">
-                        <i class="ri-discuss-line text-dark"></i>
+                    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3" style="width:38px;height:38px;">
+                        <i class="ri-discuss-line text-dark fs-5"></i>
                     </div>
                     <div>
                         <h6 class="mb-0 fw-bold" id="chatTaskTitle">Task Chat</h6>
-                        <span class="small text-muted">Direct Message</span>
+                        <span class="small text-muted" id="chatStatus">Real-time</span>
                     </div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="chat-modal-body">
+
+            <div class="chat-modal-body bg-light">
                 <div class="chat-container" id="chatContainer">
-                    <div class="text-center py-5"><div class="spinner-border text-secondary spinner-border-sm"></div></div>
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-secondary spinner-border-sm"></div>
+                    </div>
                 </div>
-                <form id="chatForm" class="chat-input-area">
-                    <input type="text" class="form-control rounded-pill border-0 bg-light" id="chatInput" placeholder="Type a message..." required autocomplete="off">
-                    <button type="submit" class="btn btn-grail-gold rounded-circle shadow-sm" style="width:40px;height:40px;padding:0;">
-                        <i class="ri-send-plane-fill"></i>
+            </div>
+
+            <div class="p-3 bg-white border-top">
+                <form id="chatForm" class="d-flex align-items-center gap-2">
+                    <input type="text" class="form-control rounded-pill border-0 bg-light py-2 px-3 shadow-none" 
+                           id="chatInput" placeholder="Type your message..." required autocomplete="off">
+                    
+                    <button type="submit" class="btn btn-grail-gold rounded-circle shadow-sm d-flex align-items-center justify-content-center" 
+                            id="btnSendChat" style="width: 42px; height: 42px; min-width: 42px; padding: 0;">
+                        <i class="ri-send-plane-fill fs-5" id="iconSend"></i>
+                        <div class="spinner-border spinner-border-sm text-white d-none" id="spinnerSend" role="status"></div>
                     </button>
                 </form>
             </div>
+
         </div>
     </div>
 </div>
