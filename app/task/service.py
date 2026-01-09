@@ -8,18 +8,26 @@ import app.task.models as _models
 import app.user.models as _user_models
 import app.task.schema as _schemas
 
+# --- [FIXED] Single Task Fetcher with Relationships ---
 def get_task_or_404(db: Session, task_id: int):
-    task = db.query(_models.Task).filter(_models.Task.id == task_id).first()
+    task = db.query(_models.Task).options(
+        joinedload(_models.Task.assigner),
+        joinedload(_models.Task.assignee),
+        joinedload(_models.Task.attachments)
+    ).filter(_models.Task.id == task_id).first()
+    
     if not task:
         raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
     return task
 
 def get_my_assignees(db: Session, current_user: _user_models.User):
+    """
+    Returns the list of Digital Creators that the current user can manage.
+    Strict Hierarchy:
+    - Manager -> All Creators in their team.
+    - Team Member -> ONLY the 1 Creator assigned to them via assigned_model_id.
+    """
     try:
-        """
-        Returns the list of Digital Creators that the current user can manage.
-        """
-        # Base query: Only Active Digital Creators
         query = db.query(_user_models.User).filter(
             _user_models.User.role == _user_models.UserRole.digital_creator,
             _user_models.User.is_deleted == False
@@ -30,14 +38,16 @@ def get_my_assignees(db: Session, current_user: _user_models.User):
             query = query.filter(_user_models.User.manager_id == current_user.id)
         
         elif current_user.role == _user_models.UserRole.team_member:
-            # Team Members see creators belonging to their Manager
-            if current_user.manager_id:
-                query = query.filter(_user_models.User.manager_id == current_user.manager_id)
+            # Team Members see ONLY the creator assigned to them specifically
+            # We use assigned_model_id which exists on the Team Member user row
+            if current_user.assigned_model_id:
+                query = query.filter(_user_models.User.id == current_user.assigned_model_id)
             else:
                 return [] # Unassigned team member sees no one
                 
-        # Admin sees everyone
+        # Admin sees everyone (default query)
         return query.all()
+
     except SQLAlchemyError as e:
         print(f"Database error in get_my_assignees: {str(e)}")
         raise HTTPException(status_code=500, detail=f"DB Error: {str(e)}")
@@ -58,24 +68,29 @@ def create_task(db: Session, task_in: _schemas.TaskCreate, current_user: _user_m
         if not assignee:
             raise HTTPException(status_code=400, detail="Invalid or Deleted Assignee.")
 
-        # Permission Check: 
-        # Ensure the Assignee belongs to the Creator's team (or Manager's team)
+        # --- Strict Permission Check ---
         if current_user.role != _user_models.UserRole.admin:
-            required_manager_id = current_user.id if current_user.role == _user_models.UserRole.manager else current_user.manager_id
+            # Rule 1: Team Member can ONLY assign to their paired model
+            if current_user.role == _user_models.UserRole.team_member:
+                if current_user.assigned_model_id != assignee.id:
+                    raise HTTPException(status_code=403, detail="You can only assign tasks to your paired Digital Creator.")
             
-            # If team member has no manager, they can't assign
-            if current_user.role == _user_models.UserRole.team_member and not required_manager_id:
-                 raise HTTPException(status_code=403, detail="You are not linked to a manager.")
+            # Rule 2: Manager can ONLY assign to creators in their downline
+            elif current_user.role == _user_models.UserRole.manager:
+                if assignee.manager_id != current_user.id:
+                    raise HTTPException(status_code=403, detail="You can only assign tasks to models in your team.")
 
-            if assignee.manager_id != required_manager_id:
-                raise HTTPException(status_code=403, detail="You can only assign tasks to models in your team.")
-
-        # Extract Attachments
-        task_data = task_in.dict()
-        attachments_data = task_data.pop("attachments", [])
+        # Extract complex data types
+        data = task_in.dict()
+        attachments_data = data.pop("attachments", [])
+        
+        # Convert List[str] tags to CSV string for DB storage
+        tags_list = data.pop("req_outfit_tags", [])
+        tags_csv = ",".join(tags_list) if tags_list else None
 
         new_task = _models.Task(
-            **task_data,
+            **data,
+            req_outfit_tags=tags_csv, # Store as CSV
             assigner_id=current_user.id
         )
         db.add(new_task)
@@ -88,14 +103,13 @@ def create_task(db: Session, task_in: _schemas.TaskCreate, current_user: _user_m
                 task_id=new_task.id,
                 
                 file_url=file_data['file_url'],
-                thumbnail_url=file_data.get('thumbnail_url'),
+                thumbnail_url=file_data.get('thumbnail_url'), # Save Thumbnail
                 file_size_mb=file_data['file_size_mb'],
                 mime_type=file_data['mime_type'],
                 duration_seconds=file_data.get('duration_seconds', 0),
                 tags=file_data.get('tags', 'Reference'), 
                 
                 content_type=new_task.req_content_type,
-                is_face_visible=new_task.req_face_visible,
                 status=_models.ContentStatus.approved # References are auto-approved
             )
             db.add(vault_item)
@@ -108,7 +122,59 @@ def create_task(db: Session, task_in: _schemas.TaskCreate, current_user: _user_m
         db.rollback()
         raise HTTPException(status_code=500, detail=f"DB Error: {str(e)}")
 
-# --- 2. Submit Task ---
+# --- 2. Update Task ---
+def update_task(db: Session, task_id: int, updates: _schemas.TaskUpdate, current_user: _user_models.User):
+    task = get_task_or_404(db, task_id)
+
+    # Permission: Creators can only update status
+    if current_user.role == _user_models.UserRole.digital_creator:
+        allowed_fields = ['status']
+        for field in updates.dict(exclude_unset=True).keys():
+            if field not in allowed_fields:
+                raise HTTPException(status_code=403, detail="Creators can only update task status.")
+
+    try:
+        update_data = updates.dict(exclude_unset=True)
+        
+        # Handle Tags List -> CSV conversion if present
+        if 'req_outfit_tags' in update_data:
+            tags_list = update_data.pop('req_outfit_tags')
+            task.req_outfit_tags = ",".join(tags_list) if tags_list else None
+
+        for key, value in update_data.items():
+            setattr(task, key, value)
+            
+        db.commit()
+        db.refresh(task)
+        return task
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Update failed: {str(e)}")
+
+# --- 3. Delete Task ---
+def delete_task(db: Session, task_id: int, current_user: _user_models.User):
+    task = get_task_or_404(db, task_id)
+    
+    # Strict Delete Policy
+    can_delete = False
+    if current_user.role == _user_models.UserRole.admin:
+        can_delete = True
+    elif task.assigner_id == current_user.id:
+        can_delete = True
+        
+    if not can_delete:
+        raise HTTPException(status_code=403, detail="You can only delete tasks you created.")
+
+    try:
+        # SQLAlchemy cascade="all, delete-orphan" on models will handle chat/attachments
+        db.delete(task)
+        db.commit()
+        return {"message": "Task deleted successfully"}
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
+
+# --- 4. Submit Task ---
 def submit_task_work(db: Session, task_id: int, submission: _schemas.TaskSubmission, current_user: _user_models.User):
     task = get_task_or_404(db, task_id)
 
@@ -122,13 +188,12 @@ def submit_task_work(db: Session, task_id: int, submission: _schemas.TaskSubmiss
                 uploader_id=current_user.id,
                 task_id=task.id,
                 file_url=file_data.file_url,
-                thumbnail_url=file_data.thumbnail_url,
+                thumbnail_url=file_data.thumbnail_url, # Save Thumbnail
                 file_size_mb=file_data.file_size_mb,
                 mime_type=file_data.mime_type,
                 duration_seconds=file_data.duration_seconds,
                 tags=file_data.tags or "Deliverable",
                 content_type=task.req_content_type,
-                is_face_visible=task.req_face_visible,
                 status=_models.ContentStatus.pending
             )
             db.add(vault_item)
@@ -160,8 +225,9 @@ def submit_task_work(db: Session, task_id: int, submission: _schemas.TaskSubmiss
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Submission failed: {str(e)}")
 
-# --- 3. Get Tasks ---
+# --- 5. Get Tasks ---
 def get_all_tasks(db: Session, current_user: _user_models.User, status: Optional[str] = None):
+    # Eager load relationships for UI
     query = db.query(_models.Task).options(
         joinedload(_models.Task.assigner),
         joinedload(_models.Task.assignee),
@@ -176,49 +242,28 @@ def get_all_tasks(db: Session, current_user: _user_models.User, status: Optional
     elif current_user.role == _user_models.UserRole.manager:
         query = query.join(_models.Task.assignee).filter(
             _user_models.User.manager_id == current_user.id,
-            _user_models.User.is_deleted == False  # Filter out tasks for deleted users
+            _user_models.User.is_deleted == False
         )
 
-    # 3. Team Member: Sees tasks for ALL models their Manager manages
+    # 3. Team Member: Sees tasks for their assigned creator ONLY
     elif current_user.role == _user_models.UserRole.team_member:
-        if current_user.manager_id:
-             query = query.join(_models.Task.assignee).filter(
-                _user_models.User.manager_id == current_user.manager_id,
-                _user_models.User.is_deleted == False
-            )
+        if current_user.assigned_model_id:
+             query = query.filter(_models.Task.assignee_id == current_user.assigned_model_id)
         else:
-             # Unassigned team member sees nothing or only tasks they created (optional)
-             query = query.filter(_models.Task.assigner_id == current_user.id)
+             return [] # Unassigned team member sees nothing
 
     if status:
         query = query.filter(_models.Task.status == status)
 
     tasks = query.order_by(_models.Task.created_at.desc()).all()
     
+    # Add computed field for frontend
     for task in tasks:
         task.chat_count = len(task.chat_messages)
         
     return tasks
 
-# --- 4. Chat & Updates ---
-def update_task(db: Session, task_id: int, updates: _schemas.TaskUpdate, current_user: _user_models.User):
-    task = get_task_or_404(db, task_id)
-
-    if current_user.role == _user_models.UserRole.digital_creator:
-        if updates.title or updates.priority or updates.description:
-             raise HTTPException(status_code=403, detail="Creators can only update status.")
-
-    try:
-        update_data = updates.dict(exclude_unset=True)
-        for key, value in update_data.items():
-            setattr(task, key, value)
-        db.commit()
-        db.refresh(task)
-        return task
-    except SQLAlchemyError:
-        db.rollback()
-        raise HTTPException(status_code=500, detail="Update failed")
-
+# --- 6. Chat ---
 def get_chat_history(db: Session, task_id: int):
     return db.query(_models.TaskChat)\
         .options(joinedload(_models.TaskChat.author))\
@@ -238,7 +283,7 @@ def send_chat_message(db: Session, task_id: int, message: str, current_user: _us
     # Allow Manager/Team to chat if they manage the assignee
     elif task.assignee.manager_id == current_user.id:
         can_chat = True
-    elif current_user.role == _user_models.UserRole.team_member and task.assignee.manager_id == current_user.manager_id:
+    elif current_user.role == _user_models.UserRole.team_member and task.assignee.id == current_user.assigned_model_id:
         can_chat = True
 
     if not can_chat:

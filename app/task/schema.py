@@ -1,6 +1,5 @@
-# app/task/schema.py
-from typing import Optional, List
-from pydantic import BaseModel, Field
+from typing import Optional, List, Union
+from pydantic import BaseModel, Field, validator
 from datetime import datetime
 from app.task.models import TaskStatus, TaskPriority, ContentType, ContentStatus
 
@@ -8,6 +7,7 @@ from app.task.models import TaskStatus, TaskPriority, ContentType, ContentStatus
 class UserMinimal(BaseModel):
     id: int
     full_name: Optional[str] = None
+    username: Optional[str] = None
     profile_picture_url: Optional[str] = None
     role: str
     class Config:
@@ -28,7 +28,6 @@ class ChatMsgOut(BaseModel):
 
 # --- Vault / Attachments ---
 class VaultItemCreate(BaseModel):
-    """Used for BOTH creating tasks (Reference) and submitting work (Deliverables)"""
     file_url: str
     file_size_mb: float
     mime_type: str
@@ -38,17 +37,15 @@ class VaultItemCreate(BaseModel):
 
 class VaultItemOut(BaseModel):
     id: int
-    uploader_id: int  # <--- CRITICAL: Frontend checks this ID to know if it's Instruction or Submission
+    uploader_id: int
     file_url: str
     thumbnail_url: Optional[str]
     status: ContentStatus
-    duration_seconds: Optional[int]
     created_at: datetime
     class Config:
         orm_mode = True
 
 # --- Task Actions ---
-
 class TaskCreate(BaseModel):
     title: str = Field(..., min_length=3)
     description: Optional[str] = None
@@ -59,19 +56,20 @@ class TaskCreate(BaseModel):
     
     # Specs
     req_content_type: ContentType
-    req_length: Optional[str] = None
-    req_outfit_tags: Optional[str] = None
+    req_quantity: int = 1
+    req_duration_min: Optional[int] = 0
+    req_outfit_tags: Optional[List[str]] = [] # Frontend sends array, we convert to CSV
     req_face_visible: bool = True
     req_watermark: bool = False
     context: str = "General"
 
-    # [ATOMIC] Attachments (Reference materials from Manager)
     attachments: List[VaultItemCreate] = []
 
-class TaskSubmission(BaseModel):
-    """Payload for Creator when finishing a task"""
-    deliverables: List[VaultItemCreate] = Field(..., min_items=1)
-    comment: Optional[str] = None 
+    @validator('req_outfit_tags', pre=True)
+    def parse_tags(cls, v):
+        if isinstance(v, str):
+            return v.split(',')
+        return v
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
@@ -79,6 +77,15 @@ class TaskUpdate(BaseModel):
     status: Optional[TaskStatus] = None
     priority: Optional[TaskPriority] = None
     due_date: Optional[datetime] = None
+    
+    # Specs updates
+    req_quantity: Optional[int] = None
+    req_duration_min: Optional[int] = None
+    req_outfit_tags: Optional[List[str]] = None
+
+class TaskSubmission(BaseModel):
+    deliverables: List[VaultItemCreate] = Field(..., min_items=1)
+    comment: Optional[str] = None 
 
 class TaskOut(BaseModel):
     id: int
@@ -90,8 +97,9 @@ class TaskOut(BaseModel):
     created_at: datetime
     
     req_content_type: ContentType
-    req_length: Optional[str]
-    req_outfit_tags: Optional[str]
+    req_quantity: int
+    req_duration_min: Optional[int]
+    req_outfit_tags: Optional[str] # Returns as CSV string
     req_face_visible: bool
     req_watermark: bool
     context: str

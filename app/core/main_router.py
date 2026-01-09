@@ -47,7 +47,7 @@ def login(
             key="access_token",
             value=access_token,
             httponly=True,   # Secure: JS cannot read this
-            max_age=1800,    # 30 minutes
+            max_age=180000,    # 3000 minutes
             samesite="lax",
             secure=False     # Set to True if using HTTPS
         )

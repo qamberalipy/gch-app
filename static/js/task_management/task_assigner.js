@@ -1,335 +1,564 @@
-/* static/js/task_management/task_assigner.js */
+/**
+ * task_assigner.js
+ * Heavy-duty frontend logic for Task Assignment (Admin/Manager/Team View)
+ * Fixes: Recursion on upload, Edit Fetching, and Loader Reference Errors.
+ */
 
-let uploadedAttachments = [];
-let currentChatTaskId = null;
-let chatPollInterval = null;
+// --- Global State ---
+let taskTags = [];           
+let newAttachments = [];     
+let existingAttachments = [];
+let activeChatTaskId = null;
+let currentAssignees = [];
 
-document.addEventListener('DOMContentLoaded', function() {
-    initPage();
-    setupUploadHandlers();
+$(document).ready(function() {
+    loadAssignees();
+    loadTasks();
+
+    // --- Event Listeners ---
     
-    // Chat Enter Key
-    const chatInput = document.getElementById('chatInput');
-    if(chatInput){
-        chatInput.addEventListener('keypress', function(e) {
-            if(e.key === 'Enter') sendMessage();
-        });
-    }
+    // 1. Tag System
+    $("#tagContainer").on("click", function() { $("#tagInput").focus(); });
+    $("#tagInput").on("keydown", handleTagInput);
 
-    // Clean up interval
-    const chatModal = document.getElementById('chatModal');
-    if(chatModal){
-        chatModal.addEventListener('hidden.bs.modal', function () {
-            if(chatPollInterval) clearInterval(chatPollInterval);
-        });
-    }
+    // 2. Priority Toggle
+    $(".priority-option").on("click", function() {
+        $(".priority-option").removeClass("active");
+        $(this).addClass("active");
+        $("#taskPriority").val($(this).data("value"));
+    });
+
+    // 3. File Upload (FIXED RECURSION)
+    $("#uploadZone").on("click", function(e) {
+        // Only trigger input click if the click wasn't already on the input
+        if (e.target.id !== 'fileInput') {
+            $("#fileInput").click(); 
+        }
+    });
+    
+    $("#fileInput").on("click", function(e) {
+        e.stopPropagation(); // STOP event from bubbling up to #uploadZone
+    });
+
+    $("#fileInput").on("change", handleFileUpload);
+
+    // 4. Form Submit
+    $("#taskForm").on("submit", handleTaskSubmit);
+
+    // 5. Chat
+    $("#chatForm").on("submit", sendMessage);
 });
 
-async function initPage() {
-    await loadAssignees();
-    loadTasks();
+// ==========================================
+// 0. LOADER HELPERS (Safe Implementation)
+// ==========================================
+function showLoader() {
+    // Checks if base.html loader exists, otherwise creates a temporary one
+    if ($("#loader").length) {
+        $("#loader").show();
+    } else {
+        console.warn("Loader element #loader not found in DOM");
+    }
 }
 
-// --- 1. Load Assignees ---
-async function loadAssignees() {
-    const select = document.getElementById('assigneeSelect');
-    if(!select) return;
+function hideLoader() {
+    if ($("#loader").length) {
+        $("#loader").hide();
+    }
+}
 
-    try {
-        const res = await axios.get('/api/tasks/assignees');
-        const creators = res.data;
-        
-        select.innerHTML = '<option value="">Select Creator...</option>';
-        if(creators.length === 0) {
-            select.innerHTML += '<option disabled>No models found for your team</option>';
-        }
+// ==========================================
+// 1. DATA LOADING
+// ==========================================
 
-        creators.forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = c.id;
-            opt.text = c.full_name || c.username;
-            select.appendChild(opt);
+function loadAssignees() {
+    axios.get('/api/tasks/assignees')
+        .then(res => {
+            currentAssignees = res.data;
+            const select = $("#assigneeSelect");
+            select.empty().append('<option value="" disabled selected>Select Creator...</option>');
+            
+            if (currentAssignees.length === 0) {
+                select.append('<option disabled>No creators found in your team</option>');
+            }
+            
+            currentAssignees.forEach(u => {
+                select.append(`<option value="${u.id}">${u.full_name || u.username}</option>`);
+            });
+        })
+        .catch(err => console.error("Assignees Error:", err));
+}
+
+function loadTasks() {
+    const tbody = $("#taskTableBody");
+    axios.get('/api/tasks/')
+        .then(res => {
+            renderTable(res.data);
+        })
+        .catch(err => {
+            console.error("Load Tasks Error:", err);
+            tbody.html(`<tr><td colspan="6" class="text-center text-danger py-4">Failed to load tasks.</td></tr>`);
         });
-    } catch (err) {
-        console.error("Failed to load creators", err);
-        select.innerHTML = '<option disabled>Error loading list</option>';
-    }
 }
 
-// --- 2. Load Tasks (Updated for UI Consistency) ---
-async function loadTasks() {
-    const tbody = document.getElementById('taskTableBody');
-    if(!tbody) return;
+function renderTable(tasks) {
+    const tbody = $("#taskTableBody");
+    tbody.empty();
 
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5"><div class="spinner-border text-warning"></div></td></tr>';
-
-    try {
-        const res = await axios.get('/api/tasks/');
-        const tasks = res.data;
-
-        if(tasks.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-muted">No tasks found.</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = '';
-        tasks.forEach(task => {
-            const assigneeName = task.assignee?.full_name || "Unknown";
-            const assigneePic = task.assignee?.profile_picture_url || `https://ui-avatars.com/api/?name=${assigneeName}&background=random`;
-            const dateStr = task.due_date ? new Date(task.due_date).toLocaleDateString() : '-';
-            
-            let statusClass = 'badge-todo';
-            if(task.status === 'In Progress') statusClass = 'badge-in_progress';
-            if(task.status === 'In Review') statusClass = 'badge-review';
-            if(task.status === 'Completed') statusClass = 'badge-completed';
-            if(task.status === 'Blocked') statusClass = 'badge-blocked';
-
-            const row = `
-                <tr>
-                    <td>
-                        <div class="fw-bold text-dark" style="font-size:0.95rem;">${task.title}</div>
-                        <div class="small text-muted text-truncate" style="max-width: 200px;">${task.description || ''}</div>
-                    </td>
-                    <td>
-                        <div class="d-flex align-items-center">
-                            <img src="${assigneePic}" class="user-avatar-small">
-                            <span class="small fw-medium">${assigneeName}</span>
-                        </div>
-                    </td>
-                    <td><span class="badge bg-light text-dark border fw-normal">${task.context}</span></td>
-                    <td><span class="badge-status ${statusClass}">${task.status}</span></td>
-                    <td class="small text-muted">${dateStr}</td>
-                    <td class="text-end">
-                        <button class="btn btn-sm btn-light text-muted border-0" onclick="openChat(${task.id}, '${task.title}')">
-                            <i class="ri-message-3-line fs-5"></i> 
-                            ${task.chat_count > 0 ? `<span class="badge bg-danger rounded-pill position-absolute" style="font-size:0.6rem; transform:translate(-10px, -5px)">${task.chat_count}</span>` : ''}
-                        </button>
-                    </td>
-                </tr>
-            `;
-            tbody.insertAdjacentHTML('beforeend', row);
-        });
-
-    } catch (err) {
-        console.error(err);
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error loading tasks.</td></tr>';
-    }
-}
-
-// --- 3. Upload Logic (Fix for "Nothing Happening") ---
-function setupUploadHandlers() {
-    const dropZone = document.getElementById('dropZone');
-    const fileInput = document.getElementById('fileInput');
-
-    if(!dropZone || !fileInput) return;
-
-    // Trigger file input on click
-    dropZone.addEventListener('click', () => {
-        fileInput.click();
-    });
-
-    // Handle File Selection
-    fileInput.addEventListener('change', (e) => {
-        if(e.target.files.length > 0){
-            handleFiles(e.target.files);
-        }
-    });
-
-    // Drag & Drop Visuals
-    dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.classList.add('dragover');
-    });
-
-    dropZone.addEventListener('dragleave', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
-    });
-
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
-        handleFiles(e.dataTransfer.files);
-    });
-}
-
-async function handleFiles(files) {
-    const list = document.getElementById('filePreviewList');
-    
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const tempId = `file-${Date.now()}-${i}`;
-        
-        const html = `
-            <div class="file-preview-item" id="${tempId}">
-                <div class="file-preview-icon"><div class="spinner-border spinner-border-sm text-primary"></div></div>
-                <div class="flex-grow-1 small text-truncate ps-2">${file.name}</div>
-            </div>`;
-        list.insertAdjacentHTML('beforeend', html);
-
-        try {
-            // 1. Get Presigned URL
-            const ticketRes = await axios.post('/api/upload/presigned-url', {
-                filename: file.name,
-                content_type: file.type || 'application/octet-stream',
-                category: "vault" 
-            });
-            
-            const { upload_url, public_url } = ticketRes.data.ticket;
-
-            // 2. Upload to R2 (This triggers CORS if bucket settings are wrong)
-            await axios.put(upload_url, file, {
-                headers: { 'Content-Type': file.type || 'application/octet-stream' }
-            });
-
-            // 3. Success
-            uploadedAttachments.push({
-                file_url: public_url,
-                file_size_mb: parseFloat((file.size / (1024*1024)).toFixed(2)),
-                mime_type: file.type || 'application/octet-stream',
-                tags: "Reference"
-            });
-
-            const iconEl = document.querySelector(`#${tempId} .file-preview-icon`);
-            if(iconEl) iconEl.innerHTML = '<i class="ri-check-line text-success fs-5"></i>';
-
-        } catch (err) {
-            console.error("Upload failed", err);
-            toastr.error(`Failed to upload ${file.name}. Check Console.`);
-            
-            const iconEl = document.querySelector(`#${tempId} .file-preview-icon`);
-            if(iconEl) iconEl.innerHTML = '<i class="ri-error-warning-line text-danger fs-5"></i>';
-        }
-    }
-}
-
-// --- 4. Create Task ---
-async function createAtomicTask() {
-    const title = document.getElementById('taskTitle').value;
-    const assignee = document.getElementById('assigneeSelect').value;
-
-    if(!title || !assignee) {
-        toastr.warning('Title and Assignee are required.');
+    if (tasks.length === 0) {
+        tbody.html(`<tr><td colspan="6" class="text-center text-muted py-5">No assignments found.</td></tr>`);
         return;
     }
 
-    // Gather Switches
-    const reqFace = document.getElementById('reqFace').checked;
-    const reqWatermark = document.getElementById('reqWatermark').checked;
+    tasks.forEach(task => {
+        // Status Badge Logic
+        let badgeClass = 'badge-todo';
+        if (task.status === 'In Progress') badgeClass = 'badge-in_progress';
+        if (task.status === 'In Review') badgeClass = 'badge-review';
+        if (task.status === 'Completed') badgeClass = 'badge-completed';
+        if (task.status === 'Blocked') badgeClass = 'badge-blocked';
 
-    const payload = {
-        title: title,
-        description: document.getElementById('taskDescription').value,
-        assignee_id: parseInt(assignee),
-        priority: document.getElementById('taskPriority').value,
-        due_date: document.getElementById('dueDate').value || null,
-        context: document.getElementById('taskContext').value,
-        req_content_type: document.getElementById('contentType').value,
-        req_length: document.getElementById('contentLength').value,
-        req_face_visible: reqFace,
-        req_watermark: reqWatermark,
-        attachments: uploadedAttachments 
-    };
+        // Assignee Avatar
+        const assigneeName = task.assignee ? (task.assignee.full_name || task.assignee.username) : 'Unknown';
+        const assigneePic = task.assignee?.profile_picture_url || `https://ui-avatars.com/api/?name=${assigneeName}&background=random`;
 
-    if(typeof myshowLoader === 'function') myshowLoader();
+        const row = `
+            <tr>
+                <td>
+                    <div class="d-flex flex-column">
+                        <span class="fw-bold text-dark">${task.title}</span>
+                        <div class="d-flex gap-2 mt-1">
+                            <span class="badge bg-light text-dark border fw-normal">${task.req_content_type}</span>
+                            <span class="text-xs text-muted"><i class="ri-attachment-line"></i> ${task.attachments.length}</span>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <img src="${assigneePic}" class="user-avatar-small" alt="u">
+                        <span class="small fw-medium text-dark">${assigneeName}</span>
+                    </div>
+                </td>
+                <td><span class="small text-muted">${task.context}</span></td>
+                <td><span class="badge-status ${badgeClass}">${task.status}</span></td>
+                <td><span class="small text-dark">${formatDate(task.due_date)}</span></td>
+                <td class="text-end">
+                    <i class="ri-message-3-line action-icon me-2 text-primary" title="Chat" onclick="openChatModal(${task.id}, '${task.title}')"></i>
+                    <i class="ri-pencil-line action-icon me-2" title="Edit" onclick="openEditModal(${task.id})"></i>
+                    <i class="ri-delete-bin-line action-icon delete" title="Delete" onclick="deleteTask(${task.id})"></i>
+                </td>
+            </tr>
+        `;
+        tbody.append(row);
+    });
+}
 
-    try {
-        await axios.post('/api/tasks/', payload);
-        
-        // Success
-        const modalEl = document.getElementById('taskModal');
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        modal.hide();
-        toastr.success('Task assigned successfully!');
-        
-        // Reset Form
-        document.getElementById('taskForm').reset();
-        document.getElementById('filePreviewList').innerHTML = '';
-        uploadedAttachments = [];
-        
-        // Refresh Table
-        loadTasks();
+// ==========================================
+// 2. FORM & MODAL LOGIC
+// ==========================================
 
-    } catch (err) {
-        const msg = err.response?.data?.detail || "Failed to create task";
-        toastr.error(msg);
-    } finally {
-        if(typeof myhideLoader === 'function') myhideLoader();
+function openCreateTaskModal() {
+    resetForm();
+    $("#taskId").val(""); 
+    $("#taskModalLabel").text("Create Assignment");
+    $("#btnSaveTask").text("Confirm Assignment");
+    $("#taskModal").modal("show");
+}
+
+function openEditModal(id) {
+    showLoader();
+    
+    axios.get(`/api/tasks/${id}`)
+        .then(res => {
+            hideLoader();
+            const task = res.data;
+            populateForm(task);
+            $("#taskModal").modal("show");
+        })
+        .catch(err => {
+            hideLoader();
+            console.error("Edit Fetch Error:", err.response || err); // Check Console for this!
+            // If 422, it means Schema mismatch. 
+            // If 500, it means backend crashed.
+            toastr.error("Failed to fetch task details");
+        });
+}
+
+function resetForm() {
+    $("#taskForm")[0].reset();
+    $("#filePreviewList").empty();
+    
+    // Reset Globals
+    taskTags = [];
+    newAttachments = [];
+    existingAttachments = [];
+    renderTags();
+    
+    // Reset UI states
+    $(".priority-option").removeClass("active");
+    $(`.priority-option[data-value="Low"]`).addClass("active");
+    $("#taskPriority").val("Low");
+    $("#uploadText").removeClass("d-none");
+    $("#uploadSpinner").addClass("d-none");
+}
+
+function populateForm(task) {
+    resetForm();
+    
+    $("#taskId").val(task.id);
+    $("#taskTitle").val(task.title);
+    
+    // Safely set assignee (ensure ID exists in list, otherwise might be deleted user)
+    if ($(`#assigneeSelect option[value='${task.assignee.id}']`).length > 0) {
+        $("#assigneeSelect").val(task.assignee.id);
+    } else {
+        // Fallback for visual indication if user not in list (e.g. diff team)
+        $("#assigneeSelect").append(`<option value="${task.assignee.id}" selected>${task.assignee.full_name} (Linked)</option>`);
+    }
+
+    $("#taskDescription").val(task.description);
+    $("#taskContext").val(task.context);
+    $("#contentType").val(task.req_content_type);
+    $("#reqQuantity").val(task.req_quantity || 1);
+    $("#reqDuration").val(task.req_duration_min || "");
+    
+    // Priority
+    $(".priority-option").removeClass("active");
+    $(`.priority-option[data-value="${task.priority}"]`).addClass("active");
+    $("#taskPriority").val(task.priority);
+
+    // Toggles
+    $("#reqFace").prop("checked", task.req_face_visible);
+    $("#reqWatermark").prop("checked", task.req_watermark);
+
+    // Date
+    if (task.due_date) {
+        // Format YYYY-MM-DDTHH:MM for datetime-local input
+        const d = new Date(task.due_date);
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); // Adjust to local
+        $("#dueDate").val(d.toISOString().slice(0, 16));
+    }
+
+    // Tags (Parse CSV)
+    if (task.req_outfit_tags) {
+        taskTags = task.req_outfit_tags.split(',').filter(t => t);
+        renderTags();
+    }
+
+    // Existing Attachments
+    existingAttachments = task.attachments || []; 
+    renderAllAttachments(); 
+
+    $("#taskModalLabel").text("Edit Assignment");
+    $("#btnSaveTask").text("Update Assignment");
+}
+
+// ==========================================
+// 3. TAGS (CHIPS) LOGIC
+// ==========================================
+
+function handleTagInput(e) {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        const val = $(this).val().trim();
+        if (val && !taskTags.includes(val)) {
+            taskTags.push(val);
+            renderTags();
+        }
+        $(this).val("");
+    } else if (e.key === "Backspace" && $(this).val() === "") {
+        taskTags.pop();
+        renderTags();
     }
 }
 
-// --- 5. Helpers ---
-function openCreateTaskModal() {
-    new bootstrap.Modal(document.getElementById('taskModal')).show();
+function renderTags() {
+    $(".tag-chip").remove();
+    taskTags.forEach((tag, index) => {
+        $(`<div class="tag-chip"><span>${tag}</span><i class="ri-close-line" onclick="removeTag(${index})"></i></div>`).insertBefore("#tagInput");
+    });
 }
 
-function setPriority(el) {
-    document.querySelectorAll('.priority-option').forEach(d => d.classList.remove('active'));
-    el.classList.add('active');
-    document.getElementById('taskPriority').value = el.getAttribute('data-value');
+function removeTag(index) {
+    taskTags.splice(index, 1);
+    renderTags();
 }
 
-function openChat(taskId, title) {
-    currentChatTaskId = taskId;
-    const titleEl = document.getElementById('chatTaskTitle');
-    if(titleEl) titleEl.innerText = title;
-    
-    new bootstrap.Modal(document.getElementById('chatModal')).show();
-    loadChatHistory();
-    
-    if(chatPollInterval) clearInterval(chatPollInterval);
-    chatPollInterval = setInterval(loadChatHistory, 3000);
-}
+// ==========================================
+// 4. ATTACHMENTS (NEW & EXISTING)
+// ==========================================
 
-async function loadChatHistory() {
-    if(!currentChatTaskId) return;
-    try {
-        const res = await axios.get(`/api/tasks/${currentChatTaskId}/chat`);
-        const container = document.getElementById('chatContainer');
-        if(!container) return;
-        
-        container.innerHTML = '';
-        
-        if(res.data.length === 0) {
-            container.innerHTML = '<div class="text-center small text-muted mt-5">No messages yet.</div>';
-            return;
-        }
+async function handleFileUpload(e) {
+    const files = e.target.files;
+    if (!files.length) return;
 
-        res.data.forEach(msg => {
-            if(msg.is_system_log) {
-                container.insertAdjacentHTML('beforeend', `<div class="text-center small text-muted fst-italic my-2" style="font-size:0.75rem;">${msg.message}</div>`);
-            } else {
-                // Determine alignment (Need a way to know "my" ID, usually stored in meta tag)
-                const myId = document.querySelector('meta[name="user-id"]')?.content;
-                const isMe = myId && parseInt(myId) === msg.author.id;
-                
-                const bubbleClass = isMe ? 'sent' : 'received';
-                
-                const bubble = `
-                    <div class="d-flex flex-column ${isMe ? 'align-items-end' : 'align-items-start'}">
-                        <div class="chat-bubble ${bubbleClass}">
-                            ${msg.message}
-                        </div>
-                        <span class="text-muted" style="font-size:0.65rem; margin-top:2px;">${msg.author.full_name || 'User'}</span>
-                    </div>`;
-                container.insertAdjacentHTML('beforeend', bubble);
+    // UI Loading
+    $("#uploadText").addClass("d-none");
+    $("#uploadSpinner").removeClass("d-none");
+
+    for (let file of files) {
+        try {
+            // 1. Generate Thumbnail
+            const thumbData = await generateThumbnail(file);
+
+            // 2. Upload
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("type_group", "image"); 
+
+            const res = await axios.post('/api/upload/small-file', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            if (res.data.status === 'success') {
+                // Determine display thumbnail
+                let finalThumb = null;
+                if (file.type.startsWith("image")) {
+                    finalThumb = res.data.url; // Use public URL for images
+                } else {
+                    finalThumb = thumbData; // Use generated icon/placeholder
+                }
+
+                newAttachments.push({
+                    file_url: res.data.url,
+                    thumbnail_url: finalThumb, 
+                    file_size_mb: (file.size / (1024*1024)).toFixed(2),
+                    mime_type: file.type,
+                    tags: file.name
+                });
             }
-        });
-        
-        // Auto scroll to bottom
-        container.scrollTop = container.scrollHeight;
+        } catch (err) {
+            console.error(err);
+            toastr.error(`Failed to upload ${file.name}`);
+        }
+    }
 
-    } catch(err) { console.error(err); }
+    // Reset UI
+    $("#uploadText").removeClass("d-none");
+    $("#uploadSpinner").addClass("d-none");
+    $("#fileInput").val(""); // Allow re-select
+    renderAllAttachments();
 }
 
-async function sendMessage() {
-    const input = document.getElementById('chatInput');
-    const val = input.value.trim();
-    if(!val || !currentChatTaskId) return;
+function renderAllAttachments() {
+    const container = $("#filePreviewList");
+    container.empty();
 
-    try {
-        await axios.post(`/api/tasks/${currentChatTaskId}/chat`, { message: val });
-        input.value = '';
-        loadChatHistory();
-    } catch(err) { toastr.error("Failed to send"); }
+    // 1. Render Existing (Read-onlyish)
+    existingAttachments.forEach(file => {
+        const icon = getIconForMime(file.mime_type);
+        const thumb = (file.mime_type && file.mime_type.startsWith("image")) ? file.file_url : icon;
+        
+        const html = `
+            <div class="file-preview-item bg-light border-0">
+                ${(file.mime_type && file.mime_type.startsWith("image")) ? `<img src="${thumb}" class="preview-thumb">` : `<div class="preview-icon">${icon}</div>`}
+                <div class="flex-grow-1 overflow-hidden">
+                    <div class="small fw-bold text-truncate">Existing File</div>
+                    <div class="text-xs text-muted"><a href="${file.file_url}" target="_blank" class="text-decoration-none">View File</a></div>
+                </div>
+                <span class="badge bg-white text-muted border">Saved</span>
+            </div>
+        `;
+        container.append(html);
+    });
+
+    // 2. Render New (Removable)
+    newAttachments.forEach((file, index) => {
+        const icon = getIconForMime(file.mime_type);
+        const thumb = file.mime_type.startsWith("image") ? file.thumbnail_url : icon;
+
+        const html = `
+            <div class="file-preview-item">
+                ${file.mime_type.startsWith("image") ? `<img src="${thumb}" class="preview-thumb">` : `<div class="preview-icon">${icon}</div>`}
+                <div class="flex-grow-1 overflow-hidden">
+                    <div class="small fw-bold text-truncate">${file.tags}</div> <div class="text-xs text-muted">${file.file_size_mb} MB</div>
+                </div>
+                <i class="ri-close-circle-fill text-danger fs-5" style="cursor:pointer" onclick="removeNewAttachment(${index})"></i>
+            </div>
+        `;
+        container.append(html);
+    });
+}
+
+function removeNewAttachment(index) {
+    newAttachments.splice(index, 1);
+    renderAllAttachments();
+}
+
+// Helpers
+function generateThumbnail(file) {
+    return new Promise((resolve) => {
+        if (file.type.startsWith("image/")) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement("canvas");
+                    const ctx = canvas.getContext("2d");
+                    const maxSize = 100;
+                    let w = img.width, h = img.height;
+                    if (w > h) { if (w > maxSize) { h *= maxSize/w; w=maxSize; }}
+                    else { if (h > maxSize) { w *= maxSize/h; h=maxSize; }}
+                    canvas.width = w; canvas.height = h;
+                    ctx.drawImage(img, 0, 0, w, h);
+                    resolve(canvas.toDataURL("image/jpeg", 0.7));
+                };
+            };
+            reader.readAsDataURL(file);
+        } else {
+            resolve(null);
+        }
+    });
+}
+
+function getIconForMime(mime) {
+    if (!mime) return '<i class="ri-file-line"></i>';
+    if (mime.includes("video")) return '<i class="ri-movie-line"></i>';
+    if (mime.includes("pdf")) return '<i class="ri-file-pdf-line"></i>';
+    return '<i class="ri-file-list-2-line"></i>';
+}
+
+// ==========================================
+// 5. SUBMIT TASK
+// ==========================================
+
+function handleTaskSubmit(e) {
+    e.preventDefault();
+    
+    // Validations
+    if (!$("#taskTitle").val()) { toastr.warning("Title is required"); return; }
+    if (!$("#assigneeSelect").val()) { toastr.warning("Please select an assignee"); return; }
+
+    const taskId = $("#taskId").val();
+    const isEdit = !!taskId;
+
+    const payload = {
+        title: $("#taskTitle").val(),
+        description: $("#taskDescription").val(),
+        assignee_id: parseInt($("#assigneeSelect").val()),
+        req_content_type: $("#contentType").val(),
+        req_quantity: parseInt($("#reqQuantity").val()) || 1,
+        req_duration_min: parseInt($("#reqDuration").val()) || 0,
+        req_outfit_tags: taskTags, // Array
+        req_face_visible: $("#reqFace").is(":checked"),
+        req_watermark: $("#reqWatermark").is(":checked"),
+        priority: $("#taskPriority").val(),
+        context: $("#taskContext").val()
+    };
+
+    if ($("#dueDate").val()) {
+        payload.due_date = new Date($("#dueDate").val()).toISOString();
+    }
+
+    // Button Loading State
+    const btn = $("#btnSaveTask");
+    const origText = btn.text();
+    btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm"></span> Saving...');
+
+    let promise;
+    if (isEdit) {
+        if (newAttachments.length > 0) {
+            toastr.info("Note: New files are not added in 'Update Mode'. Use Chat to send files.");
+        }
+        promise = axios.put(`/api/tasks/${taskId}`, payload);
+    } else {
+        // Create: Include attachments
+        payload.attachments = newAttachments;
+        promise = axios.post('/api/tasks/', payload);
+    }
+
+    promise
+        .then(res => {
+            toastr.success(isEdit ? "Task Updated!" : "Task Created!");
+            $("#taskModal").modal("hide");
+            loadTasks();
+        })
+        .catch(err => {
+            console.error(err);
+            toastr.error(err.response?.data?.detail || "Operation failed");
+        })
+        .finally(() => {
+            btn.prop("disabled", false).text(origText);
+        });
+}
+
+function deleteTask(id) {
+    Swal.fire({
+        title: 'Delete Task?',
+        text: "This cannot be undone.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Delete'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            axios.delete(`/api/tasks/${id}`)
+                .then(() => { toastr.success("Deleted"); loadTasks(); })
+                .catch(() => toastr.error("Failed to delete"));
+        }
+    });
+}
+
+function formatDate(d) {
+    if (!d) return '<span class="text-muted">-</span>';
+    return new Date(d).toLocaleDateString() + ' ' + new Date(d).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+
+// ==========================================
+// 6. CHAT
+// ==========================================
+
+function openChatModal(id, title) {
+    activeChatTaskId = id;
+    $("#chatTaskTitle").text(title);
+    $("#chatContainer").html('<div class="text-center py-5"><div class="spinner-border text-secondary spinner-border-sm"></div></div>');
+    $("#chatModal").modal("show");
+    loadChat();
+}
+
+function loadChat() {
+    if (!activeChatTaskId) return;
+    axios.get(`/api/tasks/${activeChatTaskId}/chat`)
+        .then(res => {
+            const container = $("#chatContainer");
+            container.empty();
+            // Try to find user ID from meta tag, else default 0
+            const myId = parseInt($('meta[name="user-id"]').attr('content')) || 0;
+
+            if (res.data.length === 0) {
+                container.html('<div class="text-center text-muted small mt-5">No messages yet.</div>');
+                return;
+            }
+
+            res.data.forEach(msg => {
+                if (msg.is_system_log) {
+                    container.append(`<div class="text-center small text-muted my-2 fst-italic">${msg.message}</div>`);
+                } else {
+                    const isMe = msg.author.id === myId;
+                    const html = `
+                        <div class="chat-bubble ${isMe ? 'sent' : 'received'}">
+                            <div class="small fw-bold mb-1 ${isMe?'text-white-50':'text-primary'}">${isMe ? 'You' : (msg.author.full_name || 'User')}</div>
+                            ${msg.message}
+                            <div class="text-end mt-1" style="font-size:0.65rem; opacity:0.8">${new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                        </div>
+                    `;
+                    container.append(html);
+                }
+            });
+            container.scrollTop(container[0].scrollHeight);
+        });
+}
+
+function sendMessage(e) {
+    e.preventDefault();
+    const txt = $("#chatInput").val().trim();
+    if (!txt) return;
+    
+    axios.post(`/api/tasks/${activeChatTaskId}/chat`, { message: txt })
+        .then(() => {
+            $("#chatInput").val("");
+            loadChat();
+        })
+        .catch(() => toastr.error("Send failed"));
 }

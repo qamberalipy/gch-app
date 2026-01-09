@@ -2,15 +2,12 @@
 
 {% block stylesheets %}
 <style>
-    /* --- Shared Theme (Matches manager_users.html) --- */
+    /* --- Page Theme --- */
     .grail-table-card {
-        background: #fff;
-        border-radius: 12px;
-        padding: 20px;
-        border: 1px solid #f1f1f1;
-        min-height: 400px;
+        background: #fff; border-radius: 12px; padding: 20px;
+        border: 1px solid #f1f1f1; min-height: 400px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.03);
     }
-    
     .page-title { font-weight: 600; color: #333; margin: 0; font-size: 1.25rem; }
     
     .btn-grail-gold {
@@ -20,8 +17,8 @@
     }
     .btn-grail-gold:hover { background-color: #B08A3D; border-color: #B08A3D; color: white; transform: translateY(-1px); }
 
-    /* Table Styling */
-    .table-grail { margin-bottom: 0; border-collapse: separate; border-spacing: 0; width: 100%; }
+    /* Table */
+    .table-grail { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 0; }
     .table-grail thead th {
         background-color: #EDF9FE; color: #6B7280; font-weight: 600;
         font-size: 0.8rem; text-transform: uppercase; border: none; padding: 12px 15px;
@@ -32,79 +29,82 @@
     
     .user-avatar-small { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; margin-right: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 
-    /* --- Priority Toggles (Modal) --- */
-    .priority-group {
-        background: #F9FAFB; border-radius: 8px; padding: 4px; display: flex;
+    /* --- Modal Custom Design --- */
+    .grail-modal-label { font-size: 0.85rem; color: #6B7280; font-weight: 600; margin-bottom: 6px; display: block; }
+    .grail-form-control {
+        background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px;
+        padding: 10px 12px; font-size: 0.9rem; color: #1F2937; width: 100%;
+        transition: border-color 0.2s;
     }
+    .grail-form-control:focus { outline: none; border-color: #C89E47; background: #fff; }
+
+    /* Priority Toggles */
+    .priority-group { background: #F9FAFB; border-radius: 8px; padding: 4px; display: flex; border: 1px solid #E5E7EB; }
     .priority-option {
-        flex: 1; text-align: center; padding: 6px; border-radius: 6px; 
-        cursor: pointer; font-size: 0.85rem; font-weight: 500; color: #6B7280;
-        transition: all 0.2s;
+        flex: 1; text-align: center; padding: 8px; border-radius: 6px; 
+        cursor: pointer; font-size: 0.85rem; font-weight: 500; color: #6B7280; transition: all 0.2s;
     }
-    .priority-option.active {
-        background-color: #C89E47; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
+    .priority-option.active { background-color: #C89E47; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 
-    /* --- Drag & Drop Upload Zone --- */
+    /* Tag Input (Chips) */
+    .tag-container {
+        display: flex; flex-wrap: wrap; gap: 5px; padding: 6px;
+        border: 1px solid #E5E7EB; border-radius: 8px; background: #F9FAFB; min-height: 45px; cursor: text;
+    }
+    .tag-chip {
+        background: #FEF3C7; color: #92400E; font-size: 0.8rem; padding: 2px 8px;
+        border-radius: 4px; display: flex; align-items: center; gap: 5px; font-weight: 500;
+    }
+    .tag-chip i { cursor: pointer; font-size: 1rem; opacity: 0.7; }
+    .tag-chip i:hover { opacity: 1; }
+    .tag-input { border: none; background: transparent; outline: none; flex-grow: 1; font-size: 0.9rem; padding: 4px; min-width: 60px; }
+
+    /* Upload */
     .upload-zone {
-        border: 2px dashed #E5E7EB; border-radius: 12px;
-        padding: 30px; text-align: center; background: #F9FAFB;
-        cursor: pointer; transition: border-color 0.2s;
+        border: 2px dashed #E5E7EB; border-radius: 8px; padding: 20px;
+        text-align: center; background: #fff; cursor: pointer; transition: all 0.2s;
     }
-    .upload-zone:hover { border-color: #C89E47; background: #fff; }
-    .upload-zone.dragover { border-color: #C89E47; background: #FEF3C7; }
+    .upload-zone:hover { border-color: #C89E47; background: #FFFCF5; }
     
-    /* Uploaded File Item */
     .file-preview-item {
-        display: flex; align-items: center; padding: 10px;
-        background: #fff; border: 1px solid #eee; border-radius: 8px; margin-top: 10px;
+        display: flex; align-items: center; padding: 10px; margin-top: 8px;
+        background: #fff; border: 1px solid #eee; border-radius: 6px;
+        transition: 0.2s;
     }
-    .file-preview-icon {
-        width: 40px; height: 40px; border-radius: 6px; 
-        background: #eee; display: flex; align-items: center; justify-content: center;
-        margin-right: 12px; color: #666;
-    }
+    .file-preview-item:hover { border-color: #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+    .preview-thumb { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; margin-right: 12px; background: #eee; }
+    .preview-icon { width: 40px; height: 40px; border-radius: 6px; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #666; margin-right: 12px; }
 
-    /* --- Chat UI --- */
-    .chat-modal-body { background-color: #F3F4F6; padding: 0; }
-    .chat-container {
-        height: 400px; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px;
-    }
-    .chat-bubble {
-        max-width: 75%; padding: 10px 15px; border-radius: 12px; font-size: 0.9rem; position: relative;
-    }
-    .chat-bubble.sent {
-        align-self: flex-end; background-color: #C89E47; color: white;
-        border-bottom-right-radius: 2px;
-    }
-    .chat-bubble.received {
-        align-self: flex-start; background-color: white; color: #374151;
-        border-bottom-left-radius: 2px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    }
-    .chat-input-area {
-        padding: 15px; background: white; border-top: 1px solid #eee; display: flex; gap: 10px;
-    }
-    
-    /* Status Badges */
-    .badge-status { padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 500; }
-    .badge-todo { background: #E5E7EB; color: #374151; }
-    .badge-in_progress { background: #DBEAFE; color: #2563EB; }
+    /* Badges */
+    .badge-status { padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.3px; }
+    .badge-todo { background: #F3F4F6; color: #4B5563; }
+    .badge-in_progress { background: #DBEAFE; color: #1D4ED8; }
     .badge-review { background: #FEF3C7; color: #D97706; }
-    .badge-blocked { background: #FEE2E2; color: #DC2626; }
     .badge-completed { background: #D1FAE5; color: #059669; }
+    .badge-blocked { background: #FEE2E2; color: #DC2626; }
+
+    /* Actions */
+    .action-icon { cursor: pointer; font-size: 1.1rem; padding: 6px; border-radius: 50%; transition: 0.2s; color: #6B7280; }
+    .action-icon:hover { background-color: #F3F4F6; color: #111; }
+    .action-icon.delete:hover { background-color: #FEF2F2; color: #DC2626; }
+    
+    /* Chat */
+    .chat-modal-body { background: #f3f4f6; padding: 0; }
+    .chat-container { height: 400px; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+    .chat-input-area { padding: 15px; background: #fff; border-top: 1px solid #eee; display: flex; gap: 10px; }
+    .chat-bubble { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 0.9rem; position: relative; }
+    .chat-bubble.sent { align-self: flex-end; background-color: #C89E47; color: white; border-bottom-right-radius: 2px; }
+    .chat-bubble.received { align-self: flex-start; background-color: white; border: 1px solid #e5e7eb; color: #374151; border-bottom-left-radius: 2px; }
 </style>
 {% endblock stylesheets %}
 
 {% block user_page %}
 <div class="main-div">
-    
     <div class="grail-header-area pt-3 px-3 d-flex justify-content-between align-items-center mb-4">
-        <h2 class="page-title">Task Assignment</h2>
-        <div class="d-flex gap-3">
-            <button class="btn btn-grail-gold" onclick="openCreateTaskModal()">
-                <i class="ri-add-circle-line me-1"></i> Assign Task
-            </button>
-        </div>
+        <h2 class="page-title">Assignment Board</h2>
+        <button class="btn btn-grail-gold" onclick="openCreateTaskModal()">
+            <i class="ri-add-circle-line me-1"></i> Assign Task
+        </button>
     </div>
 
     <div class="border-0 grail-table-card pt-0">
@@ -112,7 +112,7 @@
             <table class="table table-grail">
                 <thead>
                     <tr>
-                        <th>Task Details</th>
+                        <th style="width: 35%;">Task</th>
                         <th>Assignee</th>
                         <th>Context</th>
                         <th>Status</th>
@@ -121,117 +121,120 @@
                     </tr>
                 </thead>
                 <tbody id="taskTableBody">
-                    <tr><td colspan="6" class="text-center py-5">Loading tasks...</td></tr>
+                    <tr><td colspan="6" class="text-center py-5"><div class="spinner-border text-warning"></div></td></tr>
                 </tbody>
             </table>
         </div>
     </div>
-
 </div>
 
 <div class="modal fade" id="taskModal" tabindex="-1" data-bs-backdrop="static" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
-            <div class="modal-header border-0 pb-0 pt-4 px-4">
-                <h5 class="modal-title fw-bold" id="taskModalLabel">Add Task</h5>
+            <div class="modal-header border-0 px-4 pt-4 pb-0">
+                <h5 class="modal-title fw-bold" id="taskModalLabel">Create Assignment</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
                 <form id="taskForm">
-                    <div class="row g-4">
-                        <div class="col-md-7">
-                            <div class="mb-3">
-                                <label class="form-label small text-muted fw-bold">Task Title</label>
-                                <input type="text" class="form-control" id="taskTitle" required placeholder="Ex: Upload 15 PPV Videos">
-                            </div>
-
-                            <div class="row mb-3">
-                                <div class="col-md-12">
-                                    <label class="form-label small text-muted fw-bold">Assign To</label>
-                                    <select class="form-select" id="assigneeSelect" required>
-                                        <option value="">Select Creator...</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="row mb-3">
-                                <div class="col-6">
-                                    <label class="form-label small text-muted fw-bold">Due Date</label>
-                                    <input type="date" class="form-control" id="dueDate">
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label small text-muted fw-bold">Context</label>
-                                    <select class="form-select" id="taskContext">
-                                        <option value="General">General</option>
-                                        <option value="Urgent">Urgent</option>
-                                        <option value="Contract">Contract</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label small text-muted fw-bold">Priority</label>
-                                <div class="priority-group">
-                                    <div class="priority-option active" data-value="Low" onclick="setPriority(this)">Low</div>
-                                    <div class="priority-option" data-value="Medium" onclick="setPriority(this)">Medium</div>
-                                    <div class="priority-option" data-value="High" onclick="setPriority(this)">High</div>
-                                </div>
-                                <input type="hidden" id="taskPriority" value="Low">
-                            </div>
-
-                            <div class="row mb-3">
-                                <div class="col-6">
-                                    <label class="form-label small text-muted fw-bold">Content Type</label>
-                                    <select class="form-select" id="contentType">
-                                        <option value="PPV">PPV</option>
-                                        <option value="Feed">Feed</option>
-                                        <option value="Promo">Promo</option>
-                                        <option value="Story">Story</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label small text-muted fw-bold">Length/Qty</label>
-                                    <input type="text" class="form-control" id="contentLength" placeholder="Ex: 12 mins">
-                                </div>
-                            </div>
-
-                            <div class="d-flex justify-content-between px-2">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="reqFace" checked>
-                                    <label class="form-check-label small" for="reqFace">Face Visible</label>
-                                </div>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="reqWatermark">
-                                    <label class="form-check-label small" for="reqWatermark">Watermark Required</label>
-                                </div>
-                            </div>
+                    <input type="hidden" id="taskId"> <div class="row g-4 mb-3">
+                        <div class="col-md-6">
+                            <label class="grail-modal-label">Title <span class="text-danger">*</span></label>
+                            <input type="text" class="grail-form-control" id="taskTitle" placeholder="e.g. Upload 5 Summer Reels" required>
+                            
+                            <label class="grail-modal-label mt-3">Assign To <span class="text-danger">*</span></label>
+                            <select class="grail-form-control" id="assigneeSelect" required>
+                                <option value="">Loading Creators...</option>
+                            </select>
                         </div>
+                        <div class="col-md-6">
+                            <label class="grail-modal-label">Instructions</label>
+                            <textarea class="grail-form-control" id="taskDescription" rows="4" placeholder="Detailed requirements for the creator..."></textarea>
+                        </div>
+                    </div>
 
+                    <div class="row g-4 mb-3">
+                        <div class="col-md-4">
+                            <label class="grail-modal-label">Due Date</label>
+                            <input type="datetime-local" class="grail-form-control" id="dueDate">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="grail-modal-label">Priority</label>
+                            <div class="priority-group">
+                                <div class="priority-option active" data-value="Low">Low</div>
+                                <div class="priority-option" data-value="Medium">Med</div>
+                                <div class="priority-option" data-value="High">High</div>
+                            </div>
+                            <input type="hidden" id="taskPriority" value="Low">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="grail-modal-label">Context</label>
+                            <select class="grail-form-control" id="taskContext">
+                                <option value="General">General</option>
+                                <option value="Urgent">Urgent</option>
+                                <option value="Contract">Contract</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-4 mb-3">
+                        <div class="col-md-3">
+                            <label class="grail-modal-label">Content Type</label>
+                            <select class="grail-form-control" id="contentType">
+                                <option value="PPV">PPV</option>
+                                <option value="Feed">Feed</option>
+                                <option value="Promo">Promo</option>
+                                <option value="Story">Story</option>
+                                <option value="Other" selected>Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="grail-modal-label">Qty</label>
+                            <input type="number" class="grail-form-control" id="reqQuantity" value="1" min="1">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="grail-modal-label">Mins</label>
+                            <input type="number" class="grail-form-control" id="reqDuration" placeholder="0">
+                        </div>
                         <div class="col-md-5">
-                            <div class="mb-3 h-100 d-flex flex-column">
-                                <div class="mb-3">
-                                    <label class="form-label small text-muted fw-bold">Description</label>
-                                    <textarea class="form-control" id="taskDescription" rows="4" placeholder="Detailed instructions..."></textarea>
-                                </div>
-
-                                <div class="flex-grow-1">
-                                    <label class="form-label small text-muted fw-bold">Reference Attachments</label>
-                                    
-                                    <div class="upload-zone" id="dropZone">
-                                        <i class="ri-upload-cloud-2-line fs-3 text-muted"></i>
-                                        <p class="small text-muted mb-0">Drop files here or click</p>
-                                        <input type="file" id="fileInput" multiple hidden>
-                                    </div>
-
-                                    <div id="filePreviewList"></div>
-                                </div>
+                            <label class="grail-modal-label">Outfit / Theme Tags</label>
+                            <div class="tag-container" id="tagContainer">
+                                <input type="text" class="tag-input" id="tagInput" placeholder="Type & Enter...">
                             </div>
                         </div>
                     </div>
 
+                    <div class="d-flex gap-4 mb-4 ps-1">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="reqFace" checked>
+                            <label class="form-check-label small fw-medium" for="reqFace">Face Visible</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="reqWatermark">
+                            <label class="form-check-label small fw-medium" for="reqWatermark">Watermark</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 p-3 bg-light rounded-3 border">
+                        <label class="grail-modal-label mb-2">Attachments (Reference Files)</label>
+                        
+                        <div class="upload-zone" id="uploadZone">
+                            <div id="uploadText">
+                                <i class="ri-upload-cloud-2-line fs-4 text-muted"></i>
+                                <div class="small text-muted mt-1">Click to upload images/videos</div>
+                            </div>
+                            <div id="uploadSpinner" class="d-none">
+                                <div class="spinner-border text-warning spinner-border-sm"></div>
+                                <span class="small text-muted ms-2">Uploading...</span>
+                            </div>
+                            <input type="file" id="fileInput" multiple hidden>
+                        </div>
+                        
+                        <div id="filePreviewList" class="mt-2"></div>
+                    </div>
+
                     <div class="d-grid mt-4">
-                        <button type="button" class="btn btn-grail-gold" onclick="createAtomicTask()">Create Task</button>
+                        <button type="submit" class="btn btn-grail-gold py-2" id="btnSaveTask">Confirm Assignment</button>
                     </div>
                 </form>
             </div>
@@ -244,24 +247,26 @@
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
             <div class="modal-header bg-white border-bottom p-3">
                 <div class="d-flex align-items-center">
-                    <img id="chatAvatar" src="" class="rounded-circle me-2 d-none" width="30" height="30">
+                    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3" style="width:36px;height:36px;">
+                        <i class="ri-discuss-line text-dark"></i>
+                    </div>
                     <div>
                         <h6 class="mb-0 fw-bold" id="chatTaskTitle">Task Chat</h6>
-                        <span class="small text-muted">Real-time</span>
+                        <span class="small text-muted">Direct Message</span>
                     </div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            
             <div class="chat-modal-body">
                 <div class="chat-container" id="chatContainer">
-                    </div>
-                <div class="chat-input-area">
-                    <input type="text" class="form-control rounded-pill border-0 bg-light" id="chatInput" placeholder="Type a message...">
-                    <button class="btn btn-grail-gold rounded-circle" style="width:40px; height:40px; padding:0;" onclick="sendMessage()">
+                    <div class="text-center py-5"><div class="spinner-border text-secondary spinner-border-sm"></div></div>
+                </div>
+                <form id="chatForm" class="chat-input-area">
+                    <input type="text" class="form-control rounded-pill border-0 bg-light" id="chatInput" placeholder="Type a message..." required autocomplete="off">
+                    <button type="submit" class="btn btn-grail-gold rounded-circle shadow-sm" style="width:40px;height:40px;padding:0;">
                         <i class="ri-send-plane-fill"></i>
                     </button>
-                </div>
+                </form>
             </div>
         </div>
     </div>
