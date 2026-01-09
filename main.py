@@ -37,6 +37,7 @@ from app.upload import upload_router
 # --- 2. IMPORT WEB (HTML) ROUTERS ---
 from app.web.routers import auth_views
 from app.web.routers import user_views
+from app.web.routers import task_views
 
 # auto_error=False allows us to check for Cookie manually if Header is missing
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -112,6 +113,7 @@ else:
 # --- ROUTERS ---
 app.include_router(auth_views.auth_view)    
 app.include_router(user_views.user_view)
+app.include_router(task_views.task_views)
 
 app.include_router(main_router)         
 root_router.include_router(user_router) 

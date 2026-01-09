@@ -79,10 +79,11 @@ class User(_database.Base):
     assigned_model_rel = relationship("User", remote_side=[id], foreign_keys=[assigned_model_id])
     
     # 3. FIXED: Python Property for Filtering Digital Creators
-    # This replaces the broken SQL relationship
+    # Safe logic update: added check for None to prevent errors
     @property
     def models_under_manager(self):
-        # Return only active Digital Creators from the staff list
+        if not self.managed_staff:
+            return []
         return [
             user for user in self.managed_staff 
             if user.role == UserRole.digital_creator and not user.is_deleted
@@ -101,7 +102,7 @@ class User(_database.Base):
         except Exception:
             return False
 
-# ... (Keep Country, Source, OTP, RefreshToken classes as is)
+# ... (Keep Country, Source, OTP, RefreshToken classes exactly as they were to avoid migration issues)
 class Country(_database.Base):
     __tablename__ = "country"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)

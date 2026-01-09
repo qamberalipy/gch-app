@@ -47,13 +47,13 @@ def list_managers(db: Session = Depends(_services.get_db), current_user = Depend
 
 @router.get("/available/team-members", response_model=List[_schemas.UserInList], tags=["Utility"])
 def list_free_team_members(db: Session = Depends(_services.get_db), current_user: _models.User = Depends(get_admin_or_manager)):
-    # [UPDATED] If Manager, scope to their ID. If Admin, mgr_id is None (returns all).
+    # If Manager, scope to their ID. If Admin, mgr_id is None (returns all).
     mgr_id = current_user.id if current_user.role == _models.UserRole.manager else None
     return _services.get_available_users(db, role="team_member", manager_id=mgr_id)
 
 @router.get("/available/models", response_model=List[_schemas.UserInList], tags=["Utility"])
 def list_free_models(db: Session = Depends(_services.get_db), current_user: _models.User = Depends(get_admin_or_manager)):
-    # [UPDATED] If Manager, scope to their ID.
+    # If Manager, scope to their ID.
     mgr_id = current_user.id if current_user.role == _models.UserRole.manager else None
     return _services.get_available_users(db, role="digital_creator", manager_id=mgr_id)
 
@@ -82,13 +82,7 @@ async def update_user(
     if current_user.id != user_id and not is_admin_or_manager:
         raise HTTPException(status_code=403, detail="Cannot update other users")
 
-    # Filter fields for non-admin users
-    if not is_admin_or_manager:
-        if user_in.role: del user_in.role
-        if user_in.manager_id: del user_in.manager_id
-        if user_in.assigned_model_id: del user_in.assigned_model_id
-        if user_in.assign_model_ids: del user_in.assign_model_ids
-
+    # Security: Passed to service layer which handles field filtering (role, assignments)
     return _services.update_user(db, user_id, user_in, current_user)
 
 @router.delete("/{user_id}", tags=["User CRUD API"])
@@ -113,7 +107,6 @@ async def get_all_users(
     db: Session = Depends(_services.get_db)
     ):
     try:
-        # Sanitize Inputs
         if role:
             role = role.strip("'\" ") 
             if role.lower() == "null" or role == "": role = None
