@@ -15,6 +15,7 @@ MENU = {
     ],
     "digital_creator": [
         {"label": "Dashboard", "icon": "ri-home-4-line", "path": "/dashboard", "children": []},
+        {"label": "Task Submission", "icon": "ri-file-upload-line", "path": "/task_submission", "children": []},
     ],
     "default": [
         {"label": "Dashboard", "icon": "ri-home-4-line", "path": "/dashboard", "children": []},
