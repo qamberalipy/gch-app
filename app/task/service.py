@@ -1,4 +1,5 @@
 # app/task/service.py
+import datetime
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import SQLAlchemyError
 from fastapi import HTTPException, status
@@ -188,7 +189,7 @@ def submit_task_work(db: Session, task_id: int, submission: _schemas.TaskSubmiss
                 uploader_id=current_user.id,
                 task_id=task.id,
                 file_url=file_data.file_url,
-                thumbnail_url=file_data.thumbnail_url, # Save Thumbnail
+                thumbnail_url=file_data.thumbnail_url,
                 file_size_mb=file_data.file_size_mb,
                 mime_type=file_data.mime_type,
                 duration_seconds=file_data.duration_seconds,
@@ -198,24 +199,21 @@ def submit_task_work(db: Session, task_id: int, submission: _schemas.TaskSubmiss
             )
             db.add(vault_item)
 
-        task.status = _models.TaskStatus.review
+        # [CHANGE] 'In Review' no longer exists, so we move straight to 'Completed'
+        # based on your new Enum.
+        task.status = _models.TaskStatus.completed
+        task.completed_at = datetime.datetime.now()
         
         # Add System Log
         sys_msg = _models.TaskChat(
             task_id=task.id,
             user_id=current_user.id,
-            message="Submitted work for review.",
+            message="Work submitted. Task marked as Completed.",
             is_system_log=True
         )
         db.add(sys_msg)
 
-        if submission.comment:
-            user_msg = _models.TaskChat(
-                task_id=task.id,
-                user_id=current_user.id,
-                message=submission.comment
-            )
-            db.add(user_msg)
+        # [REMOVED] Comment logic removed as requested
 
         db.commit()
         db.refresh(task)
@@ -225,7 +223,7 @@ def submit_task_work(db: Session, task_id: int, submission: _schemas.TaskSubmiss
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Submission failed: {str(e)}")
 
-# --- 5. Get Tasks ---
+# ... (Keep get_all_tasks, Chat functions, etc.) ...# --- 5. Get Tasks ---
 def get_all_tasks(db: Session, current_user: _user_models.User, status: Optional[str] = None):
     # Eager load relationships for UI
     query = db.query(_models.Task).options(
@@ -302,3 +300,33 @@ def send_chat_message(db: Session, task_id: int, message: str, current_user: _us
     except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="Failed to send message.")
+    
+
+    # app/task/service.py (Add this function)
+
+def delete_content_item(db: Session, content_id: int, current_user: _user_models.User):
+    """
+    Allows a user to delete a specific attachment (ContentVault item).
+    Strict Rule: Users can only delete files THEY uploaded.
+    """
+    item = db.query(_models.ContentVault).filter(_models.ContentVault.id == content_id).first()
+    
+    if not item:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Strict Ownership Check
+    if item.uploader_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You can only remove files you uploaded.")
+    
+    # Optional: Prevent deleting if task is already 'Completed' or 'Approved'
+    if item.task:
+        if item.task.status == _models.TaskStatus.completed:
+             raise HTTPException(status_code=400, detail="Cannot edit submission for a completed task.")
+
+    try:
+        db.delete(item)
+        db.commit()
+        return {"message": "File removed"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")

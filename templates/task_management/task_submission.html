@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block stylesheets %}
+<style>
+    /* --- GRAIL THEME PALETTE --- */
+    :root {
+        --grail-gold: #C89E47;
+        --grail-gold-hover: #b08a3d;
+        --grail-dark: #1F2937;
+        --grail-light: #F9FAFB;
+        --grail-border: #E5E7EB;
+        --status-missed: #ef4444; /* Red */
+        --status-done: #10b981;   /* Green */
+        --status-todo: #f59e0b;   /* Gold/Orange */
+        --status-blocked: #6b7280;/* Gray */
+    }
+
+    /* --- PAGE HEADER --- */
+    .dashboard-header {
+        background: linear-gradient(135deg, #FFFDF5 0%, #FFFFFF 100%);
+        border-bottom: 1px solid var(--grail-border);
+        padding: 25px 20px;
+        border-radius: 12px 12px 0 0;
+        margin-bottom: 25px;
+    }
+    .page-title { font-size: 1.5rem; font-weight: 700; color: var(--grail-dark); letter-spacing: -0.5px; }
+    .page-subtitle { color: #6B7280; font-size: 0.9rem; margin-top: 4px; }
+
+    /* --- FILTER PILLS --- */
+    .filter-group { background: #fff; padding: 4px; border-radius: 50px; border: 1px solid #E5E7EB; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+    .filter-btn { border: none; background: transparent; color: #6B7280; font-weight: 500; font-size: 0.85rem; transition: all 0.2s; }
+    .filter-btn:hover { color: var(--grail-dark); }
+    .filter-btn.active { background-color: var(--grail-gold); color: white; box-shadow: 0 2px 4px rgba(200, 158, 71, 0.3); }
+
+    /* --- ENHANCED CARDS --- */
+    .grail-card {
+        background: #fff;
+        border: 1px solid var(--grail-border);
+        border-radius: 16px;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
+        height: 100%;
+        display: flex; flex-direction: column;
+        cursor: pointer;
+        position: relative;
+    }
+    .grail-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.08); }
+    
+    /* Left Border Status Indicator */
+    .grail-card.c-todo { border-left: 4px solid var(--status-todo); }
+    .grail-card.c-completed { border-left: 4px solid var(--status-done); opacity: 0.85; }
+    .grail-card.c-missed { border-left: 4px solid var(--status-missed); background: #FFFBFB; }
+    .grail-card.c-blocked { border-left: 4px solid var(--status-blocked); }
+
+    .card-top { padding: 20px 20px 15px; flex-grow: 1; }
+    
+    /* Meta & Title */
+    .task-meta-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .task-type { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: #9CA3AF; letter-spacing: 0.5px; }
+    .task-title { font-size: 1.1rem; font-weight: 700; color: var(--grail-dark); margin: 0 0 8px; line-height: 1.35; }
+    .task-desc { font-size: 0.85rem; color: #6B7280; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 15px; }
+
+    /* Card Footer & Stats */
+    .card-btm { padding: 12px 20px; border-top: 1px solid #f3f4f6; background: #FDFDFD; display: flex; justify-content: space-between; align-items: center; }
+    .date-badge { font-size: 0.75rem; font-weight: 500; display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; background: #F3F4F6; color: #4B5563; }
+    
+    /* Specific Date Styles */
+    .c-missed .date-badge { background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; }
+    .c-completed .date-badge { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+
+    /* MODAL STYLES (Kept Intact as Requested) */
+    .modal-content { border-radius: 16px; overflow: hidden; border: none; }
+    .modal-body { padding: 0; background: #fff; height: 75vh; }
+    .modal-details-col { background-color: #F8F9FA; border-right: 1px solid var(--grail-border); height: 100%; overflow-y: auto; display: flex; flex-direction: column; }
+    .detail-label { font-size: 0.7rem; color: #9CA3AF; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; display: block; }
+    .detail-value { font-size: 0.95rem; color: #111; font-weight: 600; margin-bottom: 16px; }
+    .tag-badge { background: #fff; border: 1px solid var(--grail-border); color: #555; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 500; }
+    .desc-clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .desc-expand-btn { font-size: 0.8rem; color: var(--grail-gold); cursor: pointer; font-weight: 600; text-decoration: none; }
+    .ref-file { display: flex; align-items: center; padding: 10px; background: #fff; border: 1px solid var(--grail-border); border-radius: 8px; margin-bottom: 8px; transition: 0.2s; }
+    .ref-icon { width: 32px; height: 32px; background: #F3F4F6; border-radius: 6px; display: flex; align-items: center; justify-content: center; margin-right: 10px; color: #666; }
+    .modal-work-col { height: 100%; display: flex; flex-direction: column; overflow-y: auto; }
+    .submission-zone { border: 2px dashed var(--grail-border); border-radius: 12px; padding: 30px; text-align: center; cursor: pointer; transition: 0.2s; background: #fff; }
+    .submission-zone:hover { border-color: var(--grail-gold); background: #FFFCF5; }
+    .deliverable-item { display: flex; align-items: center; padding: 10px; background: #fff; border: 1px solid var(--grail-border); border-radius: 8px; margin-bottom: 8px; }
+    .deliverable-thumb { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; margin-right: 12px; }
+    .sticky-footer { margin-top: auto; padding-top: 20px; background: #fff; border-top: 1px solid var(--grail-border); position: sticky; bottom: 0; }
+    .btn-grail-gold { background-color: var(--grail-gold) !important; border-color: var(--grail-gold) !important; color: white !important; transition: all 0.2s; }
+    .btn-grail-gold:hover { background-color: var(--grail-gold-hover) !important; transform: translateY(-1px); }
+    
+    /* CHAT */
+    .chat-modal-body { background: #f0f2f5; padding: 0; }
+    .chat-container { height: 400px; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+    .chat-bubble { max-width: 85%; padding: 10px 14px; border-radius: 12px; font-size: 0.9rem; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .chat-bubble.sent { align-self: flex-end; background-color: var(--grail-gold); color: white; border-bottom-right-radius: 2px; }
+    .chat-bubble.received { align-self: flex-start; background-color: white; border: 1px solid var(--grail-border); color: #374151; border-bottom-left-radius: 2px; }
+    .role-badge { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; margin-left: 6px; opacity: 0.8; background: rgba(0,0,0,0.1); }
+</style>
+{% endblock stylesheets %}
+
+{% block user_page %}
+<div class="main-div">
+    
+    <div class="dashboard-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+            <h2 class="page-title mb-0">My Assignments</h2>
+            <p class="page-subtitle mb-0">Track deadlines, upload content, and manage your workflow.</p>
+        </div>
+        
+        <div class="filter-group d-flex">
+            <button class="btn rounded-pill px-4 filter-btn active" data-filter="all">All</button>
+            <button class="btn rounded-pill px-4 filter-btn" data-filter="To Do">To Do</button>
+            <button class="btn rounded-pill px-4 filter-btn" data-filter="Missed">Missed</button>
+            <button class="btn rounded-pill px-4 filter-btn" data-filter="Completed">Done</button>
+        </div>
+    </div>
+
+    <div class="row g-4 px-3 pb-5" id="taskGrid">
+        <div class="col-12 text-center py-5">
+            <div class="spinner-border text-warning"></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="submissionModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-body p-0">
+                <div class="row g-0 h-100">
+                    
+                    <div class="col-lg-4 modal-details-col p-4">
+                        <h5 class="fw-bold mb-3" id="modalTitle">Task Title</h5>
+                        
+                        <div class="mb-4">
+                            <span class="detail-label">Description</span>
+                            <div class="text-muted small" id="descContainer">
+                                <p id="modalDesc" class="mb-1 desc-clamp" style="white-space: pre-line;">-</p>
+                                <a id="toggleDescBtn" class="desc-expand-btn d-none" onclick="toggleDescription()">Read More</a>
+                            </div>
+                        </div>
+
+                        <div class="row mb-2">
+                            <div class="col-6">
+                                <span class="detail-label">Quantity</span>
+                                <div class="detail-value" id="modalQty">-</div>
+                            </div>
+                            <div class="col-6">
+                                <span class="detail-label">Duration</span>
+                                <div class="detail-value" id="modalDuration">-</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <span class="detail-label mb-2">Requirements</span>
+                            <div class="d-flex gap-2">
+                                <div class="badge bg-white border text-secondary fw-normal p-2" id="modalFace"></div>
+                                <div class="badge bg-white border text-secondary fw-normal p-2" id="modalWatermark"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <span class="detail-label mb-2">Theme / Tags</span>
+                            <div id="modalTags" class="d-flex flex-wrap gap-1"></div>
+                        </div>
+
+                        <div class="mt-auto">
+                            <span class="detail-label mb-2"><i class="ri-attachment-line"></i> Reference Files</span>
+                            <div id="modalReferences" class="mt-2"></div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-8 modal-work-col p-4 bg-white">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h5 class="fw-bold m-0 text-dark">Submission Area</h5>
+                                <span class="text-muted small">Upload your final deliverables</span>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-outline-dark btn-sm rounded-pill px-3" id="btnOpenChat">
+                                    <i class="ri-chat-1-line me-1"></i> Chat
+                                </button>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-light border d-flex align-items-center mb-3 p-2 rounded-3" id="statusAlert"></div>
+
+                        <div class="submission-zone mb-3" id="dropZone">
+                            <i class="ri-upload-cloud-2-fill fs-1 text-warning mb-2" style="color: var(--grail-gold)!important;"></i>
+                            <h6 class="fw-bold text-dark">Upload Deliverables</h6>
+                            <p class="text-muted small mb-0">Drag & drop or click to browse</p>
+                            <input type="file" id="fileInput" multiple hidden>
+                        </div>
+
+                        <div class="flex-grow-1 mb-3 bg-light rounded-3 p-3 border" style="min-height: 150px;">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="detail-label text-dark">Your Files</span>
+                                <span class="badge bg-white border text-muted" id="fileCount">0 Files</span>
+                            </div>
+                            <div id="deliverablesList" style="max-height: 250px; overflow-y: auto;"></div>
+                        </div>
+
+                        <div class="sticky-footer d-grid">
+                            <button class="btn btn-grail-gold py-2 rounded-pill fw-bold shadow-sm" id="btnSubmitWork">
+                                <i class="ri-check-double-line me-1"></i> Submit Work
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="chatModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+            <div class="modal-header bg-white border-bottom p-3">
+                <div class="d-flex align-items-center">
+                    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3" style="width:38px;height:38px;">
+                        <i class="ri-discuss-line text-dark fs-5"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0 fw-bold">Task Chat</h6>
+                        <span class="small text-muted" id="chatStatus">Real-time</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <div class="chat-modal-body">
+                <div class="chat-container" id="chatContainer">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-secondary spinner-border-sm"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-3 bg-white border-top">
+                <form id="chatForm" class="d-flex align-items-center gap-2">
+                    <input type="text" class="form-control rounded-pill border-0 bg-light py-2 px-3 shadow-none" 
+                           id="chatInput" placeholder="Type a message..." required autocomplete="off">
+                    
+                    <button type="submit" class="btn btn-grail-gold rounded-circle shadow-sm d-flex align-items-center justify-content-center" 
+                            id="btnSendChat" style="width: 42px; height: 42px; min-width: 42px; padding: 0;">
+                        <i class="ri-send-plane-fill fs-5" id="iconSend"></i>
+                        <div class="spinner-border spinner-border-sm text-white d-none" id="spinnerSend" role="status"></div>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script src="{{ url_for('static', path='/js/task_management/task_submission.js') }}"></script>
+{% endblock %}
