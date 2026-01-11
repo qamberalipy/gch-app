@@ -1,13 +1,14 @@
 /**
- * task_creator.js
- * Logic for Digital Creators: View Tasks, Chat, Upload Deliverables, Edit Submission.
- * Updated for new Modal Layout.
+ * task_submission.js
+ * Logic for Digital Creators: View, Upload, Chat, Submit.
+ * Features: Recursion fix, Grail Theme, Heavy Chat, No Comments, Expandable Desc.
  */
 
 let allTasks = [];
-let currentTask = null; // The task currently open in the modal
-let newDeliverables = []; // Newly uploaded files awaiting submission
-let activeChatId = null;
+let currentTask = null;
+let newDeliverables = []; // Only for new files
+let activeChatTaskId = null;
+let isChatSending = false; // Chat semaphore
 
 $(document).ready(function() {
     loadMyTasks();
@@ -19,20 +20,28 @@ $(document).ready(function() {
         renderTasks($(this).data("filter"));
     });
 
-    // Upload Handlers
-    $("#dropZone").click(() => $("#fileInput").click());
-    $("#fileInput").change(handleFileUpload);
+    // Upload Handlers (Fixed Recursion)
+    $("#dropZone").on("click", function(e) {
+        // Prevent triggering if clicked directly on input
+        if (e.target.id !== 'fileInput') {
+            $("#fileInput").click();
+        }
+    });
+    
+    $("#fileInput").on("click", function(e) {
+        e.stopPropagation(); // STOP BUBBLING to dropZone
+    });
+    
+    $("#fileInput").on("change", handleFileUpload);
 
-    // Submission
+    // Actions
     $("#btnSubmitWork").click(submitWork);
-
-    // Chat
-    $("#btnOpenChat").click(() => openChat(currentTask.id, currentTask.title));
-    $("#chatForm").submit(sendChatMessage);
+    $("#btnOpenChat").click(() => openChatModal(currentTask.id, currentTask.title));
+    $("#chatForm").submit(sendMessage);
 });
 
 // ==========================================
-// 1. DASHBOARD & LISTING
+// 1. DASHBOARD GRID
 // ==========================================
 
 function loadMyTasks() {
@@ -46,7 +55,7 @@ function loadMyTasks() {
         })
         .catch(err => {
             console.error(err);
-            grid.html('<div class="col-12 text-center text-danger mt-5">Failed to load tasks. Please refresh.</div>');
+            grid.html('<div class="col-12 text-center text-danger mt-5">Failed to load tasks.</div>');
         });
 }
 
@@ -54,6 +63,7 @@ function renderTasks(filter) {
     const grid = $("#taskGrid");
     grid.empty();
 
+    // Filter Logic based on Backend Enums
     const filtered = filter === "all" ? allTasks : allTasks.filter(t => t.status === filter);
 
     if (filtered.length === 0) {
@@ -62,22 +72,23 @@ function renderTasks(filter) {
     }
 
     filtered.forEach(task => {
-        let statusColor = "st-todo";
-        if (task.status === "In Review") statusColor = "st-review";
-        if (task.status === "Completed") statusColor = "st-completed";
+        let statusClass = "st-todo";
+        if (task.status === "Completed") statusClass = "st-completed";
+        if (task.status === "Blocked") statusClass = "st-blocked";
+        if (task.status === "Missed") statusClass = "st-missed";
 
         const card = `
             <div class="col-md-6 col-lg-4 col-xl-3">
                 <div class="grail-card" onclick="openTaskModal(${task.id})">
                     <div class="card-top">
                         <div class="d-flex justify-content-between mb-2">
-                            <span class="task-meta text-warning">${task.req_content_type}</span>
-                            <span class="status-badge ${statusColor}">${task.status}</span>
+                            <span class="task-meta">${task.req_content_type}</span>
+                            <span class="status-badge ${statusClass}">${task.status}</span>
                         </div>
                         <h5 class="task-title text-truncate">${task.title}</h5>
-                        <p class="task-desc small">${task.description || 'No description provided.'}</p>
+                        <p class="task-desc">${task.description || 'No description provided.'}</p>
                         
-                        <div class="d-flex flex-wrap gap-2 mt-3">
+                        <div class="d-flex gap-2 mt-3">
                             <span class="badge bg-light text-dark border fw-normal"><i class="ri-calendar-event-line"></i> ${formatDateShort(task.due_date)}</span>
                             ${task.priority === 'High' ? '<span class="badge bg-danger-subtle text-danger border border-danger-subtle">Urgent</span>' : ''}
                         </div>
@@ -86,7 +97,7 @@ function renderTasks(filter) {
                         <div class="d-flex align-items-center text-muted small">
                             <i class="ri-attachment-2 me-1"></i> ${task.attachments.length} Files
                         </div>
-                        <span class="text-primary small fw-bold">View Details <i class="ri-arrow-right-s-line"></i></span>
+                        <span class="text-warning small fw-bold">Open Task <i class="ri-arrow-right-s-line"></i></span>
                     </div>
                 </div>
             </div>
@@ -96,26 +107,34 @@ function renderTasks(filter) {
 }
 
 // ==========================================
-// 2. DETAIL & SUBMISSION MODAL (POPULATION)
+// 2. MODAL & DETAILS
 // ==========================================
 
 function openTaskModal(taskId) {
     const task = allTasks.find(t => t.id === taskId);
     if (!task) return;
     currentTask = task;
-    newDeliverables = []; // Reset new uploads
-    $("#submissionComment").val(""); // Clear comment
+    newDeliverables = [];
 
-    // --- Fill Left Sidebar (Details) ---
+    // --- Populate Details (Left) ---
     $("#modalTitle").text(task.title);
-    $("#modalDesc").text(task.description || "No description provided.");
-    $("#modalContext").text(task.context || "-");
-    $("#modalType").text(task.req_content_type);
+    
+    // Description Logic (Truncate)
+    const desc = task.description || "No description provided.";
+    $("#modalDesc").text(desc);
+    if (desc.length > 150) {
+        $("#modalDesc").addClass("desc-clamp");
+        $("#toggleDescBtn").removeClass("d-none").text("Read More");
+    } else {
+        $("#modalDesc").removeClass("desc-clamp");
+        $("#toggleDescBtn").addClass("d-none");
+    }
+
     $("#modalQty").text(task.req_quantity);
     $("#modalDuration").text(task.req_duration_min ? task.req_duration_min + " mins" : "N/A");
     
-    // Requirements toggles
-    $("#modalFace").html(task.req_face_visible ? '<i class="ri-checkbox-circle-fill text-success"></i> Face Visible' : '<i class="ri-close-circle-fill text-muted"></i> No Face');
+    // Icons
+    $("#modalFace").html(task.req_face_visible ? '<i class="ri-checkbox-circle-fill text-success"></i> Face' : '<i class="ri-close-circle-fill text-muted"></i> No Face');
     $("#modalWatermark").html(task.req_watermark ? '<i class="ri-checkbox-circle-fill text-success"></i> Watermark' : '<i class="ri-close-circle-fill text-muted"></i> No Watermark');
 
     // Tags
@@ -123,61 +142,69 @@ function openTaskModal(taskId) {
     tagContainer.empty();
     if (task.req_outfit_tags) {
         task.req_outfit_tags.split(',').forEach(tag => {
-            tagContainer.append(`<span class="tag-badge">${tag}</span>`);
+            tagContainer.append(`<span class="tag-badge me-1">${tag}</span>`);
         });
     } else {
          tagContainer.html('<small class="text-muted">No tags.</small>');
     }
 
-    // --- Fill Right Main Area (Work & Refs) ---
-    
     // References (Uploaded by Assigner)
     const refContainer = $("#modalReferences");
     refContainer.empty();
     const myId = parseInt($('meta[name="user-id"]').attr('content')) || 0;
-    // Filter: Attachments where uploader != ME are references
+    
+    // Filter: uploader != ME
     const references = task.attachments.filter(a => a.uploader_id !== myId);
     
-    if (references.length === 0) refContainer.html('<small class="text-muted p-2 d-block">No reference files provided.</small>');
+    if (references.length === 0) refContainer.html('<small class="text-muted">No reference files.</small>');
     
     references.forEach(file => {
-        const icon = getIconForMime(file.mime_type);
         refContainer.append(`
-            <div class="file-item p-2">
-                <div class="file-icon" style="width:30px;height:30px;font-size:1rem;">${icon}</div>
+            <div class="ref-file">
+                <div class="ref-icon"><i class="ri-file-list-line"></i></div>
                 <div class="flex-grow-1 text-truncate small fw-bold">
                     <a href="${file.file_url}" target="_blank" class="text-dark text-decoration-none">${file.tags || getFileName(file.file_url)}</a>
                 </div>
-                <a href="${file.file_url}" target="_blank" class="btn btn-sm btn-light text-primary"><i class="ri-download-line"></i></a>
+                <a href="${file.file_url}" target="_blank" class="text-primary small"><i class="ri-download-line"></i></a>
             </div>
         `);
     });
 
-    // Render Your Work List
+    // --- Submission State (Right) ---
     renderDeliverablesList();
     
-    // Configure Button & Status Banner
     const btn = $("#btnSubmitWork");
     const alert = $("#statusAlert");
     const dropZone = $("#dropZone");
     
     if (task.status === "Completed") {
-        alert.attr("class", "alert alert-success border-0 p-2 mb-3 small").html('<i class="ri-check-double-line me-2"></i> Task Completed!');
-        btn.prop("disabled", true).text("Completed");
-        dropZone.addClass("d-none"); // Hide upload
-    } else if (task.status === "In Review") {
-        alert.attr("class", "alert alert-info border-0 p-2 mb-3 small").html('<i class="ri-time-line me-2"></i> Under Review. You can edit files below.');
-        btn.prop("disabled", false).text("Update Submission");
-        dropZone.removeClass("d-none");
-        dropZone.parent().removeClass("d-none"); // Ensure col is visible
+        alert.attr("class", "alert alert-success border-0 small").html('<i class="ri-check-double-line me-2"></i> <strong>Completed.</strong> Good job!');
+        btn.prop("disabled", true).text("Task Completed");
+        dropZone.addClass("d-none"); 
+    } else if (task.status === "Blocked" || task.status === "Missed") {
+        alert.attr("class", "alert alert-danger border-0 small").html(`<i class="ri-error-warning-line me-2"></i> <strong>${task.status}.</strong> Contact manager.`);
+        btn.prop("disabled", true).text(task.status);
+        dropZone.addClass("d-none");
     } else {
-        alert.attr("class", "alert alert-warning border-0 p-2 mb-3 small").html('<i class="ri-loader-4-line me-2"></i> Task Pending. Upload your work.');
+        // To Do
+        alert.attr("class", "alert alert-warning border-0 small").html('<i class="ri-loader-4-line me-2"></i> <strong>Pending.</strong> Upload your work below.');
         btn.prop("disabled", false).text("Submit Work");
         dropZone.removeClass("d-none");
-        dropZone.parent().removeClass("d-none");
     }
 
     $("#submissionModal").modal("show");
+}
+
+function toggleDescription() {
+    const el = $("#modalDesc");
+    const btn = $("#toggleDescBtn");
+    if (el.hasClass("desc-clamp")) {
+        el.removeClass("desc-clamp");
+        btn.text("Read Less");
+    } else {
+        el.addClass("desc-clamp");
+        btn.text("Read More");
+    }
 }
 
 function renderDeliverablesList() {
@@ -186,33 +213,35 @@ function renderDeliverablesList() {
     
     const myId = parseInt($('meta[name="user-id"]').attr('content')) || 0;
     
-    // 1. Existing Deliverables (Previously uploaded by ME)
+    // Existing files (Uploader = Me)
     const existing = currentTask.attachments.filter(a => a.uploader_id === myId);
-
-    // 2. Combine with New Deliverables (in memory)
+    
+    // Combine lists
     const allFiles = [
         ...existing.map(f => ({ ...f, isNew: false })), 
         ...newDeliverables.map(f => ({ ...f, isNew: true }))
     ];
 
+    $("#fileCount").text(`${allFiles.length} Files`);
+
     if (allFiles.length === 0) {
-        container.html('<div class="h-100 d-flex align-items-center justify-content-center"><p class="text-muted small mb-0">No files uploaded yet.</p></div>');
+        container.html('<div class="h-100 d-flex align-items-center justify-content-center text-muted small">No files uploaded yet.</div>');
         return;
     }
 
     allFiles.forEach((file, idx) => {
         const isImg = file.mime_type && file.mime_type.startsWith("image");
         const thumb = isImg ? (file.thumbnail_url || file.file_url) : null;
-        const iconOrThumb = thumb ? `<img src="${thumb}" class="file-thumb">` : `<div class="file-icon">${getIconForMime(file.mime_type)}</div>`;
+        const iconOrThumb = thumb ? `<img src="${thumb}" class="deliverable-thumb">` : `<div class="deliverable-thumb bg-light d-flex align-items-center justify-content-center"><i class="ri-file-line"></i></div>`;
 
-        // Logic for Delete Button
+        // Action logic
         const deleteAction = file.isNew ? `removeNewFile(${newDeliverables.indexOf(file)})` : `deleteExistingFile(${file.id})`;
 
         container.append(`
-            <div class="file-item">
+            <div class="deliverable-item">
                 ${iconOrThumb}
                 <div class="flex-grow-1 overflow-hidden">
-                    <div class="small fw-bold text-truncate" title="${file.tags || file.name}">${file.tags || file.name || 'File'}</div>
+                    <div class="small fw-bold text-truncate">${file.tags || file.name || 'File'}</div>
                     <div class="text-xs text-muted">
                         ${file.file_size_mb ? file.file_size_mb + ' MB' : ''} 
                         ${file.isNew ? '<span class="text-success fw-bold ms-1">New</span>' : '<span class="text-secondary ms-1">Saved</span>'}
@@ -225,14 +254,13 @@ function renderDeliverablesList() {
 }
 
 // ==========================================
-// 3. UPLOAD & SUBMIT LOGIC
+// 3. UPLOAD & SUBMIT
 // ==========================================
 
 async function handleFileUpload(e) {
     const files = e.target.files;
     if (!files.length) return;
 
-    // Show simple loader in dropzone
     const origText = $("#dropZone").html();
     $("#dropZone").html('<div class="spinner-border text-warning spinner-border-sm mb-2"></div><div class="small">Uploading...</div>');
 
@@ -240,7 +268,7 @@ async function handleFileUpload(e) {
         try {
             const formData = new FormData();
             formData.append("file", file);
-            formData.append("type_group", "image"); // Default group
+            formData.append("type_group", "image");
 
             const res = await axios.post('/api/upload/small-file', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
@@ -249,8 +277,8 @@ async function handleFileUpload(e) {
             if (res.data.status === 'success') {
                 newDeliverables.push({
                     file_url: res.data.url,
-                    thumbnail_url: res.data.url, // Simple for now
-                    file_size_mb: (file.size / (1024 * 1024)).toFixed(2),
+                    thumbnail_url: res.data.url,
+                    file_size_mb: (file.size / (1024*1024)).toFixed(2),
                     mime_type: file.type,
                     tags: file.name
                 });
@@ -261,7 +289,7 @@ async function handleFileUpload(e) {
     }
 
     $("#dropZone").html(origText);
-    $("#fileInput").val(""); // Reset input
+    $("#fileInput").val(""); 
     renderDeliverablesList();
 }
 
@@ -272,26 +300,17 @@ function removeNewFile(index) {
 
 function deleteExistingFile(contentId) {
     Swal.fire({
-        title: 'Remove File?',
-        text: "This will delete the file from the server.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        confirmButtonText: 'Yes, remove it'
+        title: 'Remove File?', text: "Delete from server?", icon: 'warning',
+        showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Yes'
     }).then((result) => {
         if (result.isConfirmed) {
-            // Optimistic UI update
-            currentTask.attachments = currentTask.attachments.filter(a => a.id !== contentId);
-            renderDeliverablesList();
-            
             axios.delete(`/api/tasks/content/${contentId}`)
-                .then(() => toastr.success("File removed"))
-                .catch(err => {
-                    toastr.error("Failed to delete file on server");
-                    // Revert UI if failed (reload task data would be better but complex)
-                    loadMyTasks(); // Reload all to be safe
-                    $("#submissionModal").modal("hide");
-                });
+                .then(() => {
+                    toastr.success("Removed");
+                    currentTask.attachments = currentTask.attachments.filter(a => a.id !== contentId);
+                    renderDeliverablesList();
+                })
+                .catch(() => toastr.error("Failed to delete"));
         }
     });
 }
@@ -301,14 +320,11 @@ function submitWork() {
     const existingCount = currentTask.attachments.filter(a => a.uploader_id === myId).length;
 
     if (newDeliverables.length === 0 && existingCount === 0) {
-        toastr.warning("Please upload at least one file before submitting.");
+        toastr.warning("Please upload at least one file.");
         return;
     }
 
-    const payload = {
-        deliverables: newDeliverables,
-        comment: $("#submissionComment").val()
-    };
+    const payload = { deliverables: newDeliverables }; // No comment field
 
     const btn = $("#btnSubmitWork");
     const origText = btn.html();
@@ -316,13 +332,13 @@ function submitWork() {
 
     axios.post(`/api/tasks/${currentTask.id}/submit`, payload)
         .then(res => {
-            toastr.success("Work Submitted Successfully!");
+            toastr.success("Work Submitted! Task Completed.");
             $("#submissionModal").modal("hide");
             loadMyTasks(); // Refresh grid
         })
         .catch(err => {
             console.error(err);
-            toastr.error(err.response?.data?.detail || "Submission failed");
+            toastr.error("Submission failed");
         })
         .finally(() => {
             btn.prop("disabled", false).html(origText);
@@ -330,69 +346,82 @@ function submitWork() {
 }
 
 // ==========================================
-// 4. CHAT (Reused simple logic)
+// 4. CHAT (ROBUST & ROLED)
 // ==========================================
-function openChat(id, title) {
-    activeChatId = id;
+
+function openChatModal(id, title) {
+    activeChatTaskId = id;
     $("#chatContainer").html('<div class="text-center py-5"><div class="spinner-border text-secondary spinner-border-sm"></div></div>');
     $("#chatModal").modal("show");
-    loadChatMessages();
+    enableChatInput();
+    loadChat();
 }
 
-function loadChatMessages() {
-    if(!activeChatId) return;
-    axios.get(`/api/tasks/${activeChatId}/chat`).then(res => {
-        const box = $("#chatContainer");
-        box.empty();
+function loadChat() {
+    if (!activeChatTaskId) return;
+    axios.get(`/api/tasks/${activeChatTaskId}/chat`).then(res => {
+        const container = $("#chatContainer");
+        container.empty();
         const myId = parseInt($('meta[name="user-id"]').attr('content')) || 0;
-        
-        if(res.data.length === 0) {
-             box.html('<div class="text-center small text-muted my-5">No messages yet.</div>');
-             return;
+
+        if (res.data.length === 0) {
+            container.html('<div class="text-center text-muted small mt-5 opacity-50">No messages yet.<br>Start the conversation!</div>');
+            return;
         }
-        
+
         res.data.forEach(msg => {
-            if(msg.is_system_log) {
-                 box.append(`<div class="text-center small text-muted my-2 fst-italic">${msg.message}</div>`);
-            } else {
-                const isMe = msg.author.id === myId;
-                box.append(`
-                    <div class="d-flex ${isMe ? 'justify-content-end' : 'justify-content-start'} p-2">
-                        <div class="bg-${isMe?'primary':'white'} text-${isMe?'white':'dark'} border rounded p-2 shadow-sm" style="max-width:80%; font-size:0.9rem;">
-                            ${msg.message}
-                        </div>
+            if (msg.is_system_log) {
+                container.append(`
+                    <div class="text-center my-3">
+                        <span class="badge bg-white border text-muted fw-normal rounded-pill px-3 py-1" style="font-size:0.7rem;">${msg.message}</span>
                     </div>
                 `);
+            } else {
+                const isMe = msg.author.id === myId;
+                const roleBadge = `<span class="role-badge bg-light border">${msg.author.role || 'User'}</span>`;
+                
+                const bubbleHtml = `
+                    <div class="chat-bubble ${isMe ? 'sent' : 'received'}">
+                        ${!isMe ? `<span class="chat-meta text-primary">${msg.author.full_name} ${roleBadge}</span>` : ''}
+                        <div class="message-text">${msg.message}</div>
+                        <div class="text-end mt-1" style="font-size:0.6rem; opacity:0.6;">${formatDateShort(msg.created_at)}</div>
+                    </div>
+                `;
+                container.append(bubbleHtml);
             }
         });
-        box.scrollTop(box[0].scrollHeight);
+        container.scrollTop(container[0].scrollHeight);
     });
 }
 
-function sendChatMessage(e) {
+function sendMessage(e) {
     e.preventDefault();
-    const txt = $("#chatInput").val().trim();
-    if(!txt) return;
-    
-    axios.post(`/api/tasks/${activeChatId}/chat`, { message: txt }).then(() => {
-        $("#chatInput").val("");
-        loadChatMessages();
-    });
+    const input = $("#chatInput");
+    const txt = input.val().trim();
+    if (!txt || isChatSending) return;
+
+    isChatSending = true;
+    disableChatInput();
+
+    axios.post(`/api/tasks/${activeChatTaskId}/chat`, { message: txt })
+        .then(() => { input.val(""); loadChat(); })
+        .catch(() => toastr.error("Failed to send"))
+        .finally(() => { 
+            isChatSending = false; 
+            enableChatInput(); 
+            setTimeout(() => input.focus(), 100); 
+        });
 }
+
+function disableChatInput() { $("#chatInput").prop("disabled", true); $("#btnSendChat").prop("disabled", true); $("#iconSend").addClass("d-none"); $("#spinnerSend").removeClass("d-none"); }
+function enableChatInput() { $("#chatInput").prop("disabled", false); $("#btnSendChat").prop("disabled", false); $("#iconSend").removeClass("d-none"); $("#spinnerSend").addClass("d-none"); }
 
 // Helpers
-function formatDateShort(str) {
-    if(!str) return "No Date";
-    return new Date(str).toLocaleDateString();
-}
-function getFileName(url) {
-    if(!url) return "File";
-    return url.split('/').pop();
-}
+function formatDateShort(str) { return str ? new Date(str).toLocaleDateString() : "-"; }
+function getFileName(url) { return url ? url.split('/').pop() : "File"; }
 function getIconForMime(mime) {
     if (!mime) return '<i class="ri-file-line"></i>';
-    if (mime.includes("video")) return '<i class="ri-movie-line"></i>';
-    if (mime.includes("pdf")) return '<i class="ri-file-pdf-line"></i>';
-    if (mime.includes("image")) return '<i class="ri-image-line"></i>';
-    return '<i class="ri-file-list-2-line"></i>';
+    if (mime.includes("video")) return '<i class="ri-movie-line text-danger"></i>';
+    if (mime.includes("image")) return '<i class="ri-image-2-line text-primary"></i>';
+    return '<i class="ri-file-text-line"></i>';
 }

@@ -110,3 +110,14 @@ def send_chat(
     db: Session = Depends(get_db)
 ):
     return _services.send_chat_message(db, task_id, chat_in.message, current_user)
+
+# app/task/task.py (Add this endpoint)
+
+@router.delete("/content/{content_id}", status_code=status.HTTP_200_OK, tags=["TASK API"])
+def remove_attachment(
+    content_id: int,
+    current_user: _user_models.User = Depends(_user_auth.get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a specific file attachment (Used for editing submissions)."""
+    return _services.delete_content_item(db, content_id, current_user)
