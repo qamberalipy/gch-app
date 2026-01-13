@@ -2,6 +2,7 @@
  * task_assigner.js
  * Heavy-duty frontend logic for Task Assignment.
  * Fixes: Chat Locking, Recursion, Loaders, UI Alignment.
+ * Update: Added View Submission Mode for Completed Tasks.
  */
 
 // --- Global State ---
@@ -11,6 +12,7 @@ let existingAttachments = [];
 let activeChatTaskId = null;
 let currentAssignees = [];
 let isChatSending = false; // Prevents double-send
+let currentReviewTask = null; // For the review modal
 
 $(document).ready(function() {
     loadAssignees();
@@ -45,6 +47,15 @@ $(document).ready(function() {
 
     // 5. Chat Submit
     $("#chatForm").on("submit", sendMessage);
+    
+    // 6. Review Modal Chat Button
+    $("#btnReviewChat").on("click", function() {
+        if(currentReviewTask) {
+            // Hide review modal, open chat modal
+            $("#reviewModal").modal("hide");
+            openChatModal(currentReviewTask.id, currentReviewTask.title);
+        }
+    });
 });
 
 // ==========================================
@@ -110,6 +121,25 @@ function renderTable(tasks) {
         const assigneeName = task.assignee ? (task.assignee.full_name || task.assignee.username) : 'Unknown';
         const assigneePic = task.assignee?.profile_picture_url || `https://ui-avatars.com/api/?name=${assigneeName}&background=random`;
 
+        // Action Buttons Logic
+        let actionButtons = '';
+        
+        if (task.status === 'Completed') {
+            // VIEW + CHAT + DELETE (Edit hidden as work is done)
+            actionButtons = `
+                <i class="ri-eye-line action-icon me-2 text-success" title="Review Submission" onclick="openReviewModal(${task.id})"></i>
+                <i class="ri-message-3-line action-icon me-2 text-primary" title="Chat" onclick="openChatModal(${task.id}, '${task.title}')"></i>
+                <i class="ri-delete-bin-line action-icon delete" title="Delete" onclick="deleteTask(${task.id})"></i>
+            `;
+        } else {
+            // EDIT + CHAT + DELETE
+            actionButtons = `
+                <i class="ri-message-3-line action-icon me-2 text-primary" title="Chat" onclick="openChatModal(${task.id}, '${task.title}')"></i>
+                <i class="ri-pencil-line action-icon me-2" title="Edit" onclick="openEditModal(${task.id})"></i>
+                <i class="ri-delete-bin-line action-icon delete" title="Delete" onclick="deleteTask(${task.id})"></i>
+            `;
+        }
+
         const row = `
             <tr>
                 <td>
@@ -131,9 +161,7 @@ function renderTable(tasks) {
                 <td><span class="badge-status ${badgeClass}">${task.status}</span></td>
                 <td><span class="small text-dark">${formatDate(task.due_date)}</span></td>
                 <td class="text-end">
-                    <i class="ri-message-3-line action-icon me-2 text-primary" title="Chat" onclick="openChatModal(${task.id}, '${task.title}')"></i>
-                    <i class="ri-pencil-line action-icon me-2" title="Edit" onclick="openEditModal(${task.id})"></i>
-                    <i class="ri-delete-bin-line action-icon delete" title="Delete" onclick="deleteTask(${task.id})"></i>
+                    ${actionButtons}
                 </td>
             </tr>
         `;
@@ -165,6 +193,62 @@ function openEditModal(id) {
             hideLoader();
             console.error("Edit Fetch Error:", err); 
             toastr.error("Failed to fetch task details");
+        });
+}
+
+function openReviewModal(id) {
+    showLoader();
+    axios.get(`/api/tasks/${id}`)
+        .then(res => {
+            hideLoader();
+            currentReviewTask = res.data;
+            
+            // Populate Details
+            $("#reviewTaskTitle").text(currentReviewTask.title);
+            $("#reviewAssigneeName").text(currentReviewTask.assignee.full_name || currentReviewTask.assignee.username);
+            
+            // Filter Deliverables: Attachments uploaded by the ASSIGNEE
+            const assigneeId = currentReviewTask.assignee.id;
+            const deliverables = currentReviewTask.attachments.filter(a => a.uploader_id === assigneeId);
+            
+            $("#reviewFileCount").text(`${deliverables.length} Files`);
+            
+            const container = $("#reviewDeliverablesList");
+            container.empty();
+            
+            if (deliverables.length === 0) {
+                $("#reviewEmptyState").removeClass("d-none");
+            } else {
+                $("#reviewEmptyState").addClass("d-none");
+                deliverables.forEach(file => {
+                     const isImg = file.mime_type && file.mime_type.startsWith("image");
+                     const thumb = isImg ? (file.thumbnail_url || file.file_url) : null;
+                     const iconHtml = !thumb ? `<div class="d-flex align-items-center justify-content-center bg-light" style="height:160px; border-radius:8px 8px 0 0; border-bottom:1px solid #eee;">${getIconForMime(file.mime_type)}</div>` : `<img src="${thumb}" class="review-thumb">`;
+
+                     container.append(`
+                        <div class="col-6 col-md-4">
+                            <div class="deliverable-card">
+                                ${iconHtml}
+                                <div class="p-3">
+                                    <div class="small fw-bold text-truncate mb-1" title="${file.tags}">${file.tags || 'File'}</div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-xs text-muted">${file.file_size_mb} MB</span>
+                                        <a href="${file.file_url}" target="_blank" class="btn btn-sm btn-light border" title="Download">
+                                            <i class="ri-download-line"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                     `);
+                });
+            }
+            
+            $("#reviewModal").modal("show");
+        })
+        .catch(err => {
+            hideLoader();
+            toastr.error("Failed to load submission");
         });
 }
 

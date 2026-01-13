@@ -88,6 +88,17 @@
     .action-icon:hover { background-color: #F3F4F6; color: #111; }
     .action-icon.delete:hover { background-color: #FEF2F2; color: #DC2626; }
     
+    /* Review Modal Specifics */
+    .review-thumb {
+        width: 100%; height: 160px; object-fit: cover; border-radius: 8px 8px 0 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .deliverable-card {
+        border: 1px solid #E5E7EB; border-radius: 8px; overflow: hidden;
+        transition: 0.2s; background: white;
+    }
+    .deliverable-card:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+
     /* Chat Styling */
     .chat-modal-body { background: #f3f4f6; padding: 0; }
     .chat-container { height: 400px; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
@@ -136,7 +147,8 @@
             </div>
             <div class="modal-body p-4">
                 <form id="taskForm">
-                    <input type="hidden" id="taskId"> <div class="row g-4 mb-3">
+                    <input type="hidden" id="taskId">
+                    <div class="row g-4 mb-3">
                         <div class="col-md-6">
                             <label class="grail-modal-label">Title <span class="text-danger">*</span></label>
                             <input type="text" class="grail-form-control" id="taskTitle" placeholder="e.g. Upload 5 Summer Reels" required>
@@ -236,6 +248,47 @@
                         <button type="submit" class="btn btn-grail-gold py-2" id="btnSaveTask">Confirm Assignment</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="reviewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header border-bottom px-4 py-3">
+                <div>
+                    <h6 class="fw-bold mb-0">Review Submission</h6>
+                    <span class="small text-muted" id="reviewTaskTitle">-</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <div class="modal-body bg-light p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="text-uppercase text-muted fw-bold small m-0">Submitted Deliverables</h6>
+                    <span class="badge bg-success text-white" id="reviewFileCount">0 Files</span>
+                </div>
+
+                <div class="row g-3" id="reviewDeliverablesList">
+                    </div>
+
+                <div id="reviewEmptyState" class="text-center py-5 d-none">
+                    <i class="ri-ghost-line fs-1 text-muted opacity-50"></i>
+                    <p class="text-muted small mt-2">No files submitted yet.</p>
+                </div>
+            </div>
+
+            <div class="modal-footer bg-white p-3 border-top justify-content-between">
+                <div>
+                    <span class="small text-muted">Submitted by: <strong class="text-dark" id="reviewAssigneeName">-</strong></span>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-dark rounded-pill px-4" id="btnReviewChat">
+                        <i class="ri-chat-1-line me-1"></i> Open Chat
+                    </button>
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+                </div>
             </div>
         </div>
     </div>
