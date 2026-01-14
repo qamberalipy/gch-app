@@ -5,11 +5,10 @@ import app.core.db.session as _database
 
 # --- Updated Enums ---
 class TaskStatus(str, _PyEnum):
-    todo = "To Do"
+    todo = "To Do"       
     blocked = "Blocked"
     completed = "Completed"
     missed = "Missed" 
-    # Removed: 'In Progress', 'In Review'
 
 class TaskPriority(str, _PyEnum):
     low = "Low"
@@ -29,7 +28,7 @@ class ContentStatus(str, _PyEnum):
     rejected = "Rejected"
     archived = "Archived"
 
-# --- Models (No changes to columns needed, just Enums) ---
+# --- Models ---
 class Task(_database.Base):
     __tablename__ = "task"
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
@@ -38,13 +37,14 @@ class Task(_database.Base):
     title = _sql.Column(_sql.String(150), nullable=False)
     description = _sql.Column(_sql.Text, nullable=True)
     
-    # Enum link
-    status = _sql.Column(_sql.Enum(TaskStatus, name="task_status_enum"), default=TaskStatus.todo, nullable=False)
-    priority = _sql.Column(_sql.Enum(TaskPriority, name="task_priority_enum"), default=TaskPriority.medium, nullable=False)
+    status = _sql.Column(_sql.String, default=TaskStatus.todo.value, nullable=False)
+    priority = _sql.Column(_sql.String, default=TaskPriority.medium.value, nullable=False)
     
     due_date = _sql.Column(_sql.DateTime, nullable=True)
     completed_at = _sql.Column(_sql.DateTime, nullable=True)
-    req_content_type = _sql.Column(_sql.Enum(ContentType, name="content_type_enum"), nullable=False, default=ContentType.other)
+    
+    req_content_type = _sql.Column(_sql.String, nullable=False, default=ContentType.other.value)
+    
     req_quantity = _sql.Column(_sql.Integer, default=1, nullable=False)
     req_duration_min = _sql.Column(_sql.Integer, nullable=True)
     req_outfit_tags = _sql.Column(_sql.String(500), nullable=True)
@@ -80,9 +80,12 @@ class ContentVault(_database.Base):
     file_size_mb = _sql.Column(_sql.Float, nullable=True)
     mime_type = _sql.Column(_sql.String(50), nullable=True)
     duration_seconds = _sql.Column(_sql.Integer, nullable=True)
-    content_type = _sql.Column(_sql.Enum(ContentType, name="content_type_enum"), nullable=False)
+    
+    # [PERMANENT FIX] Use String here as well
+    content_type = _sql.Column(_sql.String, nullable=False)
     tags = _sql.Column(_sql.String(255), nullable=True)
-    status = _sql.Column(_sql.Enum(ContentStatus, name="content_status"), default=ContentStatus.pending)
+    status = _sql.Column(_sql.String, default=ContentStatus.pending.value)
+    
     created_at = _sql.Column(_sql.DateTime(timezone=True), server_default=_sql.func.now())
     uploader = relationship("User", foreign_keys=[uploader_id])
     task = relationship("Task", back_populates="attachments")

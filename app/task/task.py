@@ -1,5 +1,5 @@
 # app/task/task.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status,Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -30,14 +30,28 @@ def get_available_creators(
 
 # --- Task CRUD ---
 
-@router.get("/", response_model=List[_schemas.TaskOut], tags=["TASK API"])
+@router.get("/", response_model=_schemas.PaginatedTaskResponse, tags=["TASK API"])
 def list_tasks(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    search: Optional[str] = None,
     status: Optional[str] = None,
+    assignee_id: Optional[int] = Query(None, description="Filter by assignee ID"),
     current_user: _user_models.User = Depends(_user_auth.get_current_user),
     db: Session = Depends(get_db)
 ):
-    """View tasks based on role visibility permissions."""
-    return _services.get_all_tasks(db, current_user, status)
+    """
+    Get all tasks with Pagination, Search, and Filtering.
+    """
+    return _services.get_all_tasks(
+        db=db, 
+        current_user=current_user,
+        page=page, 
+        page_size=page_size, 
+        search=search, 
+        status=status,
+        assignee_id=assignee_id
+    )
 
 @router.post("/", response_model=_schemas.TaskOut, status_code=status.HTTP_201_CREATED, tags=["TASK API"])
 def create_task(

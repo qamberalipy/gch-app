@@ -6,6 +6,7 @@
     .grail-table-card {
         background: #fff; border-radius: 12px; padding: 20px;
         border: 1px solid #f1f1f1; min-height: 400px;
+        display: flex; flex-direction: column;
     }
     .page-title { font-weight: 600; color: #333; margin: 0; font-size: 1.25rem; }
     
@@ -17,11 +18,56 @@
     .btn-grail-gold:hover { background-color: #B08A3D; border-color: #B08A3D; color: white; transform: translateY(-1px); }
     .btn-grail-gold:disabled { background-color: #e0e0e0; border-color: #e0e0e0; color: #999; transform: none; }
 
+    /* Filters */
+   /* --- Modern Input Styling --- */
+.grail-input {
+    background-color: #F8FAFC; /* Very light gray/blue tint */
+    border: 1px solid #E2E8F0;
+    border-radius: 12px; /* Smooth rounded corners */
+    padding: 10px 15px;
+    font-size: 0.9rem;
+    color: #1E293B;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    box-shadow: none;
+    height: 45px; /* Consistent height */
+}
+
+/* Hover State */
+.grail-input:hover {
+    background-color: #fff;
+    border-color: #CBD5E1;
+}
+
+/* Focus State - The "Grail" Touch */
+.grail-input:focus {
+    background-color: #fff;
+    border-color: #C89E47; /* Gold Theme Color */
+    box-shadow: 0 0 0 3px rgba(200, 158, 71, 0.15); /* Soft gold glow */
+    outline: none;
+}
+
+/* Custom Dropdown Arrow */
+select.grail-input {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 15px center;
+    background-size: 12px 12px;
+    cursor: pointer;
+}
+
+/* Placeholder styling */
+.grail-input::placeholder {
+    color: #94A3B8;
+    font-weight: 400;
+}
     /* Table */
     .table-grail { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 0; }
     .table-grail thead th {
         background-color: #EDF9FE; color: #6B7280; font-weight: 600;
         font-size: 0.8rem; text-transform: uppercase; border: none; padding: 12px 15px;
+        white-space: nowrap;
     }
     .table-grail thead th:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
     .table-grail thead th:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
@@ -29,7 +75,16 @@
     
     .user-avatar-small { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; margin-right: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 
-    /* --- Modal Custom Design --- */
+    /* Pagination */
+    .pagination-btn {
+        width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+        border-radius: 50%; border: 1px solid #E5E7EB; background: white; color: #6B7280;
+        cursor: pointer; transition: all 0.2s; font-size: 0.9rem;
+    }
+    .pagination-btn:hover:not(:disabled) { border-color: #C89E47; color: #C89E47; background: #FFFBF0; }
+    .pagination-btn:disabled { background: #F3F4F6; color: #D1D5DB; cursor: not-allowed; border-color: #F3F4F6; }
+
+    /* Modal Styles */
     .grail-modal-label { font-size: 0.85rem; color: #6B7280; font-weight: 600; margin-bottom: 6px; display: block; }
     .grail-form-control {
         background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px;
@@ -78,10 +133,10 @@
     /* Badges */
     .badge-status { padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.3px; }
     .badge-todo { background: #F3F4F6; color: #4B5563; }
-    .badge-in_progress { background: #DBEAFE; color: #1D4ED8; }
-    .badge-review { background: #FEF3C7; color: #D97706; }
     .badge-completed { background: #D1FAE5; color: #059669; }
     .badge-blocked { background: #FEE2E2; color: #DC2626; }
+    /* Added missed style */
+    .badge-missed { background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
 
     /* Actions */
     .action-icon { cursor: pointer; font-size: 1.1rem; padding: 6px; border-radius: 50%; transition: 0.2s; color: #6B7280; }
@@ -105,6 +160,7 @@
     .chat-bubble { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 0.9rem; position: relative; word-wrap: break-word; }
     .chat-bubble.sent { align-self: flex-end; background-color: #C89E47; color: white; border-bottom-right-radius: 2px; }
     .chat-bubble.received { align-self: flex-start; background-color: white; border: 1px solid #e5e7eb; color: #374151; border-bottom-left-radius: 2px; }
+
 </style>
 {% endblock stylesheets %}
 
@@ -117,13 +173,48 @@
         </button>
     </div>
 
-    <div class="border-0 grail-table-card pt-0">
-        <div class="table-responsive">
+    <div class="grail-table-card pt-0">
+        <div class="d-flex flex-wrap gap-3 p-3 align-items-center border-bottom pb-3 mb-3">
+    
+    <div class="position-relative flex-grow-1" style="min-width: 250px;">
+        <i class="ri-search-2-line position-absolute text-muted" style="top: 50%; left: 15px; transform: translateY(-50%); font-size: 1.1rem;"></i>
+        <input type="text" class="form-control grail-input ps-5" id="filterSearch" placeholder="Search by task title, assigner...">
+    </div>
+
+    <div class="d-none d-md-block border-end mx-1" style="height: 25px;"></div>
+
+    <div class="position-relative" style="min-width: 200px;">
+        <i class="ri-user-smile-line position-absolute text-muted" style="top: 50%; left: 15px; transform: translateY(-50%);"></i>
+        <select class="form-select grail-input ps-5" id="filterAssignee">
+            <option value="">All Assignees</option>
+            </select>
+    </div>
+
+    <div class="position-relative" style="min-width: 180px;">
+        <i class="ri-filter-3-line position-absolute text-muted" style="top: 50%; left: 15px; transform: translateY(-50%);"></i>
+        <select class="form-select grail-input ps-5" id="filterStatus">
+            <option value="">All Statuses</option>
+            <option value="To Do">To Do</option>
+            <option value="Completed">Completed</option>
+            <option value="Blocked">Blocked</option>
+            <option value="Missed">Missed</option>
+        </select>
+    </div>
+
+    <button class="btn btn-light rounded-circle border d-flex align-items-center justify-content-center" 
+            style="width: 42px; height: 42px;" 
+            title="Reset Filters" onclick="loadTasks()">
+        <i class="ri-refresh-line text-muted"></i>
+    </button>
+</div>
+
+        <div class="table-responsive flex-grow-1">
             <table class="table table-grail">
                 <thead>
                     <tr>
-                        <th style="width: 35%;">Task</th>
-                        <th>Assignee</th>
+                        <th style="width: 30%;">Task</th>
+                        <th>Assigned To</th>
+                        <th>Assigned By</th>
                         <th>Context</th>
                         <th>Status</th>
                         <th>Due Date</th>
@@ -131,9 +222,17 @@
                     </tr>
                 </thead>
                 <tbody id="taskTableBody">
-                    <tr><td colspan="6" class="text-center py-5"><div class="spinner-border text-warning"></div></td></tr>
+                    <tr><td colspan="7" class="text-center py-5"><div class="spinner-border text-warning"></div></td></tr>
                 </tbody>
             </table>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center border-top pt-3 mt-auto">
+            <span class="text-muted small" id="paginationInfo">Showing 0-0 of 0</span>
+            <div class="d-flex gap-2">
+                <button class="pagination-btn" id="btnPrevPage" disabled><i class="ri-arrow-left-s-line"></i></button>
+                <button class="pagination-btn" id="btnNextPage" disabled><i class="ri-arrow-right-s-line"></i></button>
+            </div>
         </div>
     </div>
 </div>
@@ -270,8 +369,7 @@
                     <span class="badge bg-success text-white" id="reviewFileCount">0 Files</span>
                 </div>
 
-                <div class="row g-3" id="reviewDeliverablesList">
-                    </div>
+                <div class="row g-3" id="reviewDeliverablesList"></div>
 
                 <div id="reviewEmptyState" class="text-center py-5 d-none">
                     <i class="ri-ghost-line fs-1 text-muted opacity-50"></i>
@@ -297,7 +395,6 @@
 <div class="modal fade" id="chatModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
-            
             <div class="modal-header bg-white border-bottom p-3">
                 <div class="d-flex align-items-center">
                     <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3" style="width:38px;height:38px;">
@@ -323,7 +420,6 @@
                 <form id="chatForm" class="d-flex align-items-center gap-2">
                     <input type="text" class="form-control rounded-pill border-0 bg-light py-2 px-3 shadow-none" 
                            id="chatInput" placeholder="Type your message..." required autocomplete="off">
-                    
                     <button type="submit" class="btn btn-grail-gold rounded-circle shadow-sm d-flex align-items-center justify-content-center" 
                             id="btnSendChat" style="width: 42px; height: 42px; min-width: 42px; padding: 0;">
                         <i class="ri-send-plane-fill fs-5" id="iconSend"></i>
@@ -331,7 +427,6 @@
                     </button>
                 </form>
             </div>
-
         </div>
     </div>
 </div>

@@ -1,8 +1,6 @@
 /**
  * task_assigner.js
- * Heavy-duty frontend logic for Task Assignment.
- * Fixes: Chat Locking, Recursion, Loaders, UI Alignment.
- * Update: Added View Submission Mode for Completed Tasks.
+ * Features: Pagination, Filters, "Me" Logic, Chat, CRUD.
  */
 
 // --- Global State ---
@@ -11,8 +9,18 @@ let newAttachments = [];
 let existingAttachments = [];
 let activeChatTaskId = null;
 let currentAssignees = [];
-let isChatSending = false; // Prevents double-send
-let currentReviewTask = null; // For the review modal
+let isChatSending = false;
+let currentReviewTask = null;
+
+// Pagination & Filters State
+let currentPage = 1;
+let pageSize = 10;
+let totalTasks = 0;
+let activeFilters = {
+    search: '',
+    status: '',
+    assignee_id: ''
+};
 
 $(document).ready(function() {
     loadAssignees();
@@ -51,22 +59,47 @@ $(document).ready(function() {
     // 6. Review Modal Chat Button
     $("#btnReviewChat").on("click", function() {
         if(currentReviewTask) {
-            // Hide review modal, open chat modal
             $("#reviewModal").modal("hide");
             openChatModal(currentReviewTask.id, currentReviewTask.title);
         }
     });
-});
 
-// ==========================================
-// 0. LOADER HELPERS
-// ==========================================
-function showLoader() {
-    if ($("#loader").length) $("#loader").show();
-}
-function hideLoader() {
-    if ($("#loader").length) $("#loader").hide();
-}
+    // 6. Filters & Search
+    $("#filterStatus").on("change", function() {
+        activeFilters.status = $(this).val();
+        currentPage = 1; // Reset to page 1 on filter change
+        loadTasks();
+    });
+    
+    $("#filterAssignee").on("change", function() {
+        activeFilters.assignee_id = $(this).val();
+        currentPage = 1;
+        loadTasks();
+    });
+
+    $("#filterSearch").on("keypress", function(e) {
+        if(e.which === 13) { // Enter key
+            activeFilters.search = $(this).val();
+            currentPage = 1;
+            loadTasks();
+        }
+    });
+
+    // 7. Pagination Buttons
+    $("#btnPrevPage").on("click", function() {
+        if (currentPage > 1) {
+            currentPage--;
+            loadTasks();
+        }
+    });
+    $("#btnNextPage").on("click", function() {
+        const maxPages = Math.ceil(totalTasks / pageSize);
+        if (currentPage < maxPages) {
+            currentPage++;
+            loadTasks();
+        }
+    });
+});
 
 // ==========================================
 // 1. DATA LOADING
@@ -76,15 +109,23 @@ function loadAssignees() {
     axios.get('/api/tasks/assignees')
         .then(res => {
             currentAssignees = res.data;
-            const select = $("#assigneeSelect");
-            select.empty().append('<option value="" disabled selected>Select Creator...</option>');
             
+            // Populate Modal Dropdown
+            const modalSelect = $("#assigneeSelect");
+            modalSelect.empty().append('<option value="" disabled selected>Select Creator...</option>');
+            
+            // Populate Filter Dropdown
+            const filterSelect = $("#filterAssignee");
+            filterSelect.empty().append('<option value="">All Assignees</option>');
+
             if (currentAssignees.length === 0) {
-                select.append('<option disabled>No creators found in your team</option>');
+                modalSelect.append('<option disabled>No creators found</option>');
             }
             
             currentAssignees.forEach(u => {
-                select.append(`<option value="${u.id}">${u.full_name || u.username}</option>`);
+                const name = u.full_name || u.username;
+                modalSelect.append(`<option value="${u.id}">${name}</option>`);
+                filterSelect.append(`<option value="${u.id}">${name}</option>`);
             });
         })
         .catch(err => console.error("Assignees Error:", err));
@@ -92,14 +133,48 @@ function loadAssignees() {
 
 function loadTasks() {
     const tbody = $("#taskTableBody");
-    axios.get('/api/tasks/')
+    tbody.html(`<tr><td colspan="7" class="text-center py-5"><div class="spinner-border text-warning"></div></td></tr>`);
+    
+    // Construct Query Params
+    const params = {
+        page: currentPage,
+        page_size: pageSize
+    };
+    if (activeFilters.search) params.search = activeFilters.search;
+    if (activeFilters.status) params.status = activeFilters.status;
+    if (activeFilters.assignee_id) params.assignee_id = activeFilters.assignee_id;
+
+    axios.get('/api/tasks/', { params: params })
         .then(res => {
-            renderTable(res.data);
+            if (res.data.tasks) {
+                totalTasks = res.data.total;
+                renderTable(res.data.tasks);
+                updatePaginationUI();
+            } else {
+                renderTable(res.data);
+                $("#paginationInfo").text("Showing All");
+            }
         })
         .catch(err => {
             console.error("Load Tasks Error:", err);
-            tbody.html(`<tr><td colspan="6" class="text-center text-danger py-4">Failed to load tasks.</td></tr>`);
+            tbody.html(`<tr><td colspan="7" class="text-center text-danger py-4">Failed to load tasks.</td></tr>`);
         });
+}
+
+function updatePaginationUI() {
+    const maxPages = Math.ceil(totalTasks / pageSize) || 1;
+    const start = (currentPage - 1) * pageSize + 1;
+    let end = currentPage * pageSize;
+    if (end > totalTasks) end = totalTasks;
+    
+    if (totalTasks === 0) {
+        $("#paginationInfo").text("No records found");
+    } else {
+        $("#paginationInfo").text(`Showing ${start}-${end} of ${totalTasks}`);
+    }
+
+    $("#btnPrevPage").prop("disabled", currentPage === 1);
+    $("#btnNextPage").prop("disabled", currentPage >= maxPages || totalTasks === 0);
 }
 
 function renderTable(tasks) {
@@ -107,34 +182,42 @@ function renderTable(tasks) {
     tbody.empty();
 
     if (tasks.length === 0) {
-        tbody.html(`<tr><td colspan="6" class="text-center text-muted py-5">No assignments found.</td></tr>`);
+        tbody.html(`<tr><td colspan="7" class="text-center text-muted py-5">No tasks match your criteria.</td></tr>`);
         return;
     }
 
     tasks.forEach(task => {
+        // --- BADGE LOGIC UPDATED ---
         let badgeClass = 'badge-todo';
-        if (task.status === 'In Progress') badgeClass = 'badge-in_progress';
-        if (task.status === 'In Review') badgeClass = 'badge-review';
+        // Matches new Enum: 'To Do', 'Completed', 'Blocked', 'Missed'
         if (task.status === 'Completed') badgeClass = 'badge-completed';
         if (task.status === 'Blocked') badgeClass = 'badge-blocked';
+        if (task.status === 'Missed') badgeClass = 'badge-missed'; // Requires .badge-missed CSS
 
         const assigneeName = task.assignee ? (task.assignee.full_name || task.assignee.username) : 'Unknown';
         const assigneePic = task.assignee?.profile_picture_url || `https://ui-avatars.com/api/?name=${assigneeName}&background=random`;
 
+        // --- Assigned By Logic ---
+        let assignerDisplay = task.assigner ? (task.assigner.full_name || task.assigner.username) : 'Unknown';
+        let assignerRole = task.assigner ? task.assigner.role : '';
+        
+        if (task.is_created_by_me) {
+            assignerDisplay = `<span class="fw-bold text-dark">Me</span>`;
+        } else {
+            assignerDisplay = `<span class="fw-bold text-dark">${assignerDisplay}</span>`;
+        }
+
         // Action Buttons Logic
         let actionButtons = '';
-        
         if (task.status === 'Completed') {
-            // VIEW + CHAT + DELETE (Edit hidden as work is done)
             actionButtons = `
-                <i class="ri-eye-line action-icon me-2 text-success" title="Review Submission" onclick="openReviewModal(${task.id})"></i>
-                <i class="ri-message-3-line action-icon me-2 text-primary" title="Chat" onclick="openChatModal(${task.id}, '${task.title}')"></i>
+                <i class="ri-eye-line action-icon me-2 text-success" title="Review" onclick="openReviewModal(${task.id})"></i>
+                <i class="ri-message-3-line action-icon me-2 text-primary" title="Chat (${task.chat_count})" onclick="openChatModal(${task.id}, '${task.title}')"></i>
                 <i class="ri-delete-bin-line action-icon delete" title="Delete" onclick="deleteTask(${task.id})"></i>
             `;
         } else {
-            // EDIT + CHAT + DELETE
             actionButtons = `
-                <i class="ri-message-3-line action-icon me-2 text-primary" title="Chat" onclick="openChatModal(${task.id}, '${task.title}')"></i>
+                <i class="ri-message-3-line action-icon me-2 text-primary" title="Chat (${task.chat_count})" onclick="openChatModal(${task.id}, '${task.title}')"></i>
                 <i class="ri-pencil-line action-icon me-2" title="Edit" onclick="openEditModal(${task.id})"></i>
                 <i class="ri-delete-bin-line action-icon delete" title="Delete" onclick="deleteTask(${task.id})"></i>
             `;
@@ -144,10 +227,10 @@ function renderTable(tasks) {
             <tr>
                 <td>
                     <div class="d-flex flex-column">
-                        <span class="fw-bold text-dark">${task.title}</span>
+                        <span class="fw-bold text-dark text-truncate" style="max-width: 200px;">${task.title}</span>
                         <div class="d-flex gap-2 mt-1">
-                            <span class="badge bg-light text-dark border fw-normal">${task.req_content_type}</span>
-                            <span class="text-xs text-muted"><i class="ri-attachment-line"></i> ${task.attachments.length}</span>
+                            <span class="badge bg-light text-dark border fw-normal" style="font-size:0.7rem;">${task.req_content_type}</span>
+                            <span class="text-xs text-muted"><i class="ri-attachment-line"></i> ${task.attachments_count || 0}</span>
                         </div>
                     </div>
                 </td>
@@ -155,6 +238,12 @@ function renderTable(tasks) {
                     <div class="d-flex align-items-center">
                         <img src="${assigneePic}" class="user-avatar-small" alt="u">
                         <span class="small fw-medium text-dark">${assigneeName}</span>
+                    </div>
+                </td>
+                <td>
+                    <div class="d-flex flex-column">
+                        ${assignerDisplay}
+                        <span class="text-xs text-muted" style="font-size: 0.75rem;">${assignerRole}</span>
                     </div>
                 </td>
                 <td><span class="small text-muted">${task.context}</span></td>
@@ -170,7 +259,7 @@ function renderTable(tasks) {
 }
 
 // ==========================================
-// 2. FORM & MODAL LOGIC
+// 2. MODAL & FORM LOGIC
 // ==========================================
 
 function openCreateTaskModal() {
@@ -182,37 +271,34 @@ function openCreateTaskModal() {
 }
 
 function openEditModal(id) {
-    showLoader();
+    if ($("#loader").length) $("#loader").show();
     axios.get(`/api/tasks/${id}`)
         .then(res => {
-            hideLoader();
+            if ($("#loader").length) $("#loader").hide();
             populateForm(res.data);
             $("#taskModal").modal("show");
         })
         .catch(err => {
-            hideLoader();
-            console.error("Edit Fetch Error:", err); 
+            if ($("#loader").length) $("#loader").hide();
             toastr.error("Failed to fetch task details");
         });
 }
 
 function openReviewModal(id) {
-    showLoader();
+    if ($("#loader").length) $("#loader").show();
     axios.get(`/api/tasks/${id}`)
         .then(res => {
-            hideLoader();
+            if ($("#loader").length) $("#loader").hide();
             currentReviewTask = res.data;
             
-            // Populate Details
             $("#reviewTaskTitle").text(currentReviewTask.title);
             $("#reviewAssigneeName").text(currentReviewTask.assignee.full_name || currentReviewTask.assignee.username);
             
-            // Filter Deliverables: Attachments uploaded by the ASSIGNEE
+            // Filter: Only show files uploaded by Assignee (the creator)
             const assigneeId = currentReviewTask.assignee.id;
             const deliverables = currentReviewTask.attachments.filter(a => a.uploader_id === assigneeId);
             
             $("#reviewFileCount").text(`${deliverables.length} Files`);
-            
             const container = $("#reviewDeliverablesList");
             container.empty();
             
@@ -243,11 +329,10 @@ function openReviewModal(id) {
                      `);
                 });
             }
-            
             $("#reviewModal").modal("show");
         })
         .catch(err => {
-            hideLoader();
+            if ($("#loader").length) $("#loader").hide();
             toastr.error("Failed to load submission");
         });
 }
@@ -269,7 +354,6 @@ function resetForm() {
 
 function populateForm(task) {
     resetForm();
-    
     $("#taskId").val(task.id);
     $("#taskTitle").val(task.title);
     
@@ -313,22 +397,18 @@ function populateForm(task) {
 // ==========================================
 // 3. TAGS & ATTACHMENTS
 // ==========================================
-
 function handleTagInput(e) {
     if (e.key === "Enter") {
         e.preventDefault();
         const val = $(this).val().trim();
         if (val && !taskTags.includes(val)) {
-            taskTags.push(val);
-            renderTags();
+            taskTags.push(val); renderTags();
         }
         $(this).val("");
     } else if (e.key === "Backspace" && $(this).val() === "") {
-        taskTags.pop();
-        renderTags();
+        taskTags.pop(); renderTags();
     }
 }
-
 function renderTags() {
     $(".tag-chip").remove();
     taskTags.forEach((tag, index) => {
@@ -340,7 +420,6 @@ function removeTag(index) { taskTags.splice(index, 1); renderTags(); }
 async function handleFileUpload(e) {
     const files = e.target.files;
     if (!files.length) return;
-
     $("#uploadText").addClass("d-none");
     $("#uploadSpinner").removeClass("d-none");
 
@@ -350,25 +429,15 @@ async function handleFileUpload(e) {
             const formData = new FormData();
             formData.append("file", file);
             formData.append("type_group", "image"); 
-
-            const res = await axios.post('/api/upload/small-file', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-
+            const res = await axios.post('/api/upload/small-file', formData, { headers: { 'Content-Type': 'multipart/form-data' }});
             if (res.data.status === 'success') {
                 let finalThumb = file.type.startsWith("image") ? res.data.url : thumbData;
                 newAttachments.push({
-                    file_url: res.data.url,
-                    thumbnail_url: finalThumb, 
-                    file_size_mb: (file.size / (1024*1024)).toFixed(2),
-                    mime_type: file.type,
-                    tags: file.name
+                    file_url: res.data.url, thumbnail_url: finalThumb, 
+                    file_size_mb: (file.size / (1024*1024)).toFixed(2), mime_type: file.type, tags: file.name
                 });
             }
-        } catch (err) {
-            console.error(err);
-            toastr.error(`Failed to upload ${file.name}`);
-        }
+        } catch (err) { toastr.error(`Failed to upload ${file.name}`); }
     }
     $("#uploadText").removeClass("d-none");
     $("#uploadSpinner").addClass("d-none");
@@ -379,7 +448,6 @@ async function handleFileUpload(e) {
 function renderAllAttachments() {
     const container = $("#filePreviewList");
     container.empty();
-
     existingAttachments.forEach(file => {
         const icon = getIconForMime(file.mime_type);
         const thumb = (file.mime_type && file.mime_type.startsWith("image")) ? file.file_url : icon;
@@ -388,13 +456,10 @@ function renderAllAttachments() {
                 ${(file.mime_type && file.mime_type.startsWith("image")) ? `<img src="${thumb}" class="preview-thumb">` : `<div class="preview-icon">${icon}</div>`}
                 <div class="flex-grow-1 overflow-hidden">
                     <div class="small fw-bold text-truncate">Existing File</div>
-                    <div class="text-xs text-muted"><a href="${file.file_url}" target="_blank" class="text-decoration-none">View File</a></div>
+                    <div class="text-xs text-muted"><a href="${file.file_url}" target="_blank" class="text-decoration-none">View</a></div>
                 </div>
-                <span class="badge bg-white text-muted border">Saved</span>
-            </div>
-        `);
+            </div>`);
     });
-
     newAttachments.forEach((file, index) => {
         const icon = getIconForMime(file.mime_type);
         const thumb = file.mime_type.startsWith("image") ? file.thumbnail_url : icon;
@@ -406,8 +471,7 @@ function renderAllAttachments() {
                     <div class="text-xs text-muted">${file.file_size_mb} MB</div>
                 </div>
                 <i class="ri-close-circle-fill text-danger fs-5" style="cursor:pointer" onclick="removeNewAttachment(${index})"></i>
-            </div>
-        `);
+            </div>`);
     });
 }
 function removeNewAttachment(index) { newAttachments.splice(index, 1); renderAllAttachments(); }
@@ -444,7 +508,7 @@ function getIconForMime(mime) {
 }
 
 // ==========================================
-// 4. SUBMIT TASK
+// 4. CRUD ACTIONS
 // ==========================================
 
 function handleTaskSubmit(e) {
@@ -476,7 +540,7 @@ function handleTaskSubmit(e) {
 
     let promise;
     if (isEdit) {
-        if (newAttachments.length > 0) toastr.info("New files are not added in Edit mode. Use Chat.");
+        if (newAttachments.length > 0) toastr.info("New files ignored in Edit. Use Chat.");
         promise = axios.put(`/api/tasks/${taskId}`, payload);
     } else {
         payload.attachments = newAttachments;
@@ -485,7 +549,7 @@ function handleTaskSubmit(e) {
 
     promise
         .then(() => {
-            toastr.success(isEdit ? "Task Updated!" : "Task Created!");
+            toastr.success(isEdit ? "Task Updated" : "Task Created");
             $("#taskModal").modal("hide");
             loadTasks();
         })
@@ -511,13 +575,13 @@ function formatDate(d) {
 }
 
 // ==========================================
-// 5. CHAT (IMPROVED)
+// 5. CHAT
 // ==========================================
 
 function openChatModal(id, title) {
     activeChatTaskId = id;
     $("#chatTaskTitle").text(title);
-    $("#chatContainer").html('<div class="text-center py-5"><div class="spinner-border text-secondary spinner-border-sm"></div><p class="text-muted small mt-2">Loading history...</p></div>');
+    $("#chatContainer").html('<div class="text-center py-5"><div class="spinner-border text-secondary spinner-border-sm"></div></div>');
     $("#chatModal").modal("show");
     enableChatInput();
     loadChat();
@@ -538,13 +602,7 @@ function loadChat() {
 
             res.data.forEach(msg => {
                 if (msg.is_system_log) {
-                    container.append(`
-                        <div class="text-center my-3">
-                            <span class="badge bg-light text-muted fw-normal border px-3 py-1 rounded-pill" style="font-size: 0.7rem;">
-                                ${msg.message} &bull; ${formatTimeShort(msg.created_at)}
-                            </span>
-                        </div>
-                    `);
+                    container.append(`<div class="text-center my-3"><span class="badge bg-light text-muted fw-normal border px-3 py-1 rounded-pill" style="font-size: 0.7rem;">${msg.message} &bull; ${formatTimeShort(msg.created_at)}</span></div>`);
                 } else {
                     const isMe = msg.author.id === myId;
                     container.append(`
@@ -565,42 +623,16 @@ function sendMessage(e) {
     e.preventDefault();
     const input = $("#chatInput");
     const txt = input.val().trim();
-    
-    if (!txt) return; 
-    if (isChatSending) return; // Block double-send
+    if (!txt || isChatSending) return;
 
     isChatSending = true;
     disableChatInput();
-
     axios.post(`/api/tasks/${activeChatTaskId}/chat`, { message: txt })
-        .then(() => {
-            input.val(""); 
-            loadChat();    
-        })
-        .catch(err => {
-            toastr.error("Failed to send message.");
-            console.error(err);
-        })
-        .finally(() => {
-            isChatSending = false;
-            enableChatInput();
-            setTimeout(() => input.focus(), 100); 
-        });
+        .then(() => { input.val(""); loadChat(); })
+        .catch(err => { toastr.error("Failed to send"); console.error(err); })
+        .finally(() => { isChatSending = false; enableChatInput(); setTimeout(() => input.focus(), 100); });
 }
 
-function disableChatInput() {
-    $("#chatInput").prop("disabled", true);
-    $("#btnSendChat").prop("disabled", true);
-    $("#iconSend").addClass("d-none");
-    $("#spinnerSend").removeClass("d-none");
-}
-function enableChatInput() {
-    $("#chatInput").prop("disabled", false);
-    $("#btnSendChat").prop("disabled", false);
-    $("#iconSend").removeClass("d-none");
-    $("#spinnerSend").addClass("d-none");
-}
-function formatTimeShort(dateStr) {
-    if (!dateStr) return '';
-    return new Date(dateStr).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-}
+function disableChatInput() { $("#chatInput").prop("disabled", true); $("#btnSendChat").prop("disabled", true); $("#iconSend").addClass("d-none"); $("#spinnerSend").removeClass("d-none"); }
+function enableChatInput() { $("#chatInput").prop("disabled", false); $("#btnSendChat").prop("disabled", false); $("#iconSend").removeClass("d-none"); $("#spinnerSend").addClass("d-none"); }
+function formatTimeShort(dateStr) { if (!dateStr) return ''; return new Date(dateStr).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); }

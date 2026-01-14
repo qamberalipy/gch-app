@@ -1,6 +1,8 @@
 from typing import Optional, List, Union
 from pydantic import BaseModel, Field, validator
 from datetime import datetime
+# We keep these imports for TaskCreate validation if you want, 
+# but for OUTPUT (TaskOut), we will use str to avoid validation errors.
 from app.task.models import TaskStatus, TaskPriority, ContentType, ContentStatus
 
 # --- Helpers ---
@@ -40,29 +42,28 @@ class VaultItemOut(BaseModel):
     uploader_id: int
     file_url: str
     thumbnail_url: Optional[str]
-    status: ContentStatus
+    # [FIX] Changed from ContentStatus enum to str to accept database text
+    status: str 
     created_at: datetime
     class Config:
         orm_mode = True
 
-# --- Task Actions ---
+# --- Task Schemas ---
 class TaskCreate(BaseModel):
-    title: str = Field(..., min_length=3)
+    title: str
     description: Optional[str] = None
     assignee_id: int
+    # Input can still try to use Enums for validation, or switch to str
     status: TaskStatus = TaskStatus.todo
     priority: TaskPriority = TaskPriority.medium
     due_date: Optional[datetime] = None
-    
-    # Specs
     req_content_type: ContentType
     req_quantity: int = 1
     req_duration_min: Optional[int] = 0
-    req_outfit_tags: Optional[List[str]] = [] # Frontend sends array, we convert to CSV
+    req_outfit_tags: Optional[List[str]] = []
     req_face_visible: bool = True
     req_watermark: bool = False
     context: str = "General"
-
     attachments: List[VaultItemCreate] = []
 
     @validator('req_outfit_tags', pre=True)
@@ -77,29 +78,31 @@ class TaskUpdate(BaseModel):
     status: Optional[TaskStatus] = None
     priority: Optional[TaskPriority] = None
     due_date: Optional[datetime] = None
-    
-    # Specs updates
     req_quantity: Optional[int] = None
     req_duration_min: Optional[int] = None
     req_outfit_tags: Optional[List[str]] = None
 
 class TaskSubmission(BaseModel):
-    deliverables: List[VaultItemCreate] = Field(..., min_items=1)
-    comment: Optional[str] = None 
+    deliverables: List[VaultItemCreate]
 
 class TaskOut(BaseModel):
     id: int
     title: str
     description: Optional[str]
-    status: TaskStatus
-    priority: TaskPriority
+    
+    # [FIX] Changed all Enums to str to prevent ResponseValidationError
+    status: str
+    priority: str
+    
     due_date: Optional[datetime]
     created_at: datetime
     
-    req_content_type: ContentType
+    # [FIX] Changed Enum to str
+    req_content_type: str
+    
     req_quantity: int
     req_duration_min: Optional[int]
-    req_outfit_tags: Optional[str] # Returns as CSV string
+    req_outfit_tags: Optional[str]
     req_face_visible: bool
     req_watermark: bool
     context: str
@@ -108,7 +111,17 @@ class TaskOut(BaseModel):
     assignee: UserMinimal
     
     chat_count: int = 0 
+    attachments_count: int = 0
+    is_created_by_me: bool = False
+    
     attachments: List[VaultItemOut] = []
 
     class Config:
         orm_mode = True
+
+# --- Pagination Response ---
+class PaginatedTaskResponse(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    tasks: List[TaskOut]
