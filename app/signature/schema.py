@@ -36,8 +36,6 @@ class SignatureOut(BaseModel):
     title: str
     description: Optional[str]
     document_url: str
-    
-    # Use str to match SQLAlchemy Enums safely
     status: str
     
     deadline: Optional[datetime]
@@ -46,7 +44,8 @@ class SignatureOut(BaseModel):
     signer_ip_address: Optional[str]
 
     created_at: datetime
-    updated_at: datetime
+
+    updated_at: Optional[datetime] 
 
     requester: UserMinimal
     signer: UserMinimal
