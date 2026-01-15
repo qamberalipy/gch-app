@@ -137,8 +137,8 @@ function loadTasks() {
     
     // Construct Query Params
     const params = {
-        page: currentPage,
-        page_size: pageSize
+        skip: currentPage,
+        limit: pageSize
     };
     if (activeFilters.search) params.search = activeFilters.search;
     if (activeFilters.status) params.status = activeFilters.status;

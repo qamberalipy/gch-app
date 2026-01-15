@@ -122,6 +122,6 @@ class TaskOut(BaseModel):
 # --- Pagination Response ---
 class PaginatedTaskResponse(BaseModel):
     total: int
-    page: int
-    page_size: int
+    skip: int
+    limit: int
     tasks: List[TaskOut]

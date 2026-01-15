@@ -195,8 +195,8 @@ def submit_task_work(db: Session, task_id: int, submission: _schemas.TaskSubmiss
 def get_all_tasks(
     db: Session, 
     current_user: _user_models.User, 
-    page: int = 1,
-    page_size: int = 10,
+    skip: int = 1,
+    limit: int = 10,
     search: Optional[str] = None,
     status: Optional[str] = None,
     assignee_id: Optional[int] = None
@@ -221,7 +221,7 @@ def get_all_tasks(
             if current_user.assigned_model_id:
                 query = query.filter(_models.Task.assignee_id == current_user.assigned_model_id)
             else:
-                return {"total": 0, "page": page, "page_size": page_size, "tasks": []}
+                return {"total": 0, "skip": skip, "limit": limit, "tasks": []}
 
         # [SAFE] Compare strings. 
         # Since 'status' in DB is string "To Do", and input 'status' is string "To Do", this works.
@@ -242,11 +242,11 @@ def get_all_tasks(
             )
 
         total_records = query.count()
-        offset = (page - 1) * page_size
+        offset = (skip - 1) * limit
         
         tasks = query.order_by(desc(_models.Task.created_at))\
                     .offset(offset)\
-                    .limit(page_size)\
+                    .limit(limit)\
                     .all()
 
         for task in tasks:
@@ -256,8 +256,8 @@ def get_all_tasks(
 
         return {
             "total": total_records,
-            "page": page,
-            "page_size": page_size,
+            "skip": skip,
+            "limit": limit,
             "tasks": tasks
         }
     except SQLAlchemyError as e:
