@@ -74,8 +74,8 @@ function loadMyTasks() {
     grid.html('<div class="col-12 text-center py-5"><div class="spinner-border text-warning"></div></div>');
     
     const params = {
-        page: currentPage,
-        page_size: pageSize
+        skip: currentPage,
+        Limit: pageSize
     };
     if (activeFilters.status) params.status = activeFilters.status;
     if (activeFilters.search) params.search = activeFilters.search;

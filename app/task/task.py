@@ -32,8 +32,8 @@ def get_available_creators(
 
 @router.get("/", response_model=_schemas.PaginatedTaskResponse, tags=["TASK API"])
 def list_tasks(
-    page: int = Query(1, ge=1),
-    page_size: int = Query(10, ge=1, le=100),
+    skip: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
     search: Optional[str] = None,
     status: Optional[str] = None,
     assignee_id: Optional[int] = Query(None, description="Filter by assignee ID"),
@@ -46,8 +46,8 @@ def list_tasks(
     return _services.get_all_tasks(
         db=db, 
         current_user=current_user,
-        page=page, 
-        page_size=page_size, 
+        skip=skip, 
+        limit=limit, 
         search=search, 
         status=status,
         assignee_id=assignee_id

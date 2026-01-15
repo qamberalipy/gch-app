@@ -26,6 +26,7 @@ from app.core.db.session import Base
 # If you create new model files later, add them here!
 import app.user.models 
 import app.task.models
+import app.signature.models
 # import app.order.models  <-- Example for future modules
 
 # ------------------------------------------------------------------------
