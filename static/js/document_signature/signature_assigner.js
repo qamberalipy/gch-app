@@ -1,6 +1,6 @@
 /**
  * signature_assigner.js
- * Handles Signatures, Editing, and "Assigned By" Logic
+ * Handles Signatures, Editing (with Doc Update), and "Assigned By" Logic
  */
 
 let currentPage = 0;
@@ -36,8 +36,8 @@ $(document).ready(function() {
 // ==========================================
 
 function triggerFileUpload() {
-    // Prevent upload click in Edit Mode (if button is disabled via CSS/JS)
-    if ($("#uploadState").hasClass("disabled-mode")) return;
+    // Prevent upload click only if specifically disabled (e.g., during upload)
+    if ($("#uploadState").hasClass("disabled")) return;
     $("#hiddenFileInput").click();
 }
 
@@ -153,7 +153,7 @@ function removeDocument() {
     $("#reqDocUrl").val("");
     $("#hiddenFileInput").val("");
     $("#previewState").addClass("d-none");
-    $("#uploadState").removeClass("d-none").removeClass("disabled-mode");
+    $("#uploadState").removeClass("d-none").removeClass("disabled");
     $("#uploadSpinner").addClass("d-none");
 }
 
@@ -181,8 +181,10 @@ function resetForm() {
     
     // Enable Signer & Upload
     $("#reqSigner").prop("disabled", false);
+    
+    // Reset Upload UI
     $("#btnRemoveDoc").show();
-    $("#uploadState").removeClass("disabled-mode");
+    $("#uploadState").removeClass("disabled");
     
     removeDocument(); 
 }
@@ -195,7 +197,6 @@ function openCreateModal() {
 function openEditModal(id) {
     resetForm();
     
-    // Show Loading or similar if needed, but usually fast enough
     axios.get(`/api/signature/${id}`)
         .then(res => {
             const data = res.data;
@@ -207,7 +208,6 @@ function openEditModal(id) {
             $("#reqSigner").val(data.signer.id).prop("disabled", true); // Disable Signer change
             
             if (data.deadline) {
-                // Format datetime for input (YYYY-MM-DDTHH:MM)
                 const d = new Date(data.deadline);
                 d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
                 $("#reqDeadline").val(d.toISOString().slice(0, 16));
@@ -216,23 +216,21 @@ function openEditModal(id) {
             // Handle Document
             $("#reqDocUrl").val(data.document_url);
 
-            // --- FIX: Detect Correct File Type from URL ---
+            // Detect File Type
             const url = data.document_url;
-            // Extract filename from URL (removes query params if any)
             const filename = url.substring(url.lastIndexOf('/') + 1).split('?')[0] || "document.file";
             const ext = filename.split('.').pop().toLowerCase();
 
-            // Guess generic mime type based on extension
             let mime = "application/octet-stream";
             if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) mime = "image/jpeg";
             else if (ext === 'pdf') mime = "application/pdf";
             else if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-            // ----------------------------------------------
 
             renderPreview(url, mime, filename);
 
-            $("#btnRemoveDoc").hide(); // Cannot remove doc in edit mode
-            $("#uploadState").addClass("disabled-mode"); // Prevent upload click
+            // --- CHANGED: Allow removing/updating document ---
+            $("#btnRemoveDoc").show(); // Show remove button
+            // Removed: $("#uploadState").addClass("disabled-mode"); 
 
             // UI Changes for Edit Mode
             $("#modalTitle").text("Edit Request");
@@ -254,12 +252,12 @@ function handleCreateRequest(e) {
     const payload = {
         title: $("#reqTitle").val(),
         description: $("#reqDesc").val(),
+        document_url: docUrl, // --- CHANGED: Send document_url in both Create and Edit
         deadline: $("#reqDeadline").val() ? new Date($("#reqDeadline").val()).toISOString() : null
     };
 
     // Add Create-only fields
     if (!isEdit) {
-        payload.document_url = docUrl;
         payload.signer_id = parseInt($("#reqSigner").val());
     }
 
@@ -322,12 +320,10 @@ function renderTable(requests) {
         if (req.status === 'Signed') badgeClass = 'badge-signed';
         else if (req.status === 'Expired' || req.status === 'Declined') badgeClass = 'badge-expired';
 
-        // Permissions
         const isSigner = (req.signer.id === currentUserId);
         const isRequester = (req.requester.id === currentUserId);
         const isAdmin = currentUserRole === 'admin';
 
-        // --- ASSIGNED BY LOGIC ---
         let assignedByHtml = '';
         if (isRequester) {
             assignedByHtml = `<span class="fw-bold text-dark bg-light px-2 py-1 rounded small">Me</span>`;
@@ -336,30 +332,28 @@ function renderTable(requests) {
             assignedByHtml = `<span class="small text-muted">${requesterName}</span>`;
         }
 
-        // Actions
         let actionButtons = '';
         
-        // 1. View (Smart Link: Use MS Viewer for docs)
+        // 1. View
         const ext = req.document_url.split('.').pop().toLowerCase();
         let viewUrl = req.document_url;
-        // Use Viewer for Office files to avoid "Download Only"
         if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) {
             viewUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(req.document_url)}`;
         }
 
         actionButtons += `<a href="${viewUrl}" target="_blank" class="ri-eye-line action-icon me-2" title="View Document"></a>`;
         
-        // 2. Edit (Requester/Admin + Pending)
+        // 2. Edit
         if ((isRequester || isAdmin) && req.status === 'Pending') {
             actionButtons += `<i class="ri-pencil-line action-icon me-2" title="Edit Request" onclick="openEditModal(${req.id})"></i>`;
         }
 
-        // 3. Sign (Signer + Pending)
+        // 3. Sign
         if (isSigner && req.status === 'Pending') {
             actionButtons += `<i class="ri-pen-nib-line action-icon me-2 text-warning" title="Sign Now" onclick="openSignModal(${req.id}, '${req.title}', '${req.document_url}')"></i>`;
         }
 
-        // 4. Delete (Requester/Admin + Not Signed)
+        // 4. Delete
         if ((isRequester || isAdmin) && req.status !== 'Signed') {
             actionButtons += `<i class="ri-delete-bin-line action-icon delete" title="Delete" onclick="deleteRequest(${req.id})"></i>`;
         }
@@ -399,7 +393,6 @@ function openSignModal(id, title, url) {
     $("#signRequestId").val(id);
     $("#signDocTitle").text(title);
     
-    // Use Viewer for Sign Modal too
     const ext = url.split('.').pop().toLowerCase();
     let viewUrl = url;
     if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) {

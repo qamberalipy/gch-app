@@ -30,7 +30,7 @@ async def signature_assigner(request: Request):
     return templates.TemplateResponse("document_signature/signature_assigner.html", context) 
 
 
-@signature_views.get("/signature_submission")
+@signature_views.get("/signature_signer")
 async def signature_submission(request: Request):
     context = get_template_context(request)
-    return templates.TemplateResponse("signature_management/signature_submission.html", context) 
+    return templates.TemplateResponse("document_signature/signature_signer.html", context) 

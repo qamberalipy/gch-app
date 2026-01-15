@@ -26,6 +26,7 @@ class SignatureCreate(BaseModel):
 class SignatureUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
+    document_url: Optional[str] = None
     deadline: Optional[datetime] = None
 
 class SignatureSign(BaseModel):
