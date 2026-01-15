@@ -89,7 +89,6 @@ function renderPreview(url, mime, filename) {
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
     // --- A. PDF (Native Browser Viewer) ---
-    // PDFs work fine locally because the browser renders them, not an external server.
     if (mime.includes("pdf") || ext === 'pdf') {
         container.html(`
             <object data="${url}" type="application/pdf" class="preview-iframe" style="background:#525659; width:100%; height:100%; border-radius: 8px;">
@@ -117,7 +116,6 @@ function renderPreview(url, mime, filename) {
                         <i class="ri-alert-line me-1"></i>
                         <strong>Localhost Detected:</strong><br>
                         Microsoft Viewer cannot preview files on your local computer.
-                        It will work automatically when you deploy.
                     </div>
 
                     <a href="${url}" target="_blank" class="btn btn-grail-gold btn-sm px-4 rounded-pill">
@@ -137,7 +135,7 @@ function renderPreview(url, mime, filename) {
     }
 
     // --- C. FALLBACK (Images/Other) ---
-    if (mime.includes("image")) {
+    if (mime.includes("image") || ['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
          container.html(`<img src="${url}" class="preview-iframe" style="object-fit: contain; background:#f8f9fa; width:100%; height:100%; border-radius: 8px;" alt="Preview">`);
          return;
     }
@@ -215,9 +213,24 @@ function openEditModal(id) {
                 $("#reqDeadline").val(d.toISOString().slice(0, 16));
             }
 
-            // Handle Document (Preview Only, No Change allowed in edit for now based on Schema)
+            // Handle Document
             $("#reqDocUrl").val(data.document_url);
-            renderPreview(data.document_url, "application/pdf", "Existing Document"); // Assuming PDF/Doc fallback
+
+            // --- FIX: Detect Correct File Type from URL ---
+            const url = data.document_url;
+            // Extract filename from URL (removes query params if any)
+            const filename = url.substring(url.lastIndexOf('/') + 1).split('?')[0] || "document.file";
+            const ext = filename.split('.').pop().toLowerCase();
+
+            // Guess generic mime type based on extension
+            let mime = "application/octet-stream";
+            if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) mime = "image/jpeg";
+            else if (ext === 'pdf') mime = "application/pdf";
+            else if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            // ----------------------------------------------
+
+            renderPreview(url, mime, filename);
+
             $("#btnRemoveDoc").hide(); // Cannot remove doc in edit mode
             $("#uploadState").addClass("disabled-mode"); // Prevent upload click
 
@@ -326,8 +339,15 @@ function renderTable(requests) {
         // Actions
         let actionButtons = '';
         
-        // 1. View (Everyone)
-        actionButtons += `<a href="${req.document_url}" target="_blank" class="ri-eye-line action-icon me-2" title="View Document"></a>`;
+        // 1. View (Smart Link: Use MS Viewer for docs)
+        const ext = req.document_url.split('.').pop().toLowerCase();
+        let viewUrl = req.document_url;
+        // Use Viewer for Office files to avoid "Download Only"
+        if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) {
+            viewUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(req.document_url)}`;
+        }
+
+        actionButtons += `<a href="${viewUrl}" target="_blank" class="ri-eye-line action-icon me-2" title="View Document"></a>`;
         
         // 2. Edit (Requester/Admin + Pending)
         if ((isRequester || isAdmin) && req.status === 'Pending') {
@@ -378,7 +398,15 @@ function updatePaginationUI() {
 function openSignModal(id, title, url) {
     $("#signRequestId").val(id);
     $("#signDocTitle").text(title);
-    $("#viewDocBtn").attr("href", url);
+    
+    // Use Viewer for Sign Modal too
+    const ext = url.split('.').pop().toLowerCase();
+    let viewUrl = url;
+    if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) {
+        viewUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}`;
+    }
+    $("#viewDocBtn").attr("href", viewUrl);
+    
     $("#legalName").val("");
     $("#signModal").modal("show");
 }
