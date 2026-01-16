@@ -34,3 +34,8 @@ async def task_assigner(request: Request):
 async def task_submission(request: Request):
     context = get_template_context(request)
     return templates.TemplateResponse("task_management/task_submission.html", context) 
+
+@task_views.get("/content_vault")
+async def content_vault(request: Request):
+    context = get_template_context(request)
+    return templates.TemplateResponse("content_vault/content_vault.html", context)

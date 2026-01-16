@@ -311,19 +311,23 @@ function loadSignatures() {
 function renderTable(requests) {
     const tbody = $("#signatureTableBody");
     tbody.empty();
+    
     if (requests.length === 0) {
         tbody.html(`<tr><td colspan="7" class="text-center text-muted py-5">No signatures found.</td></tr>`);
         return;
     }
+
     requests.forEach(req => {
         let badgeClass = 'badge-pending';
         if (req.status === 'Signed') badgeClass = 'badge-signed';
         else if (req.status === 'Expired' || req.status === 'Declined') badgeClass = 'badge-expired';
 
+        // Permissions
         const isSigner = (req.signer.id === currentUserId);
         const isRequester = (req.requester.id === currentUserId);
         const isAdmin = currentUserRole === 'admin';
 
+        // --- Assigned By Logic ---
         let assignedByHtml = '';
         if (isRequester) {
             assignedByHtml = `<span class="fw-bold text-dark bg-light px-2 py-1 rounded small">Me</span>`;
@@ -332,9 +336,23 @@ function renderTable(requests) {
             assignedByHtml = `<span class="small text-muted">${requesterName}</span>`;
         }
 
+        // --- SIGNED DATE & LEGAL NAME LOGIC ---
+        let signedInfoHtml = '<span class="text-muted">-</span>';
+        if (req.signed_at) {
+            const dateStr = new Date(req.signed_at).toLocaleDateString();
+            const legalName = req.signed_legal_name ? `<div class="text-xs text-muted">As: "<strong>${req.signed_legal_name}</strong>"</div>` : '';
+            signedInfoHtml = `
+                <div class="d-flex flex-column">
+                    <span class="small text-dark fw-medium">${dateStr}</span>
+                    ${legalName}
+                </div>
+            `;
+        }
+
+        // Actions
         let actionButtons = '';
         
-        // 1. View
+        // 1. View (Smart Link)
         const ext = req.document_url.split('.').pop().toLowerCase();
         let viewUrl = req.document_url;
         if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) {
@@ -343,22 +361,26 @@ function renderTable(requests) {
 
         actionButtons += `<a href="${viewUrl}" target="_blank" class="ri-eye-line action-icon me-2" title="View Document"></a>`;
         
-        // 2. Edit
-        if ((isRequester || isAdmin) && req.status === 'Pending') {
-            actionButtons += `<i class="ri-pencil-line action-icon me-2" title="Edit Request" onclick="openEditModal(${req.id})"></i>`;
+        // Buttons ONLY appear if NOT Signed
+        if (req.status !== 'Signed') {
+            // Edit
+            if ((isRequester || isAdmin)) {
+                actionButtons += `<i class="ri-pencil-line action-icon me-2" title="Edit Request" onclick="openEditModal(${req.id})"></i>`;
+            }
+            // Sign (for Signer)
+            if (isSigner) {
+                actionButtons += `<i class="ri-pen-nib-line action-icon me-2 text-warning" title="Sign Now" onclick="openSignModal(${req.id}, '${req.title}', '${req.document_url}')"></i>`;
+            }
+            // Delete
+            if ((isRequester || isAdmin)) {
+                actionButtons += `<i class="ri-delete-bin-line action-icon delete" title="Delete" onclick="deleteRequest(${req.id})"></i>`;
+            }
+        } else {
+            // If signed, show a checkmark or lock instead of actions
+            actionButtons += `<i class="ri-checkbox-circle-fill text-success" title="Completed"></i>`;
         }
 
-        // 3. Sign
-        if (isSigner && req.status === 'Pending') {
-            actionButtons += `<i class="ri-pen-nib-line action-icon me-2 text-warning" title="Sign Now" onclick="openSignModal(${req.id}, '${req.title}', '${req.document_url}')"></i>`;
-        }
-
-        // 4. Delete
-        if ((isRequester || isAdmin) && req.status !== 'Signed') {
-            actionButtons += `<i class="ri-delete-bin-line action-icon delete" title="Delete" onclick="deleteRequest(${req.id})"></i>`;
-        }
-
-        const signedDate = req.signed_at ? new Date(req.signed_at).toLocaleDateString() : '<span class="text-muted">-</span>';
+        const deadlineDate = req.deadline ? new Date(req.deadline).toLocaleDateString() : '-';
         
         tbody.append(`
             <tr>
@@ -374,10 +396,10 @@ function renderTable(requests) {
                         <span class="small fw-medium">${req.signer.full_name || 'User'}</span>
                     </div>
                 </td>
-                <td>${assignedByHtml}</td> <td><span class="badge-status ${badgeClass}">${req.status}</span></td>
-                <td><span class="small text-dark">${req.deadline ? new Date(req.deadline).toLocaleDateString() : '-'}</span></td>
-                <td><span class="small text-dark">${signedDate}</span></td>
-                <td class="text-end">${actionButtons}</td>
+                <td>${assignedByHtml}</td> 
+                <td><span class="badge-status ${badgeClass}">${req.status}</span></td>
+                <td><span class="small text-dark">${deadlineDate}</span></td>
+                <td>${signedInfoHtml}</td> <td class="text-end">${actionButtons}</td>
             </tr>
         `);
     });

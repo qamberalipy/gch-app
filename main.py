@@ -34,6 +34,7 @@ from app.user import user_router
 from app.task import task_router
 from app.signature import signature_router
 from app.upload import upload_router
+from app.content_vault import content_vault_router
 
 # --- 2. IMPORT WEB (HTML) ROUTERS ---
 from app.web.routers import auth_views
@@ -122,6 +123,7 @@ app.include_router(main_router)
 root_router.include_router(user_router) 
 root_router.include_router(task_router)
 root_router.include_router(signature_router)
+root_router.include_router(content_vault_router)
 root_router.include_router(upload_router)
 app.include_router(root_router)        
 
