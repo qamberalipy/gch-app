@@ -2,296 +2,389 @@
 
 {% block stylesheets %}
 <style>
-    /* Vue Cloak to hide raw variables before Vue loads */
+    /* Vue Cloak */
     [v-cloak] { display: none; }
 
-    /* Feed Layout */
-    .feed-container {
-        max-width: 800px;
-        margin: 0 auto;
-    }
-
-    /* Post Creator */
-    .post-creator {
-        background: white;
-        border-radius: 16px;
-        padding: 1.5rem;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
-        margin-bottom: 2rem;
-    }
-
-    .creator-textarea {
-        border: none;
-        resize: none;
-        width: 100%;
-        outline: none;
-        font-size: 1rem;
-        min-height: 80px;
-        background: transparent;
-    }
-
-    .attachment-preview-grid {
+    /* --- Chat Layout --- */
+    .chat-wrapper {
         display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-top: 10px;
-    }
-
-    .preview-item {
+        flex-direction: column;
+        height: calc(100vh - 140px); /* Adjust based on your header/nav height */
+        background-color: #e5ddd5; /* Classic Chat BG color */
+        background-image: url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png"); /* Subtle Pattern */
+        border-radius: 12px;
         position: relative;
-        width: 80px;
-        height: 80px;
-        border-radius: 8px;
         overflow: hidden;
-        border: 1px solid #eee;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
     }
 
-    .preview-item img, .preview-item video {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
+    /* --- Header (Group Info) --- */
+    .chat-header {
+        background: #ffffff;
+        padding: 10px 20px;
+        display: flex;
+        align-items: center;
+        border-bottom: 1px solid #e0e0e0;
+        z-index: 10;
+        flex-shrink: 0;
     }
 
-    .remove-btn {
-        position: absolute;
-        top: 2px;
-        right: 2px;
-        background: rgba(0,0,0,0.6);
-        color: white;
+    .group-avatar {
+        width: 45px;
+        height: 45px;
+        background: var(--active-color);
         border-radius: 50%;
-        width: 20px;
-        height: 20px;
         display: flex;
         align-items: center;
         justify-content: center;
-        cursor: pointer;
-        font-size: 12px;
+        color: white;
+        font-size: 1.2rem;
+        margin-right: 15px;
     }
 
-    /* Post Card Styles */
-    .post-card {
-        background: white;
-        border-radius: 16px;
-        padding: 0;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        overflow: hidden;
-    }
+    .group-info h6 { margin: 0; font-weight: 600; font-size: 1rem; color: #111; }
+    .group-info span { font-size: 0.8rem; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    .post-header {
-        padding: 1.25rem 1.5rem 0.5rem;
+    /* --- Messages Area --- */
+    .chat-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
         display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+        scroll-behavior: smooth;
     }
 
-    .author-info {
+    /* --- Message Bubbles --- */
+    .message-row {
         display: flex;
-        gap: 12px;
+        margin-bottom: 5px;
+        width: 100%;
     }
 
-    .author-avatar {
-        width: 45px;
-        height: 45px;
-        border-radius: 50%;
-        object-fit: cover;
-    }
+    .message-row.sent { justify-content: flex-end; }
+    .message-row.received { justify-content: flex-start; }
 
-    .author-meta h6 { margin: 0; font-weight: 600; font-size: 0.95rem; }
-    .author-meta span { font-size: 0.75rem; color: var(--secondary-text); }
-    .role-badge { 
-        font-size: 0.65rem; 
-        padding: 2px 6px; 
-        border-radius: 4px; 
-        background: #f3f4f6; 
-        color: #666;
-        margin-left: 6px;
-    }
-
-    .post-content {
-        padding: 0.5rem 1.5rem;
+    .message-bubble {
+        max-width: 65%; /* WhatsApp style width limit */
+        padding: 8px 10px;
+        border-radius: 8px;
+        position: relative;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         font-size: 0.95rem;
-        white-space: pre-wrap;
-        color: #1f2937;
+        word-wrap: break-word;
     }
 
-    /* Link Preview Card */
-    .link-preview {
-        margin: 0.5rem 1.5rem;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
+    /* Sent by Me (Gold/Orange Tint) */
+    .message-row.sent .message-bubble {
+        background-color: #fff7ed; /* Light Gold/Orange */
+        border-top-right-radius: 0;
+    }
+
+    /* Received (White) */
+    .message-row.received .message-bubble {
+        background-color: #ffffff;
+        border-top-left-radius: 0;
+    }
+
+    /* Author Name in Group */
+    .msg-author {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--active-color); /* Gold Name */
+        margin-bottom: 2px;
+        display: block;
+    }
+    
+    .msg-role {
+        font-size: 0.65rem;
+        color: #999;
+        font-weight: 400;
+        margin-left: 5px;
+        text-transform: capitalize;
+    }
+
+    /* Message Content */
+    .msg-text {
+        color: #303030;
+        white-space: pre-wrap;
+        line-height: 1.4;
+    }
+
+    /* Meta (Time + Status) */
+    .msg-meta {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 4px;
+        margin-top: 4px;
+        font-size: 0.68rem;
+        color: #888;
+        line-height: 1;
+    }
+
+    .status-icon { font-size: 0.9rem; }
+    .status-icon.seen { color: #53bdeb; /* Blue ticks */ }
+
+    /* --- Link Preview --- */
+    .wa-link-card {
+        margin-top: 5px;
+        background: rgba(0,0,0,0.03);
+        border-radius: 6px;
         overflow: hidden;
-        background: #f9fafb;
+        border-left: 3px solid var(--active-color);
         text-decoration: none;
         display: block;
     }
-    .link-preview-img { width: 100%; height: 200px; object-fit: cover; }
-    .link-meta { padding: 12px; }
-    .link-title { font-weight: 600; color: #111; margin-bottom: 4px; font-size: 0.9rem;}
-    .link-desc { font-size: 0.8rem; color: #6b7280; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .wa-link-img { width: 100%; height: 140px; object-fit: cover; }
+    .wa-link-info { padding: 8px; }
+    .wa-link-title { font-weight: 600; color: #333; font-size: 0.85rem; margin-bottom: 2px; }
+    .wa-link-desc { font-size: 0.75rem; color: #666; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
-    /* Media Grid for Posts */
+    /* --- Attachments --- */
     .media-grid {
-        display: grid;
-        gap: 2px;
-        margin-top: 10px;
-        background: #000;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-bottom: 5px;
     }
-    .media-grid.cols-1 { grid-template-columns: 1fr; }
-    .media-grid.cols-2 { grid-template-columns: 1fr 1fr; }
-    .media-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
-    
-    .post-media-item {
-        width: 100%;
-        height: 300px; /* Fixed height for consistency */
+    .media-item {
+        width: 100px;
+        height: 100px;
         object-fit: cover;
+        border-radius: 6px;
         cursor: pointer;
     }
-
-    .post-footer {
-        padding: 0.8rem 1.5rem;
-        border-top: 1px solid #f3f4f6;
+    .doc-card {
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        color: var(--secondary-text);
-        font-size: 0.85rem;
+        background: rgba(0,0,0,0.04);
+        padding: 10px;
+        border-radius: 6px;
+        margin-bottom: 5px;
+        text-decoration: none;
+        color: #333;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+    .doc-icon { font-size: 1.8rem; margin-right: 10px; color: #ef4444; }
+    .doc-info div { font-weight: 500; font-size: 0.85rem; }
+    .doc-info span { font-size: 0.7rem; color: #777; }
+
+    /* --- Input Area (Sticky Footer) --- */
+    .chat-footer {
+        background: #f0f2f5;
+        padding: 10px 15px;
+        display: flex;
+        align-items: flex-end; /* Align to bottom for multiline text */
+        gap: 10px;
+        border-top: 1px solid #ddd;
+        flex-shrink: 0;
     }
 
-    .action-btn {
+    .attach-btn {
+        color: #54656f;
+        font-size: 1.5rem;
         cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 6px;
+        padding: 5px;
         transition: color 0.2s;
     }
-    .action-btn:hover { color: var(--active-color); }
-    .action-btn.active { color: #ef4444; } /* Red for liked */
+    .attach-btn:hover { color: var(--active-color); }
 
-    .view-count { cursor: pointer; }
-    .view-count:hover { text-decoration: underline; }
-
-    /* Viewers Modal */
-    .viewer-list-item {
+    .chat-input-wrapper {
+        flex: 1;
+        background: #ffffff;
+        border-radius: 24px;
+        padding: 8px 15px;
         display: flex;
         align-items: center;
-        gap: 10px;
-        padding: 8px 0;
-        border-bottom: 1px solid #f9fafb;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
-    .viewer-list-item img { width: 32px; height: 32px; border-radius: 50%; }
+
+    .chat-input {
+        width: 100%;
+        border: none;
+        outline: none;
+        background: transparent;
+        font-size: 0.95rem;
+        resize: none;
+        max-height: 100px; /* Grow up to this height */
+        overflow-y: auto;
+        font-family: inherit;
+    }
+
+    .send-btn {
+        background: var(--active-color);
+        color: white;
+        border: none;
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        cursor: pointer;
+        transition: transform 0.1s;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    }
+    .send-btn:active { transform: scale(0.95); }
+    .send-btn:disabled { background: #ccc; cursor: default; }
+
+    /* Preview Area above input */
+    .preview-shelf {
+        background: #e9edef;
+        padding: 10px;
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+        border-top: 1px solid #ddd;
+    }
+    .preview-thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid #fff; }
+    .preview-container { position: relative; display: inline-block; }
+    .preview-close { 
+        position: absolute; top: -5px; right: -5px; 
+        background: #666; color: white; border-radius: 50%; 
+        width: 18px; height: 18px; font-size: 10px; 
+        display: flex; align-items: center; justify-content: center; cursor: pointer; 
+    }
+
+    /* Admin Actions Dropdown in Bubble */
+    .msg-dropdown {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .message-bubble:hover .msg-dropdown { opacity: 1; }
+    .msg-dropdown button { background: rgba(255,255,255,0.8); border: none; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; color: #666; }
 </style>
 {% endblock %}
 
 {% block user_page %}
-<div id="announcementApp" class="feed-container" v-cloak>
+<div id="announcementApp" class="container-fluid p-0" v-cloak>
     
-    <div class="post-creator">
-        <textarea 
-            v-model="newPost.content" 
-            class="creator-textarea" 
-            placeholder="Share an update with the team...">
-        </textarea>
+    <div class="chat-wrapper">
         
-        <div class="attachment-preview-grid" v-if="newPost.tempFiles.length > 0">
-            <div class="preview-item" v-for="(file, index) in newPost.tempFiles" :key="index">
-                <img v-if="file.type.startsWith('image')" :src="file.preview" />
-                <video v-else-if="file.type.startsWith('video')" :src="file.preview"></video>
-                <div v-else class="d-flex align-items-center justify-content-center h-100 bg-light text-muted">
-                    <i class="ri-file-text-line"></i>
-                </div>
-                <div class="remove-btn" @click="removeFile(index)"><i class="ri-close-line"></i></div>
+        <div class="chat-header">
+            <div class="group-avatar">
+                <i class="ri-megaphone-fill"></i>
+            </div>
+            <div class="group-info">
+                <h6>Announcements</h6>
+                <span>GCH Team • Admins, Managers & Creators</span>
             </div>
         </div>
 
-        <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
-            <div class="d-flex gap-3">
-                <button class="btn btn-light btn-sm rounded-pill text-secondary" @click="$refs.fileInput.click()">
-                    <i class="ri-image-add-line text-success me-1"></i> Photo/Video
-                </button>
-                <button class="btn btn-light btn-sm rounded-pill text-secondary" @click="$refs.docInput.click()">
-                    <i class="ri-file-add-line text-primary me-1"></i> Document
-                </button>
-            </div>
+        <div class="chat-body" id="chatBody" ref="chatBody">
             
-            <button class="btn btn-warning text-white px-4 rounded-pill" 
-                    :disabled="isPosting || (!newPost.content && newPost.tempFiles.length === 0)"
-                    @click="publishPost">
-                <span v-if="isPosting" class="spinner-border spinner-border-sm me-2"></span>
-                [[ isPosting ? 'Posting...' : 'Post' ]]
+            <div v-if="loading" class="text-center mt-5">
+                <div class="spinner-border text-secondary" role="status"></div>
+            </div>
+
+            <div v-if="!loading && posts.length === 0" class="text-center mt-5 text-muted">
+                <small class="bg-white px-3 py-1 rounded shadow-sm">No announcements yet</small>
+            </div>
+
+            <div v-for="post in posts" :key="post.id" 
+                 class="message-row" 
+                 :class="isMe(post.author.id) ? 'sent' : 'received'">
+                
+                <div class="message-bubble">
+                    <div class="dropdown msg-dropdown" v-if="canDelete(post.author.id)">
+                        <button data-bs-toggle="dropdown"><i class="ri-arrow-down-s-line"></i></button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="font-size: 0.85rem;">
+                            <li><a class="dropdown-item text-danger" href="#" @click.prevent="deletePost(post.id)">Delete</a></li>
+                            <li><a class="dropdown-item" href="#" @click.prevent="openViewersModal(post.id)">View Info</a></li>
+                        </ul>
+                    </div>
+
+                    <span class="msg-author" v-if="!isMe(post.author.id)">
+                        [[ post.author.full_name ]] <span class="msg-role">[[ post.author.role ]]</span>
+                    </span>
+
+                    <div class="media-grid" v-if="post.attachments && post.attachments.length > 0">
+                        <template v-for="att in post.attachments" :key="att.id">
+                            <img v-if="att.file_type === 'image'" :src="att.file_url" class="media-item" @click="openImage(att.file_url)">
+                            <video v-if="att.file_type === 'video'" :src="att.file_url" class="media-item" controls></video>
+                            
+                            <a v-if="att.file_type === 'document'" :href="att.file_url" target="_blank" class="doc-card w-100">
+                                <i class="ri-file-pdf-2-fill doc-icon"></i>
+                                <div class="doc-info">
+                                    <div>Document</div>
+                                    <span>[[ att.mime_type.split('/')[1].toUpperCase() ]] • [[ att.file_size_mb ]] MB</span>
+                                </div>
+                            </a>
+                        </template>
+                    </div>
+
+                    <div class="msg-text" v-if="post.content">[[ post.content ]]</div>
+
+                    <a v-if="post.link_url && post.link_title" :href="post.link_url" target="_blank" class="wa-link-card">
+                        <img v-if="post.link_image" :src="post.link_image" class="wa-link-img">
+                        <div class="wa-link-info">
+                            <div class="wa-link-title">[[ post.link_title ]]</div>
+                            <div class="wa-link-desc">[[ post.link_description ]]</div>
+                        </div>
+                    </a>
+
+                    <div class="msg-meta">
+                        <i class="ri-heart-fill text-danger me-1" v-if="post.reactions.length > 0"></i>
+                        <span v-if="post.reactions.length > 0" class="me-2">[[ post.reactions.length ]]</span>
+                        
+                        <i class="ri-heart-line" style="cursor: pointer;" @click="toggleReaction(post)" v-else></i>
+
+                        <span>[[ formatTime(post.created_at) ]]</span>
+                        <i class="ri-check-double-line status-icon" :class="post.view_count > 0 ? 'seen' : ''"></i>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+        <div class="preview-shelf" v-if="newPost.tempFiles.length > 0">
+            <div class="preview-container" v-for="(file, index) in newPost.tempFiles" :key="index">
+                <img v-if="file.type.startsWith('image')" :src="file.preview" class="preview-thumb">
+                <div v-else class="preview-thumb bg-white d-flex align-items-center justify-content-center">
+                    <i class="ri-file-text-fill"></i>
+                </div>
+                <div class="preview-close" @click="removeFile(index)">×</div>
+            </div>
+        </div>
+
+        <div class="chat-footer">
+            <div class="dropdown">
+                <i class="ri-add-line attach-btn" data-bs-toggle="dropdown"></i>
+                <ul class="dropdown-menu shadow">
+                    <li><a class="dropdown-item" href="#" @click="$refs.fileInput.click()"><i class="ri-image-line me-2 text-success"></i> Photos & Videos</a></li>
+                    <li><a class="dropdown-item" href="#" @click="$refs.docInput.click()"><i class="ri-file-text-line me-2 text-primary"></i> Document</a></li>
+                </ul>
+            </div>
+
+            <div class="chat-input-wrapper">
+                <textarea 
+                    v-model="newPost.content" 
+                    class="chat-input" 
+                    placeholder="Type a message..." 
+                    rows="1" 
+                    @keydown.enter.exact.prevent="publishPost"
+                    @input="autoResize">
+                </textarea>
+            </div>
+
+            <button class="send-btn" 
+                    @click="publishPost" 
+                    :disabled="isPosting || (!newPost.content && newPost.tempFiles.length === 0)">
+                <i class="ri-send-plane-fill" v-if="!isPosting"></i>
+                <div class="spinner-border spinner-border-sm text-white" v-else></div>
             </button>
         </div>
 
         <input type="file" ref="fileInput" multiple accept="image/*,video/*" class="d-none" @change="handleFileSelect">
         <input type="file" ref="docInput" multiple accept=".pdf,.doc,.docx" class="d-none" @change="handleFileSelect">
-    </div>
 
-    <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-warning" role="status"></div>
-    </div>
-
-    <div v-else-if="posts.length === 0" class="text-center py-5 text-muted">
-        <i class="ri-megaphone-line fs-1 mb-2"></i>
-        <p>No announcements yet.</p>
-    </div>
-
-    <div v-else class="post-stream">
-        <div class="post-card" v-for="post in posts" :key="post.id">
-            
-            <div class="post-header">
-                <div class="author-info">
-                    <img :src="post.author.profile_picture_url || 'https://ui-avatars.com/api/?name='+post.author.full_name" class="author-avatar">
-                    <div class="author-meta">
-                        <h6>[[ post.author.full_name ]] <span class="role-badge">[[ post.author.role ]]</span></h6>
-                        <span>[[ formatDate(post.created_at) ]]</span>
-                    </div>
-                </div>
-                
-                <div class="dropdown" v-if="canDelete(post.author.id)">
-                    <button class="btn btn-link text-muted p-0" data-bs-toggle="dropdown">
-                        <i class="ri-more-line fs-5"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
-                        <li><a class="dropdown-item text-danger" href="#" @click.prevent="deletePost(post.id)"><i class="ri-delete-bin-line me-2"></i>Delete Post</a></li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="post-content" v-if="post.content">
-                [[ post.content ]]
-            </div>
-
-            <a v-if="post.link_url && post.link_title" :href="post.link_url" target="_blank" class="link-preview">
-                <img v-if="post.link_image" :src="post.link_image" class="link-preview-img">
-                <div class="link-meta">
-                    <div class="link-title">[[ post.link_title ]]</div>
-                    <div class="link-desc">[[ post.link_description ]]</div>
-                </div>
-            </a>
-
-            <div v-if="post.attachments.length > 0" class="media-grid" :class="'cols-' + Math.min(post.attachments.length, 3)">
-                <div v-for="att in post.attachments" :key="att.id">
-                    <img v-if="att.file_type === 'image'" :src="att.file_url" class="post-media-item">
-                    <video v-else-if="att.file_type === 'video'" :src="att.file_url" controls class="post-media-item"></video>
-                    <div v-else class="p-3 bg-light border m-2 rounded d-flex align-items-center">
-                        <i class="ri-file-text-fill fs-3 me-2 text-primary"></i>
-                        <a :href="att.file_url" target="_blank" class="text-dark text-decoration-none">Download Document</a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="post-footer">
-                <div class="d-flex gap-4">
-                    <div class="action-btn" :class="{ 'active': userHasReacted(post) }" @click="toggleReaction(post)">
-                        <i :class="userHasReacted(post) ? 'ri-heart-fill' : 'ri-heart-line'"></i>
-                        <span>[[ post.reactions.length || 0 ]]</span>
-                    </div>
-                    <div class="view-count" @click="openViewersModal(post.id)">
-                        <i class="ri-eye-line me-1"></i> [[ post.view_count ]] Seen
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <div class="modal fade" id="viewersModal" tabindex="-1">
@@ -303,9 +396,10 @@
                 </div>
                 <div class="modal-body">
                     <div v-if="currentViewers.length === 0" class="text-muted small">No views yet.</div>
-                    <div v-for="viewer in currentViewers" :key="viewer.user_id" class="viewer-list-item">
-                        <img :src="viewer.user.profile_picture_url || 'https://ui-avatars.com/api/?name='+viewer.user.full_name">
+                    <div v-for="viewer in currentViewers" :key="viewer.user_id" class="d-flex align-items-center gap-2 py-2 border-bottom">
+                        <img :src="viewer.user.profile_picture_url || 'https://ui-avatars.com/api/?name='+viewer.user.full_name" style="width: 30px; height: 30px; border-radius: 50%;">
                         <div class="small fw-medium">[[ viewer.user.full_name ]]</div>
+                        <span class="ms-auto small text-muted">[[ formatTime(viewer.viewed_at) ]]</span>
                     </div>
                 </div>
             </div>
