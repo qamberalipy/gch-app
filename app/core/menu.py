@@ -14,6 +14,7 @@ MENU = {
         {"label": "Task Assigner", "icon": "ri-task-line", "path": "/task_assigner", "children": []},
         {"label": "Signature Assigner", "icon": "ri-file-text-line", "path": "/signature_assigner", "children": []},
         {"label": "Content Vault", "icon": "ri-folder-line", "path": "/content_vault", "children": []},
+          {"label": "Announcements", "icon": "ri-announcement-line", "path": "/admin_feed", "children": []},
     ],
     "team_member": [
         {"label": "Dashboard", "icon": "ri-home-4-line", "path": "/dashboard", "children": []},

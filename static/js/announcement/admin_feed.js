@@ -63,6 +63,10 @@ createApp({
         },
 
         /* --- Publishing --- */
+      /* static/js/announcement/admin_feed.js */
+// ... (keep existing code)
+
+        /* --- Publishing --- */
         async publishPost() {
             if (!this.newPost.content && this.newPost.tempFiles.length === 0) return;
             
@@ -76,13 +80,20 @@ createApp({
                         const formData = new FormData();
                         formData.append('file', temp.file);
                         
-                        // Adjust endpoint to match your app/upload/upload.py router
-                        const uploadRes = await axios.post('/api/upload/', formData, {
+                        // FIX: Changed from '/api/upload/' to '/api/upload/small-file'
+                        // Also specified 'type_group' based on file type
+                        let typeGroup = 'document';
+                        if (temp.type.startsWith('image') || temp.type.startsWith('video')) {
+                            typeGroup = 'image';
+                        }
+
+                        // Append query param for type_group
+                        const uploadRes = await axios.post(`/api/upload/small-file?type_group=${typeGroup}`, formData, {
                             headers: { 'Content-Type': 'multipart/form-data' }
                         });
                         
-                        // Check if your API returns { public_url: ... } or { url: ... }
-                        const fileUrl = uploadRes.data.public_url || uploadRes.data.url || uploadRes.data.file_url;
+                        // Backend returns { url: "...", filename: "..." }
+                        const fileUrl = uploadRes.data.url;
 
                         attachments.push({
                             file_url: fileUrl,
@@ -109,11 +120,15 @@ createApp({
 
             } catch (error) {
                 console.error(error);
-                toastr.error("Failed to post announcement");
+                // Better error message
+                const msg = error.response?.data?.detail || "Failed to post announcement";
+                toastr.error(msg);
             } finally {
                 this.isPosting = false;
             }
         },
+
+// ... (rest of the file remains the same)
 
         resetForm() {
             this.newPost.content = '';
