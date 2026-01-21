@@ -1,6 +1,6 @@
 # app/announcement/announcement.py
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session, joinedload, selectinload
+from fastapi import APIRouter, Depends, HTTPException, Body
+from sqlalchemy.orm import Session
 import app.core.db.session as _database
 import app.user.user as _user_auth
 from app.announcement import service, schema
@@ -11,6 +11,24 @@ def get_db():
     finally: db.close()
 
 router = APIRouter()
+
+# --- NEW: Live URL Preview Endpoint ---
+@router.post("/preview-link")
+def preview_link(
+    body: dict = Body(...),
+    current_user = Depends(_user_auth.get_current_user)
+):
+    """
+    Fetches OpenGraph metadata for a URL before posting.
+    Called live as the user types.
+    """
+    url = body.get("url")
+    if not url:
+        return {}
+    # Reuses your existing service logic
+    return service.fetch_url_metadata(url)
+
+# --- Standard Endpoints ---
 
 @router.post("/", response_model=schema.AnnouncementResponse)
 def create_post(
@@ -23,18 +41,12 @@ def create_post(
 @router.get("/", response_model=list[schema.AnnouncementResponse])
 def get_feed(
     skip: int = 0, 
-    limit: int = 20, 
+    limit: int = 50,  # Increased limit for chat feel
     db: Session = Depends(get_db),
     current_user = Depends(_user_auth.get_current_user)
 ):
-    # OPTIMIZED QUERY: Using joinedload and selectinload to fetch everything in 1 query
+    # Fetch posts. We will reverse them in Frontend for Chat Layout.
     return db.query(service.Announcement)\
-        .options(
-            joinedload(service.Announcement.author),       # Fetch Author immediately
-            selectinload(service.Announcement.attachments), # Fetch Attachments efficiently
-            selectinload(service.Announcement.reactions),   # Fetch Reactions efficiently
-            selectinload(service.Announcement.views)        # Fetch Views for count
-        )\
         .order_by(service.Announcement.created_at.desc())\
         .offset(skip).limit(limit).all()
 
@@ -69,7 +81,7 @@ def get_viewers(
     db: Session = Depends(get_db),
     current_user = Depends(_user_auth.get_current_user)
 ):
-    # Ideally restrict this to Admins/Managers only
+    # Restricted to Admin/Manager
     if current_user.role not in ["admin", "manager"]:
-         raise HTTPException(status_code=403, detail="Not authorized to see viewers")
+         raise HTTPException(status_code=403, detail="Not authorized")
     return service.get_post_viewers(db, id)
