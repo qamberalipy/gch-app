@@ -1,6 +1,7 @@
 /**
  * task_assigner.js
  * Features: Pagination, Filters, "Me" Logic, Chat, CRUD.
+ * Updated: Chat Pagination added to match task_submission.js
  */
 
 // --- Global State ---
@@ -11,6 +12,11 @@ let activeChatTaskId = null;
 let currentAssignees = [];
 let isChatSending = false;
 let currentReviewTask = null;
+
+// --- Chat Pagination State ---
+let chatTopId = 0;    
+let chatBottomId = 0; 
+let isLoadingChat = false;
 
 // Pagination & Filters State
 let currentPage = 1;
@@ -39,15 +45,11 @@ $(document).ready(function() {
         $("#taskPriority").val($(this).data("value"));
     });
 
-    // 3. File Upload (FIXED RECURSION)
+    // 3. File Upload
     $("#uploadZone").on("click", function(e) {
-        if (e.target.id !== 'fileInput') {
-            $("#fileInput").click(); 
-        }
+        if (e.target.id !== 'fileInput') $("#fileInput").click(); 
     });
-    $("#fileInput").on("click", function(e) {
-        e.stopPropagation(); 
-    });
+    $("#fileInput").on("click", (e) => e.stopPropagation());
     $("#fileInput").on("change", handleFileUpload);
 
     // 4. Form Submit
@@ -64,10 +66,10 @@ $(document).ready(function() {
         }
     });
 
-    // 6. Filters & Search
+    // 7. Filters & Search
     $("#filterStatus").on("change", function() {
         activeFilters.status = $(this).val();
-        currentPage = 1; // Reset to page 1 on filter change
+        currentPage = 1; 
         loadTasks();
     });
     
@@ -78,14 +80,14 @@ $(document).ready(function() {
     });
 
     $("#filterSearch").on("keypress", function(e) {
-        if(e.which === 13) { // Enter key
+        if(e.which === 13) { 
             activeFilters.search = $(this).val();
             currentPage = 1;
             loadTasks();
         }
     });
 
-    // 7. Pagination Buttons
+    // 8. Pagination Buttons
     $("#btnPrevPage").on("click", function() {
         if (currentPage > 1) {
             currentPage--;
@@ -109,13 +111,10 @@ function loadAssignees() {
     axios.get('/api/tasks/assignees')
         .then(res => {
             currentAssignees = res.data;
-            
-            // Populate Modal Dropdown
             const modalSelect = $("#assigneeSelect");
-            modalSelect.empty().append('<option value="" disabled selected>Select Creator...</option>');
-            
-            // Populate Filter Dropdown
             const filterSelect = $("#filterAssignee");
+
+            modalSelect.empty().append('<option value="" disabled selected>Select Creator...</option>');
             filterSelect.empty().append('<option value="">All Assignees</option>');
 
             if (currentAssignees.length === 0) {
@@ -135,11 +134,7 @@ function loadTasks() {
     const tbody = $("#taskTableBody");
     tbody.html(`<tr><td colspan="7" class="text-center py-5"><div class="spinner-border text-warning"></div></td></tr>`);
     
-    // Construct Query Params
-    const params = {
-        skip: currentPage,
-        limit: pageSize
-    };
+    const params = { skip: currentPage, limit: pageSize };
     if (activeFilters.search) params.search = activeFilters.search;
     if (activeFilters.status) params.status = activeFilters.status;
     if (activeFilters.assignee_id) params.assignee_id = activeFilters.assignee_id;
@@ -187,17 +182,14 @@ function renderTable(tasks) {
     }
 
     tasks.forEach(task => {
-        // --- BADGE LOGIC UPDATED ---
         let badgeClass = 'badge-todo';
-        // Matches new Enum: 'To Do', 'Completed', 'Blocked', 'Missed'
         if (task.status === 'Completed') badgeClass = 'badge-completed';
         if (task.status === 'Blocked') badgeClass = 'badge-blocked';
-        if (task.status === 'Missed') badgeClass = 'badge-missed'; // Requires .badge-missed CSS
+        if (task.status === 'Missed') badgeClass = 'badge-missed';
 
         const assigneeName = task.assignee ? (task.assignee.full_name || task.assignee.username) : 'Unknown';
         const assigneePic = task.assignee?.profile_picture_url || `https://ui-avatars.com/api/?name=${assigneeName}&background=random`;
 
-        // --- Assigned By Logic ---
         let assignerDisplay = task.assigner ? (task.assigner.full_name || task.assigner.username) : 'Unknown';
         let assignerRole = task.assigner ? task.assigner.role : '';
         
@@ -207,7 +199,6 @@ function renderTable(tasks) {
             assignerDisplay = `<span class="fw-bold text-dark">${assignerDisplay}</span>`;
         }
 
-        // Action Buttons Logic
         let actionButtons = '';
         if (task.status === 'Completed') {
             actionButtons = `
@@ -294,7 +285,6 @@ function openReviewModal(id) {
             $("#reviewTaskTitle").text(currentReviewTask.title);
             $("#reviewAssigneeName").text(currentReviewTask.assignee.full_name || currentReviewTask.assignee.username);
             
-            // Filter: Only show files uploaded by Assignee (the creator)
             const assigneeId = currentReviewTask.assignee.id;
             const deliverables = currentReviewTask.attachments.filter(a => a.uploader_id === assigneeId);
             
@@ -575,48 +565,104 @@ function formatDate(d) {
 }
 
 // ==========================================
-// 5. CHAT
+// 5. CHAT (Paginated)
 // ==========================================
 
 function openChatModal(id, title) {
     activeChatTaskId = id;
+    
+    // Reset State
+    chatTopId = 0;
+    chatBottomId = 0;
+    isLoadingChat = false;
+
     $("#chatTaskTitle").text(title);
-    $("#chatContainer").html('<div class="text-center py-5"><div class="spinner-border text-secondary spinner-border-sm"></div></div>');
+    $("#chatContainer").empty().html('<div class="text-center py-5"><div class="spinner-border text-secondary spinner-border-sm"></div></div>');
+    
+    // Bind Scroll Event
+    $("#chatContainer").off("scroll").on("scroll", function() {
+        if ($(this).scrollTop() === 0 && !isLoadingChat) {
+            loadChat(1); // Load Older
+        }
+    });
+
     $("#chatModal").modal("show");
     enableChatInput();
-    loadChat();
+    loadChat(0); // Initial Load
 }
 
-function loadChat() {
+function loadChat(direction) {
     if (!activeChatTaskId) return;
-    axios.get(`/api/tasks/${activeChatTaskId}/chat`)
+
+    let params = { direction: direction };
+    if (direction === 1) params.last_message_id = chatTopId;
+    if (direction === 2) params.last_message_id = chatBottomId;
+
+    isLoadingChat = true;
+
+    axios.get(`/api/tasks/${activeChatTaskId}/chat`, { params: params })
         .then(res => {
             const container = $("#chatContainer");
-            container.empty();
-            const myId = parseInt($('meta[name="user-id"]').attr('content')) || 0;
+            const messages = res.data;
 
-            if (res.data.length === 0) {
-                container.html('<div class="text-center text-muted small mt-5 opacity-50">No messages yet.<br>Start the conversation!</div>');
-                return;
+            if (direction === 0) {
+                container.empty();
+                if (messages.length === 0) {
+                    container.html('<div class="text-center text-muted small mt-5 opacity-50" id="noMsgInfo">No messages yet.<br>Start the conversation!</div>');
+                    isLoadingChat = false;
+                    return;
+                }
             }
 
-            res.data.forEach(msg => {
-                if (msg.is_system_log) {
-                    container.append(`<div class="text-center my-3"><span class="badge bg-light text-muted fw-normal border px-3 py-1 rounded-pill" style="font-size: 0.7rem;">${msg.message} &bull; ${formatTimeShort(msg.created_at)}</span></div>`);
-                } else {
-                    const isMe = msg.author.id === myId;
-                    container.append(`
-                        <div class="chat-bubble ${isMe ? 'sent' : 'received'}">
-                            ${!isMe ? `<div class="small fw-bold mb-1 text-primary">${msg.author.full_name || 'User'}</div>` : ''}
-                            <div class="message-text">${msg.message}</div>
-                            <div class="text-end mt-1" style="font-size:0.6rem; opacity:0.6;">${formatTimeShort(msg.created_at)}</div>
-                        </div>
-                    `);
+            if (direction === 1 && messages.length === 0) {
+                isLoadingChat = false;
+                return; 
+            }
+
+            if (messages.length > 0) {
+                if (direction === 0 || direction === 2) {
+                    chatBottomId = messages[messages.length - 1].id;
+                    if (direction === 0) chatTopId = messages[0].id;
                 }
-            });
-            container.scrollTop(container[0].scrollHeight);
+                if (direction === 1) {
+                    chatTopId = messages[0].id;
+                }
+                renderMessages(messages, direction);
+            }
         })
-        .catch(() => $("#chatContainer").html('<div class="text-center text-danger py-4 small">Failed to load messages.</div>'));
+        .catch(() => $("#chatContainer").html('<div class="text-center text-danger py-4 small">Failed to load messages.</div>'))
+        .finally(() => { isLoadingChat = false; });
+}
+
+function renderMessages(messages, direction) {
+    const container = $("#chatContainer");
+    const myId = parseInt($('meta[name="user-id"]').attr('content')) || 0;
+    const prevHeight = container[0].scrollHeight;
+
+    let htmlBuffer = "";
+
+    messages.forEach(msg => {
+        if (msg.is_system_log) {
+            htmlBuffer += `<div class="text-center my-3"><span class="badge bg-light text-muted fw-normal border px-3 py-1 rounded-pill" style="font-size: 0.7rem;">${msg.message} &bull; ${formatTimeShort(msg.created_at)}</span></div>`;
+        } else {
+            const isMe = msg.author.id === myId;
+            htmlBuffer += `
+                <div class="chat-bubble ${isMe ? 'sent' : 'received'}">
+                    ${!isMe ? `<div class="small fw-bold mb-1 text-primary">${msg.author.full_name || 'User'}</div>` : ''}
+                    <div class="message-text">${msg.message}</div>
+                    <div class="text-end mt-1" style="font-size:0.6rem; opacity:0.6;">${formatTimeShort(msg.created_at)}</div>
+                </div>
+            `;
+        }
+    });
+
+    if (direction === 1) {
+        container.prepend(htmlBuffer);
+        container.scrollTop(container[0].scrollHeight - prevHeight);
+    } else {
+        container.append(htmlBuffer);
+        container.scrollTop(container[0].scrollHeight);
+    }
 }
 
 function sendMessage(e) {
@@ -627,8 +673,14 @@ function sendMessage(e) {
 
     isChatSending = true;
     disableChatInput();
+    $("#noMsgInfo").remove();
+
     axios.post(`/api/tasks/${activeChatTaskId}/chat`, { message: txt })
-        .then(() => { input.val(""); loadChat(); })
+        .then((res) => { 
+            input.val(""); 
+            renderMessages([res.data], 2);
+            chatBottomId = res.data.id;
+        })
         .catch(err => { toastr.error("Failed to send"); console.error(err); })
         .finally(() => { isChatSending = false; enableChatInput(); setTimeout(() => input.focus(), 100); });
 }
