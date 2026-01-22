@@ -10,10 +10,16 @@ createApp({
             isPosting: false,
             uploadProgress: 0,
             currentUserId: parseInt(document.querySelector('meta[name="user-id"]')?.content || 0),
-            userRole: '{{ session_user_role }}', // Ensure this is available, or infer from ability to see delete btns
-            posts: [],
-            newPost: { content: '' },
+            userRole: '{{ session_user_role }}', 
             
+            posts: [],
+            
+            // Pagination
+            isLoadingMore: false,
+            allLoaded: false,
+            
+            // Composer
+            newPost: { content: '' },
             tempFiles: [], 
             linkPreview: null,
             
@@ -26,43 +32,140 @@ createApp({
             ],
             
             modal: { isOpen: false, type: '', url: '' },
-            
-            // Viewers Modal Data
             loadingViewers: false,
             viewersList: [],
-            viewersModalInstance: null
+            viewersModalInstance: null,
+            
+            // Realtime
+            socket: null
         }
     },
     mounted() {
-        this.fetchFeed();
+        // 1. Initial Load
+        this.fetchFeed(true);
+        
+        // 2. Connect Realtime
+        this.connectWebSocket();
+
+        // 3. Scroll Listener for Pagination
+        const chatBody = this.$refs.chatBody;
+        if(chatBody) {
+            chatBody.addEventListener('scroll', this.handleScroll);
+        }
+
         this.debouncedUrlCheck = _.debounce(this.fetchUrlMetadata, 800);
-        // Init Bootstrap Modal
+        
         const el = document.getElementById('viewersModal');
         if(el && typeof bootstrap !== 'undefined') {
             this.viewersModalInstance = new bootstrap.Modal(el);
         }
     },
+    beforeUnmount() {
+        if(this.socket) this.socket.close();
+        const chatBody = this.$refs.chatBody;
+        if(chatBody) chatBody.removeEventListener('scroll', this.handleScroll);
+    },
     methods: {
-        async fetchFeed() {
-            try {
-                const res = await axios.get('/api/announcement/');
-                this.posts = res.data.reverse(); 
-                this.$nextTick(() => this.scrollToBottom());
-                if(this.posts.length > 0) this.markViewed(this.posts[this.posts.length-1].id);
-            } catch (e) { 
-                console.error("Feed error", e); 
-            } finally { this.loading = false; }
+        // --- WebSocket ---
+        connectWebSocket() {
+            // Auto-detect secure connection
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/api/announcement/ws`;
+            
+            this.socket = new WebSocket(wsUrl);
+
+            this.socket.onopen = () => console.log("WS Connected");
+            
+            this.socket.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                
+                if (msg.type === 'new_post') {
+                    // Prevent duplicate if we just posted it ourselves via REST
+                    if (!this.posts.find(p => p.id === msg.data.id)) {
+                        this.posts.push(msg.data);
+                        this.$nextTick(() => this.scrollToBottom());
+                    }
+                } 
+                else if (msg.type === 'delete_post') {
+                    this.posts = this.posts.filter(p => p.id !== msg.id);
+                }
+            };
+
+            this.socket.onclose = () => {
+                console.log("WS Disconnected. Reconnecting...");
+                setTimeout(() => this.connectWebSocket(), 3000);
+            };
         },
 
-        /* --- 1. NEW FEATURES: DELETE & VIEWERS --- */
+        // --- Feed & Pagination ---
+        async fetchFeed(isInitial = false) {
+            if (this.isLoadingMore || this.allLoaded) return;
+            
+            this.isLoadingMore = true;
+            
+            try {
+                const params = { limit: 20 };
+                
+                // Cursor: Get posts OLDER than the top one in our list
+                if (!isInitial && this.posts.length > 0) {
+                    params.last_id = this.posts[0].id;
+                }
+
+                const res = await axios.get('/api/announcement/', { params });
+                
+                // API returns Newest -> Oldest. We reverse for Chat (Oldest -> Newest)
+                const newPosts = res.data.reverse(); 
+
+                if (newPosts.length < 20) {
+                    this.allLoaded = true;
+                }
+
+                if (isInitial) {
+                    this.posts = newPosts;
+                    this.loading = false;
+                    this.$nextTick(() => {
+                        this.scrollToBottom();
+                        // Mark latest viewed
+                        if(this.posts.length > 0) this.markViewed(this.posts[this.posts.length-1].id);
+                    });
+                } else {
+                    // Prepend logic with Scroll Position Restoration
+                    const chatBody = this.$refs.chatBody;
+                    const oldHeight = chatBody.scrollHeight;
+                    const oldTop = chatBody.scrollTop;
+
+                    this.posts = [...newPosts, ...this.posts];
+                    
+                    this.$nextTick(() => {
+                        const newHeight = chatBody.scrollHeight;
+                        chatBody.scrollTop = oldTop + (newHeight - oldHeight);
+                    });
+                }
+            } catch (e) { 
+                console.error("Feed error", e); 
+            } finally { 
+                this.isLoadingMore = false; 
+                this.loading = false;
+            }
+        },
+
+        handleScroll() {
+            const el = this.$refs.chatBody;
+            // If user scrolls near the top (50px buffer), load more
+            if (el.scrollTop < 50) {
+                this.fetchFeed(false);
+            }
+        },
+
+        // --- CRUD & Upload ---
         async deletePost(id) {
-            if(!confirm("Are you sure you want to delete this announcement?")) return;
+            if(!confirm("Are you sure?")) return;
             try {
                 await axios.delete(`/api/announcement/${id}`);
+                // Optimistic delete
                 this.posts = this.posts.filter(p => p.id !== id);
-                if (typeof toastr !== 'undefined') toastr.success("Deleted successfully");
             } catch(e) {
-                if (typeof toastr !== 'undefined') toastr.error("Could not delete post");
+                if (typeof toastr !== 'undefined') toastr.error("Delete failed");
             }
         },
 
@@ -72,26 +175,21 @@ createApp({
             if(this.viewersModalInstance) this.viewersModalInstance.show();
 
             try {
-                // Assuming you have an endpoint for this. If not, you might need to add it.
-                // Or if 'reactions' contains viewers, adapt accordingly. 
-                // Using a hypothetical endpoint:
                 const res = await axios.get(`/api/announcement/${id}/viewers`);
                 this.viewersList = res.data;
             } catch(e) {
-                console.error("Error fetching viewers", e);
-                // Fallback for demo if API missing:
-                // this.viewersList = [{full_name: "Demo User", id: 1}]; 
+                console.error(e);
             } finally {
                 this.loadingViewers = false;
             }
         },
 
-        /* --- 2. GRID & FILE HELPERS --- */
+        // Grid & Helpers
         getGridClass(attachments) {
-            const visualCount = attachments.filter(a => a.file_type === 'image' || a.file_type === 'video').length;
-            if (visualCount >= 4) return 'grid-4';
-            if (visualCount === 3) return 'grid-3';
-            if (visualCount === 2) return 'grid-2';
+            const count = attachments.filter(a => ['image','video'].includes(a.file_type)).length;
+            if (count >= 4) return 'grid-4';
+            if (count === 3) return 'grid-3';
+            if (count === 2) return 'grid-2';
             return 'grid-1';
         },
 
@@ -99,17 +197,14 @@ createApp({
             const files = Array.from(e.target.files);
             files.forEach(file => {
                 const objectUrl = URL.createObjectURL(file);
-                this.tempFiles.push({
-                    file: file,
-                    preview: objectUrl, 
-                    type: file.type
-                });
+                this.tempFiles.push({ file: file, preview: objectUrl, type: file.type });
             });
             e.target.value = '';
         },
 
-        /* --- 3. UPLOAD LOGIC --- */
+        // --- RESTORED UPLOAD LOGIC ---
         async uploadAsset(file) {
+            // Check for large file/video -> Use Presigned URL
             if (file.type.startsWith('video') || file.size > 10 * 1024 * 1024) {
                 return await this.uploadVideoOrLargeFile(file);
             } else {
@@ -124,6 +219,7 @@ createApp({
                 category: 'reels'
             });
             const { upload_url, public_url } = ticketRes.data.ticket;
+            
             await axios.put(upload_url, file, {
                 headers: { 'Content-Type': file.type },
                 onUploadProgress: (progressEvent) => {
@@ -144,8 +240,8 @@ createApp({
             });
             return res.data.url;
         },
+        // ------------------------------
 
-        /* --- 4. PUBLISH --- */
         async publishPost() {
             if (!this.newPost.content && this.tempFiles.length === 0) return;
             this.isPosting = true;
@@ -163,16 +259,11 @@ createApp({
                 }));
                 
                 this.uploadProgress = 100;
+                const payload = { content: this.newPost.content, attachments: attachments };
 
-                const payload = {
-                    content: this.newPost.content,
-                    attachments: attachments
-                };
-
-                const res = await axios.post('/api/announcement/', payload);
-                this.posts.push(res.data);
+                await axios.post('/api/announcement/', payload);
                 
-                // Cleanup
+                // Clear form
                 this.newPost.content = '';
                 this.tempFiles.forEach(f => URL.revokeObjectURL(f.preview));
                 this.tempFiles = [];
@@ -181,9 +272,6 @@ createApp({
                 
                 const txt = document.querySelector('.chat-input');
                 if(txt) txt.style.height = 'auto';
-
-                this.$nextTick(() => this.scrollToBottom());
-                if (typeof toastr !== 'undefined') toastr.success("Sent");
 
             } catch (e) {
                 if (typeof toastr !== 'undefined') toastr.error("Failed to post");
@@ -194,13 +282,13 @@ createApp({
             }
         },
 
-        /* --- 5. UI UTILS --- */
         handleInput(e) {
             e.target.style.height = 'auto';
             e.target.style.height = e.target.scrollHeight + 'px';
             this.debouncedUrlCheck(this.newPost.content);
         },
         async fetchUrlMetadata(text) {
+            if (!text) return;
             const urlRegex = /(https?:\/\/[^\s]+)/g;
             const match = text.match(urlRegex);
             if (match && match[0]) {
