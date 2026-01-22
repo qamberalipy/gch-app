@@ -39,10 +39,11 @@ def get_db():
     try: yield db
     finally: db.close()
 
+ws_router = APIRouter()
 router = APIRouter()
 
 # --- 2. WebSocket Endpoint (FIXED) ---
-@router.websocket("/ws")
+@ws_router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
     """
     Real-time feed connection.

@@ -43,13 +43,16 @@ def login(
         login_attempts.pop(payload.email, None)
         
         # --- NEW: SET COOKIE FOR WEB DASHBOARD ---
+        # app/core/main_router.py
+
         response.set_cookie(
             key="access_token",
             value=access_token,
-            httponly=True,   # Secure: JS cannot read this
-            max_age=180000,    # 3000 minutes
+            httponly=True,
+            max_age=180000,
             samesite="lax",
-            secure=False     # Set to True if using HTTPS
+            secure=False,
+            path="/"  # <--- ADD THIS LINE
         )
         # -----------------------------------------
         
@@ -86,7 +89,7 @@ def logout(
     _services.logout_user(db, refresh_token=token)
     
     # --- NEW: Clear Cookie ---
-    response.delete_cookie("access_token")
+    response.delete_cookie("access_token", path="/")
     
     return {"message": "Logged out"}
 
