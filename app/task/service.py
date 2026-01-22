@@ -265,12 +265,40 @@ def get_all_tasks(
         raise HTTPException(status_code=500, detail=f"DB Error: {str(e)}")
 
 # --- 6. Chat & Content ---
-def get_chat_history(db: Session, task_id: int):
-    return db.query(_models.TaskChat)\
+# app/task/service.py
+
+def get_chat_history(db: Session, task_id: int, direction: int = 0, last_message_id: int = 0, limit: int = 10):
+    """
+    Fetches chat messages with pagination.
+    direction 1: Load Older (Scroll Up) -> IDs < last_message_id
+    direction 2: Load Newer (Refresh/Scroll Down) -> IDs > last_message_id
+    Default: Load Latest (Initial Load)
+    """
+    query = db.query(_models.TaskChat)\
         .options(joinedload(_models.TaskChat.author))\
-        .filter(_models.TaskChat.task_id == task_id)\
-        .order_by(_models.TaskChat.created_at.asc())\
-        .all()
+        .filter(_models.TaskChat.task_id == task_id)
+
+    if direction == 1 and last_message_id > 0:
+        # Fetch older messages (reverse chronological order relative to cursor)
+        query = query.filter(_models.TaskChat.id < last_message_id)\
+                     .order_by(_models.TaskChat.id.desc())
+    
+    elif direction == 2 and last_message_id > 0:
+        # Fetch newer messages (chronological order relative to cursor)
+        query = query.filter(_models.TaskChat.id > last_message_id)\
+                     .order_by(_models.TaskChat.id.asc())
+    
+    else:
+        # Default: Fetch latest messages (newest first)
+        query = query.order_by(_models.TaskChat.id.desc())
+
+    messages = query.limit(limit).all()
+
+    # If we fetched using DESC order (Older or Default), reverse list to return in Chronological ASC order
+    if direction != 2:
+        messages.reverse()
+
+    return messages
 
 def send_chat_message(db: Session, task_id: int, message: str, current_user: _user_models.User):
     task = get_task_or_404(db, task_id)

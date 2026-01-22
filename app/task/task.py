@@ -111,10 +111,12 @@ def submit_work(
 @router.get("/{task_id}/chat", response_model=List[_schemas.ChatMsgOut], tags=["TASK API"])
 def get_chat(
     task_id: int,
+    direction: Optional[int] = Query(0, description="1=Older, 2=Newer"),
+    last_message_id: Optional[int] = Query(0, description="Reference Message ID"),
     current_user: _user_models.User = Depends(_user_auth.get_current_user),
     db: Session = Depends(get_db)
 ):
-    return _services.get_chat_history(db, task_id)
+    return _services.get_chat_history(db, task_id, direction, last_message_id)
 
 @router.post("/{task_id}/chat", response_model=_schemas.ChatMsgOut, tags=["TASK API"])
 def send_chat(

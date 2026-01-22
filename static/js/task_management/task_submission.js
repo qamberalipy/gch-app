@@ -2,6 +2,7 @@
  * task_submission.js
  * Logic for Digital Creators: View, Upload, Chat, Submit.
  * Fixes: Replaced inline JSON with stable ID-based lookup to prevent SyntaxErrors.
+ * Updates: Added Pagination to Chat (Infinite Scroll).
  */
 
 // --- Global State ---
@@ -10,6 +11,11 @@ let currentTask = null;
 let newDeliverables = []; 
 let activeChatTaskId = null;
 let isChatSending = false;
+
+// --- Chat Pagination State ---
+let chatTopId = 0;    // ID of the oldest message currently in DOM
+let chatBottomId = 0; // ID of the newest message currently in DOM
+let isLoadingChat = false;
 
 // Pagination & Filter State
 let currentPage = 1;
@@ -61,6 +67,8 @@ $(document).ready(function() {
     $("#fileInput").on("change", handleFileUpload);
 
     $("#btnSubmitWork").click(submitWork);
+    
+    // Chat Triggers
     $("#btnOpenChat").click(() => openChatModal(currentTask.id, currentTask.title));
     $("#chatForm").submit(sendMessage);
 });
@@ -420,48 +428,116 @@ function submitWork() {
 }
 
 // ==========================================
-// 4. CHAT
+// 4. CHAT (Paginated)
 // ==========================================
 
 function openChatModal(id, title) {
     activeChatTaskId = id;
-    $("#chatContainer").html('<div class="text-center py-5"><div class="spinner-border text-secondary spinner-border-sm"></div></div>');
+    
+    // Reset State
+    chatTopId = 0;
+    chatBottomId = 0;
+    $("#chatContainer").empty().html('<div class="text-center py-5"><div class="spinner-border text-secondary spinner-border-sm"></div></div>');
+    
+    // Bind Scroll Event for Pagination
+    $("#chatContainer").off("scroll").on("scroll", function() {
+        if ($(this).scrollTop() === 0 && !isLoadingChat) {
+            loadChat(1); // Load Older
+        }
+    });
+
     $("#chatModal").modal("show");
-    loadChat();
+    loadChat(0); // Initial Load
 }
 
-function loadChat() {
+function loadChat(direction) {
     if (!activeChatTaskId) return;
-    axios.get(`/api/tasks/${activeChatTaskId}/chat`).then(res => {
-        const container = $("#chatContainer");
-        container.empty();
-        const myId = parseInt($('meta[name="user-id"]').attr('content')) || 0;
+    
+    let params = { direction: direction };
+    
+    // Set cursor based on direction
+    if (direction === 1) params.last_message_id = chatTopId; // Fetch older than top
+    if (direction === 2) params.last_message_id = chatBottomId; // Fetch newer than bottom
 
-        if (res.data.length === 0) {
-            container.html('<div class="text-center text-muted small mt-5 opacity-50">No messages yet.<br>Start the conversation!</div>');
-            return;
-        }
+    isLoadingChat = true;
 
-        res.data.forEach(msg => {
-            if (msg.is_system_log) {
-                container.append(`<div class="text-center my-3"><span class="badge bg-white border text-muted fw-normal rounded-pill px-3 py-1" style="font-size:0.7rem;">${msg.message}</span></div>`);
-            } else {
-                const isMe = msg.author.id === myId;
-                const bubbleHtml = `
-                    <div class="d-flex flex-column ${isMe ? 'align-items-end' : 'align-items-start'} mb-2">
-                        ${!isMe ? `<span class="small fw-bold text-dark mb-1 ms-1">${msg.author.full_name}</span>` : ''}
-                        <div class="p-2 px-3 rounded-3 shadow-sm ${isMe ? 'bg-warning text-white' : 'bg-white border text-dark'}" 
-                             style="${isMe ? 'background-color:#C89E47!important' : ''}; max-width: 85%;">
-                            ${msg.message}
-                        </div>
-                        <span class="text-muted small mt-1 mx-1" style="font-size: 0.65rem;">${formatDateShort(msg.created_at)}</span>
-                    </div>
-                `;
-                container.append(bubbleHtml);
+    axios.get(`/api/tasks/${activeChatTaskId}/chat`, { params: params })
+        .then(res => {
+            const container = $("#chatContainer");
+            const messages = res.data;
+
+            // Handle Initial Load
+            if (direction === 0) {
+                container.empty();
+                if (messages.length === 0) {
+                    container.html('<div class="text-center text-muted small mt-5 opacity-50" id="noMsgInfo">No messages yet.<br>Start the conversation!</div>');
+                    isLoadingChat = false;
+                    return;
+                }
             }
+            
+            // If no more old messages found
+            if (direction === 1 && messages.length === 0) {
+                isLoadingChat = false;
+                return; // Stop trying to fetch
+            }
+
+            if (messages.length > 0) {
+                // Update IDs
+                if (direction === 0 || direction === 2) {
+                    chatBottomId = messages[messages.length - 1].id;
+                    if (direction === 0) chatTopId = messages[0].id;
+                }
+                if (direction === 1) {
+                    chatTopId = messages[0].id;
+                }
+
+                renderMessages(messages, direction);
+            }
+        })
+        .finally(() => {
+            isLoadingChat = false;
         });
-        container.scrollTop(container[0].scrollHeight);
+}
+
+function renderMessages(messages, direction) {
+    const container = $("#chatContainer");
+    const myId = parseInt($('meta[name="user-id"]').attr('content')) || 0;
+    
+    // Capture previous height for scroll adjustment (only for 'Older')
+    const prevHeight = container[0].scrollHeight;
+
+    let htmlBuffer = "";
+
+    messages.forEach(msg => {
+        if (msg.is_system_log) {
+            htmlBuffer += `<div class="text-center my-3"><span class="badge bg-white border text-muted fw-normal rounded-pill px-3 py-1" style="font-size:0.7rem;">${msg.message}</span></div>`;
+        } else {
+            const isMe = msg.author.id === myId;
+            htmlBuffer += `
+                <div class="d-flex flex-column ${isMe ? 'align-items-end' : 'align-items-start'} mb-2 chat-msg-item" id="msg-${msg.id}">
+                    ${!isMe ? `<span class="small fw-bold text-dark mb-1 ms-1">${msg.author.full_name || 'User'}</span>` : ''}
+                    <div class="p-2 px-3 rounded-3 shadow-sm ${isMe ? 'bg-warning text-white' : 'bg-white border text-dark'}" 
+                            style="${isMe ? 'background-color:#C89E47!important' : ''}; max-width: 85%;">
+                        ${msg.message}
+                    </div>
+                    <span class="text-muted small mt-1 mx-1" style="font-size: 0.65rem;">${formatDateShort(msg.created_at)}</span>
+                </div>
+            `;
+        }
     });
+
+    if (direction === 1) {
+        // Prepend (Older)
+        container.prepend(htmlBuffer);
+        // Restore scroll position
+        container.scrollTop(container[0].scrollHeight - prevHeight);
+    } else {
+        // Append (Initial or Newer)
+        container.append(htmlBuffer);
+        // Scroll to bottom
+        container.scrollTop(container[0].scrollHeight);
+    }
 }
 
 function sendMessage(e) {
@@ -473,9 +549,16 @@ function sendMessage(e) {
     isChatSending = true;
     const btn = $("#btnSendChat");
     btn.prop("disabled", true);
+    $("#noMsgInfo").remove(); // Remove "No messages" text if it exists
 
     axios.post(`/api/tasks/${activeChatTaskId}/chat`, { message: txt })
-        .then(() => { input.val(""); loadChat(); })
+        .then((res) => { 
+            input.val(""); 
+            // Append the single new message immediately
+            renderMessages([res.data], 2); 
+            // Update bottom ID
+            chatBottomId = res.data.id;
+        })
         .catch(() => toastr.error("Failed to send"))
         .finally(() => { 
             isChatSending = false; 
