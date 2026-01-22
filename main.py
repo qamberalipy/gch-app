@@ -37,7 +37,7 @@ from app.upload import upload_router
 from app.content_vault import content_vault_router
 from app.announcement import announcement_router
 from app.announcement.announcement import ws_router as announcement_ws_router # Import explicitly
-
+from app.model_invoice import model_invoice_router
 # --- 2. IMPORT WEB (HTML) ROUTERS ---
 from app.web.routers import auth_views
 from app.web.routers import user_views
@@ -131,6 +131,7 @@ root_router.include_router(signature_router)
 root_router.include_router(content_vault_router)
 root_router.include_router(upload_router)
 root_router.include_router(announcement_router)
+root_router.include_router(model_invoice_router)
 app.include_router(root_router)        
 
 if __name__ == "__main__":
