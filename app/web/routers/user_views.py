@@ -53,3 +53,8 @@ async def settings_view(request: Request):
 async def about_view(request: Request):
     context = get_template_context(request)
     return templates.TemplateResponse("about.html", context)
+
+@user_view.get("/model_invoices")
+async def model_invoice_view(request: Request):
+    context = get_template_context(request)
+    return templates.TemplateResponse("model_invoice/model_invoice.html", context)

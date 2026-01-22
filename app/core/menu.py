@@ -7,6 +7,7 @@ MENU = {
         {"label": "Signature Assigner", "icon": "ri-file-text-line", "path": "/signature_assigner", "children": []},
         {"label": "Content Vault", "icon": "ri-folder-line", "path": "/content_vault", "children": []},
         {"label": "Announcements", "icon": "ri-discuss-line", "path": "/admin_feed", "children": []},
+        {"label": "Model Invoices", "icon": "ri-file-invoice-line", "path": "/model_invoices", "children": []},
     ],
     "manager": [
         {"label": "Dashboard", "icon": "ri-home-4-line", "path": "/dashboard", "children": []},

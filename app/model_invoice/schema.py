@@ -1,7 +1,17 @@
-# app/invoice/schema.py
+# app/model_invoice/schema.py
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date, datetime
+
+# --- New Helper Schema ---
+class UserBasicInfo(BaseModel):
+    id: int
+    username: Optional[str]
+    full_name: Optional[str]
+    profile_picture_url: Optional[str]
+
+    class Config:
+        from_attributes = True
 
 class InvoiceBase(BaseModel):
     invoice_date: date
@@ -30,6 +40,10 @@ class InvoiceResponse(InvoiceBase):
     id: int
     user_id: int
     total_earnings: float
+    
+    # --- ADD THIS FIELD ---
+    user: Optional[UserBasicInfo] = None 
+    
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
 

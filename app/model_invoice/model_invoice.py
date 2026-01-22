@@ -10,10 +10,7 @@ import app.user.user as _user_auth
 
 # Imports for dependencies (Adjust based on your app/Shared/dependencies.py)
 from app.Shared.dependencies import get_db
-router = APIRouter(
-    prefix="/invoices", 
-    tags=["Model Invoicing"]
-)
+router = APIRouter()
 
 def get_admin_user(current_user: User = Depends(_user_auth.get_current_user)):
     """Ensure the user is an Admin."""
