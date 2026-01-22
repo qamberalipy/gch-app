@@ -1,17 +1,16 @@
 # app/model_invoice/schema.py
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, ConfigDict
+from typing import Optional, List
 from datetime import date, datetime
 
-# --- New Helper Schema ---
+# --- Helper Schema for User ---
 class UserBasicInfo(BaseModel):
     id: int
-    username: Optional[str]
-    full_name: Optional[str]
-    profile_picture_url: Optional[str]
+    username: Optional[str] = None
+    full_name: Optional[str] = None
+    profile_picture_url: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class InvoiceBase(BaseModel):
     invoice_date: date
@@ -40,12 +39,15 @@ class InvoiceResponse(InvoiceBase):
     id: int
     user_id: int
     total_earnings: float
-    
-    # --- ADD THIS FIELD ---
-    user: Optional[UserBasicInfo] = None 
-    
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    user: Optional[UserBasicInfo] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+# --- Pagination Schema ---
+class InvoicePaginatedResponse(BaseModel):
+    items: List[InvoiceResponse]
+    total: int
+    page: int
+    size: int

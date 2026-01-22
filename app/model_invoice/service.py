@@ -1,8 +1,8 @@
-# app/invoice/service.py
-from sqlalchemy.orm import Session
+# app/model_invoice/service.py
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
 from datetime import date
-from typing import Optional, List
+from typing import Optional, Tuple, List
 from .models import ModelInvoice
 from .schema import InvoiceCreate, InvoiceUpdate
 
@@ -29,8 +29,9 @@ def get_invoices(
     from_date: Optional[date] = None, 
     to_date: Optional[date] = None,
     skip: int = 0,
-    limit: int = 100
-):
+    limit: int = 10
+) -> Tuple[List[ModelInvoice], int]:
+    
     query = db.query(ModelInvoice)
 
     if user_id:
@@ -42,7 +43,17 @@ def get_invoices(
     if to_date:
         query = query.filter(ModelInvoice.invoice_date <= to_date)
 
-    return query.order_by(desc(ModelInvoice.invoice_date)).offset(skip).limit(limit).all()
+    # 1. Get Total Count
+    total_count = query.count()
+
+    # 2. Get Paginated Items (with eager loading for User to prevent lag)
+    items = query.options(joinedload(ModelInvoice.user))\
+                 .order_by(desc(ModelInvoice.invoice_date))\
+                 .offset(skip)\
+                 .limit(limit)\
+                 .all()
+
+    return items, total_count
 
 def get_invoice_by_id(db: Session, invoice_id: int):
     return db.query(ModelInvoice).filter(ModelInvoice.id == invoice_id).first()
@@ -52,7 +63,7 @@ def update_invoice(db: Session, invoice_id: int, invoice_update: InvoiceUpdate):
     if not db_invoice:
         return None
     
-    update_data = invoice_update.dict(exclude_unset=True)
+    update_data = invoice_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_invoice, key, value)
     

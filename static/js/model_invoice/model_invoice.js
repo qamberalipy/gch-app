@@ -1,40 +1,69 @@
 // static/js/model_invoice/model_invoice.js
 
+console.log("Model Invoice JS Initializing...");
+
+let currentPage = 1;
+let totalItems = 0;
+const pageSize = 10;
+let invoiceModal;
+
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("DOM Loaded - Model Invoice");
+    
+    // Initialize Modal
+    const modalEl = document.getElementById('invoiceModal');
+    if (modalEl) {
+        invoiceModal = new bootstrap.Modal(modalEl);
+    }
+
+    // Attach Event Listeners (Safe method)
+    document.getElementById('btnNewInvoice')?.addEventListener('click', openInvoiceModal);
+    document.getElementById('btnApplyFilters')?.addEventListener('click', () => loadInvoices(1));
+    document.getElementById('btnResetFilters')?.addEventListener('click', resetFilters);
+    document.getElementById('btnSave')?.addEventListener('click', submitInvoice);
+    
+    document.getElementById('btnPrevPage')?.addEventListener('click', () => {
+        if (currentPage > 1) loadInvoices(currentPage - 1);
+    });
+    
+    document.getElementById('btnNextPage')?.addEventListener('click', () => {
+        const totalPages = Math.ceil(totalItems / pageSize);
+        if (currentPage < totalPages) loadInvoices(currentPage + 1);
+    });
+
+    // Initial Load
     loadCreators();
-    loadInvoices();
+    loadInvoices(1);
     setupLiveCalculation();
 });
 
-let invoiceModal;
-// Helper: Format Money
+// --- Formatting ---
 const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 };
 
-// --- 1. Notification Toast Helper ---
+// --- Toast Helper ---
 function showToast(message, isError = false) {
     const toastEl = document.getElementById('liveToast');
+    const toastTitle = document.getElementById('toastTitle');
     const toastBody = document.getElementById('toastMessage');
-    const toastIcon = toastEl.querySelector('.ni');
     
+    if(!toastEl) return;
+
     toastBody.textContent = message;
-    
     if (isError) {
-        toastIcon.className = 'ni ni-fat-remove me-2 text-danger';
-        toastBody.classList.remove('text-success');
-        toastBody.classList.add('text-danger');
+        toastTitle.className = 'me-auto text-danger fw-bold';
+        toastTitle.textContent = 'Error';
     } else {
-        toastIcon.className = 'ni ni-check-bold me-2 text-success';
-        toastBody.classList.remove('text-danger');
-        toastBody.classList.add('text-success');
+        toastTitle.className = 'me-auto text-success fw-bold';
+        toastTitle.textContent = 'Success';
     }
 
     const toast = new bootstrap.Toast(toastEl);
     toast.show();
 }
 
-// --- 2. Live Calculation Logic ---
+// --- Live Calculation ---
 function setupLiveCalculation() {
     const inputs = document.querySelectorAll('.money-input');
     const totalDisplay = document.getElementById('displayTotal');
@@ -42,108 +71,121 @@ function setupLiveCalculation() {
     inputs.forEach(input => {
         input.addEventListener('input', () => {
             let total = 0;
-            inputs.forEach(inp => {
-                total += parseFloat(inp.value) || 0;
-            });
-            totalDisplay.textContent = formatCurrency(total);
+            inputs.forEach(inp => total += parseFloat(inp.value) || 0);
+            if(totalDisplay) totalDisplay.textContent = formatCurrency(total);
         });
     });
 }
 
-// --- 3. Load Data ---
-async function loadInvoices() {
+// --- Load Data ---
+async function loadInvoices(page) {
     const tableBody = document.getElementById('invoiceTableBody');
-    const spinner = document.getElementById('loadingSpinner');
+    const emptyState = document.getElementById('emptyState');
+    const btnPrev = document.getElementById('btnPrevPage');
+    const btnNext = document.getElementById('btnNextPage');
+    const pageInfo = document.getElementById('paginationInfo');
     
-    // Filters
-    const userId = document.getElementById('filterUser').value;
-    const dateFrom = document.getElementById('filterDateFrom').value;
-    const dateTo = document.getElementById('filterDateTo').value;
+    // Show loading state
+    if(tableBody) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center py-5">
+                    <div class="spinner-border text-warning" role="status"></div>
+                    <p class="text-xs text-muted mt-2">Loading...</p>
+                </td>
+            </tr>`;
+    }
+    if(emptyState) emptyState.classList.add('d-none');
 
-    let query = new URLSearchParams();
+    // Prepare Query
+    const userId = document.getElementById('filterUser')?.value;
+    const dateFrom = document.getElementById('filterDateFrom')?.value;
+    const dateTo = document.getElementById('filterDateTo')?.value;
+
+    let query = new URLSearchParams({
+        page: page,
+        size: pageSize
+    });
+    
     if (userId) query.append('user_id', userId);
     if (dateFrom) query.append('from_date', dateFrom);
     if (dateTo) query.append('to_date', dateTo);
 
-    tableBody.innerHTML = '';
-    spinner.classList.remove('d-none');
-
     try {
+        const token = localStorage.getItem('token');
         const response = await fetch(`/api/model_invoice/?${query.toString()}`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        if (!response.ok) throw new Error('Failed to fetch data');
+        if (!response.ok) {
+            throw new Error('Failed to fetch data');
+        }
         
-        const invoices = await response.json();
-        spinner.classList.add('d-none');
-        renderTable(invoices);
+        const data = await response.json();
+        
+        currentPage = data.page;
+        totalItems = data.total;
+        
+        renderTable(data.items);
+        updatePaginationUI(btnPrev, btnNext, pageInfo);
 
     } catch (error) {
-        console.error(error);
-        spinner.classList.add('d-none');
-        showToast('Error loading records. Please refresh.', true);
+        console.error("Load Error:", error);
+        if(tableBody) tableBody.innerHTML = '';
+        if(emptyState) {
+            emptyState.innerHTML = `<p class="text-danger small">Error loading data: ${error.message}</p>`;
+            emptyState.classList.remove('d-none');
+        }
     }
 }
 
 function renderTable(invoices) {
     const tableBody = document.getElementById('invoiceTableBody');
+    const emptyState = document.getElementById('emptyState');
     
-    if (invoices.length === 0) {
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="7" class="text-center py-5">
-                    <div class="d-flex flex-column align-items-center">
-                        <i class="ni ni-folder-17 text-secondary text-lg mb-2"></i>
-                        <h6 class="text-secondary font-weight-normal">No invoice records found.</h6>
-                    </div>
-                </td>
-            </tr>`;
+    if (!tableBody) return;
+    tableBody.innerHTML = '';
+
+    if (!invoices || invoices.length === 0) {
+        if(emptyState) emptyState.classList.remove('d-none');
         return;
     }
+    
+    if(emptyState) emptyState.classList.add('d-none');
 
     invoices.forEach(inv => {
         const userName = inv.user ? (inv.user.full_name || inv.user.username) : 'Unknown User';
         const userImg = inv.user && inv.user.profile_picture_url ? inv.user.profile_picture_url : '/static/img/default-avatar.png';
         
-        // Summing up miscellaneous for display if needed, or just showing total
+        // Date Fix
+        let dateStr = inv.invoice_date;
+        try {
+             // Split YYYY-MM-DD manually to prevent timezone offset issues
+            const parts = inv.invoice_date.split('-');
+            if(parts.length === 3) {
+                 const d = new Date(parts[0], parts[1] - 1, parts[2]);
+                 dateStr = d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+            }
+        } catch(e) { console.error("Date parse error", e); }
+        
+        // We use window.editInvoice to ensure global scope access for onclick
         const row = `
             <tr>
-                <td class="ps-4">
-                    <span class="text-secondary text-xs font-weight-bold">${new Date(inv.invoice_date).toLocaleDateString()}</span>
-                </td>
+                <td class="fw-bold text-secondary">#${inv.id}</td>
                 <td>
-                    <div class="d-flex px-2 py-1">
+                    <div class="d-flex align-items-center">
+                        <img src="${userImg}" class="user-avatar-small" alt="dp">
                         <div>
-                            <img src="${userImg}" class="avatar avatar-sm me-3" alt="user1">
-                        </div>
-                        <div class="d-flex flex-column justify-content-center">
-                            <h6 class="mb-0 text-sm font-weight-bold">${userName}</h6>
-                            <p class="text-xs text-secondary mb-0">ID: ${inv.user_id}</p>
+                            <div class="fw-bold text-dark text-sm">${userName}</div>
+                            <div class="text-muted text-xs">ID: ${inv.user_id}</div>
                         </div>
                     </div>
                 </td>
+                <td class="text-secondary text-sm font-weight-500">${dateStr}</td>
+                <td class="text-end fw-bold text-success">${formatCurrency(inv.total_earnings)}</td>
                 <td class="text-end">
-                    <span class="text-xs font-weight-bold text-secondary">${inv.subscription > 0 ? formatCurrency(inv.subscription) : '-'}</span>
-                </td>
-                <td class="text-end">
-                    <span class="text-xs font-weight-bold text-secondary">${inv.tips > 0 ? formatCurrency(inv.tips) : '-'}</span>
-                </td>
-                <td class="text-end">
-                    <span class="text-xs font-weight-bold text-secondary">${(inv.posts + inv.messages) > 0 ? formatCurrency(inv.posts + inv.messages) : '-'}</span>
-                </td>
-                <td class="text-end align-middle">
-                    <span class="badge badge-sm bg-gradient-success">${formatCurrency(inv.total_earnings)}</span>
-                </td>
-                <td class="text-end align-middle">
-                    <a href="javascript:;" class="text-secondary font-weight-bold text-xs me-3" 
-                       onclick='editInvoice(${JSON.stringify(inv)})' data-bs-toggle="tooltip" title="Edit">
-                        <i class="fas fa-pencil-alt"></i>
-                    </a>
-                    <a href="javascript:;" class="text-danger font-weight-bold text-xs pe-3" 
-                       onclick="deleteInvoice(${inv.id})" data-bs-toggle="tooltip" title="Delete">
-                        <i class="fas fa-trash"></i>
-                    </a>
+                    <i class="ri-pencil-fill action-icon me-2" onclick='window.editInvoice(${JSON.stringify(inv)})' title="Edit"></i>
+                    <i class="ri-delete-bin-line action-icon delete" onclick="window.deleteInvoice(${inv.id})" title="Delete"></i>
                 </td>
             </tr>
         `;
@@ -151,39 +193,68 @@ function renderTable(invoices) {
     });
 }
 
+function updatePaginationUI(btnPrev, btnNext, pageInfo) {
+    if(!btnPrev || !btnNext || !pageInfo) return;
+
+    const totalPages = Math.ceil(totalItems / pageSize);
+    const start = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+    const end = Math.min(currentPage * pageSize, totalItems);
+
+    pageInfo.innerText = `Showing ${start}-${end} of ${totalItems}`;
+    
+    btnPrev.disabled = currentPage === 1;
+    btnNext.disabled = currentPage >= totalPages || totalItems === 0;
+}
+
+function resetFilters() {
+    if(document.getElementById('filterUser')) document.getElementById('filterUser').value = '';
+    if(document.getElementById('filterDateFrom')) document.getElementById('filterDateFrom').value = '';
+    if(document.getElementById('filterDateTo')) document.getElementById('filterDateTo').value = '';
+    loadInvoices(1);
+}
+
+// --- Creators Dropdown ---
 async function loadCreators() {
     try {
+        const token = localStorage.getItem('token');
         const response = await fetch('/api/users/?role=digital_creator', {
-             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+             headers: { 'Authorization': `Bearer ${token}` }
         });
+        if(!response.ok) return;
         const users = await response.json();
         
         const filterSelect = document.getElementById('filterUser');
         const formSelect = document.getElementById('inputUser');
 
+        // Clear existing (except first option) if re-running
+        if(filterSelect && filterSelect.options.length > 1) filterSelect.length = 1;
+        if(formSelect && formSelect.options.length > 1) formSelect.length = 1;
+
         users.forEach(u => {
             const option = `<option value="${u.id}">${u.full_name || u.username}</option>`;
-            filterSelect.insertAdjacentHTML('beforeend', option);
-            formSelect.insertAdjacentHTML('beforeend', option);
+            if(filterSelect) filterSelect.insertAdjacentHTML('beforeend', option);
+            if(formSelect) formSelect.insertAdjacentHTML('beforeend', option);
         });
     } catch (error) {
         console.error("Could not load creators", error);
     }
 }
 
-// --- 4. Modal Functions ---
+// --- Functions attached to WINDOW for Global Scope Access ---
+
+// 1. Open Modal
 function openInvoiceModal() {
     document.getElementById('invoiceForm').reset();
     document.getElementById('invoiceId').value = '';
-    document.getElementById('modalTitle').innerText = "New Revenue Record";
+    document.getElementById('modalTitle').innerText = "Add Revenue Record";
     document.getElementById('displayTotal').innerText = "$0.00";
     document.getElementById('inputDate').valueAsDate = new Date();
     
-    invoiceModal = new bootstrap.Modal(document.getElementById('invoiceModal'));
-    invoiceModal.show();
+    if(invoiceModal) invoiceModal.show();
 }
 
-function editInvoice(data) {
+// 2. Edit Invoice
+window.editInvoice = function(data) {
     document.getElementById('modalTitle').innerText = "Edit Revenue Record";
     document.getElementById('invoiceId').value = data.id;
     document.getElementById('inputUser').value = data.user_id;
@@ -194,24 +265,21 @@ function editInvoice(data) {
     document.getElementById('inputMsgs').value = data.messages || '';
     document.getElementById('inputPosts').value = data.posts || '';
     document.getElementById('inputReferrals').value = data.referrals || '';
-    document.getElementById('inputStreams').value = data.streams || '';
     document.getElementById('inputOthers').value = data.others || '';
 
-    // Trigger calc to show total immediately
     const total = (data.subscription || 0) + (data.tips || 0) + (data.messages || 0) + 
-                  (data.posts || 0) + (data.referrals || 0) + (data.streams || 0) + (data.others || 0);
+                  (data.posts || 0) + (data.referrals || 0) + (data.others || 0);
     document.getElementById('displayTotal').innerText = formatCurrency(total);
 
-    invoiceModal = new bootstrap.Modal(document.getElementById('invoiceModal'));
-    invoiceModal.show();
-}
+    if(invoiceModal) invoiceModal.show();
+};
 
+// 3. Submit
 async function submitInvoice() {
     const btn = document.getElementById('btnSave');
     const spinner = document.getElementById('btnSaveSpinner');
     const form = document.getElementById('invoiceForm');
     
-    // Simple validation
     if (!form.checkValidity()) {
         form.reportValidity();
         return;
@@ -228,54 +296,55 @@ async function submitInvoice() {
         messages: parseFloat(document.getElementById('inputMsgs').value) || 0,
         posts: parseFloat(document.getElementById('inputPosts').value) || 0,
         referrals: parseFloat(document.getElementById('inputReferrals').value) || 0,
-        streams: parseFloat(document.getElementById('inputStreams').value) || 0,
         others: parseFloat(document.getElementById('inputOthers').value) || 0,
     };
 
-    // UI Loading State
     btn.disabled = true;
-    spinner.classList.remove('d-none');
+    if(spinner) spinner.classList.remove('d-none');
 
     const url = isEdit ? `/api/model_invoice/${id}` : '/api/model_invoice/';
     const method = isEdit ? 'PUT' : 'POST';
 
     try {
+        const token = localStorage.getItem('token');
         const response = await fetch(url, {
             method: method,
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify(payload)
         });
 
         if (response.ok) {
-            invoiceModal.hide();
-            loadInvoices();
+            if(invoiceModal) invoiceModal.hide();
+            loadInvoices(currentPage); 
             showToast(isEdit ? 'Record updated successfully!' : 'Record added successfully!');
         } else {
-            showToast('Failed to save record. Check inputs.', true);
+            showToast('Failed to save record.', true);
         }
     } catch (e) {
         console.error(e);
         showToast('Network error occurred.', true);
     } finally {
         btn.disabled = false;
-        spinner.classList.add('d-none');
+        if(spinner) spinner.classList.add('d-none');
     }
 }
 
-async function deleteInvoice(id) {
-    if (!confirm("Are you sure? This will permanently remove this financial record.")) return;
+// 4. Delete
+window.deleteInvoice = async function(id) {
+    if (!confirm("Are you sure? This action cannot be undone.")) return;
 
     try {
+        const token = localStorage.getItem('token');
         const response = await fetch(`/api/model_invoice/${id}`, {
             method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            headers: { 'Authorization': `Bearer ${token}` }
         });
 
         if (response.ok) {
-            loadInvoices();
+            loadInvoices(currentPage);
             showToast('Record deleted.');
         } else {
             showToast('Failed to delete record.', true);
@@ -284,4 +353,4 @@ async function deleteInvoice(id) {
         console.error(e);
         showToast('Error deleting record.', true);
     }
-}
+};
