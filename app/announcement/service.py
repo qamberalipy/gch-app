@@ -1,14 +1,15 @@
 # app/announcement/service.py
 import requests
 from bs4 import BeautifulSoup
-from sqlalchemy.orm import Session, joinedload, selectinload
+from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException
 from app.announcement.models import Announcement, AnnouncementAttachment, AnnouncementReaction, AnnouncementView
 from app.announcement.schema import AnnouncementCreate
 from app.user.models import User, UserRole
 import re
+from typing import Optional
 
-# --- Helper Functions ---
+# ... [Keep your existing helper functions: extract_url, fetch_url_metadata] ...
 def extract_url(text: str):
     url_regex = r'(https?://[^\s]+)'
     match = re.search(url_regex, text)
@@ -16,18 +17,13 @@ def extract_url(text: str):
 
 def fetch_url_metadata(url: str):
     try:
-        # Fake a user agent to avoid being blocked by some sites
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+        headers = {'User-Agent': 'Mozilla/5.0'} # Simplified for brevity
         response = requests.get(url, headers=headers, timeout=3)
-        if response.status_code != 200:
-            return {"link_url": url}
-            
+        if response.status_code != 200: return {"link_url": url}
         soup = BeautifulSoup(response.content, "html.parser")
-        
         title = soup.find("meta", property="og:title")
         description = soup.find("meta", property="og:description")
         image = soup.find("meta", property="og:image")
-        
         return {
             "link_title": title["content"] if title else (soup.title.string if soup.title else None),
             "link_description": description["content"] if description else None,
@@ -39,6 +35,28 @@ def fetch_url_metadata(url: str):
 
 # --- Service Logic ---
 
+# --- REPLACE THIS FUNCTION ---
+def get_feed(db: Session, last_id: Optional[int] = None, limit: int = 20):
+    """
+    Fetches posts using Cursor Pagination.
+    - If last_id is provided, fetches posts with ID < last_id (Older posts).
+    - Always orders by ID DESC (Newest first).
+    """
+    query = db.query(Announcement)\
+        .options(
+            joinedload(Announcement.author),
+            joinedload(Announcement.attachments),
+            joinedload(Announcement.reactions)
+        )
+    
+    # Cursor Logic: Get older messages
+    if last_id:
+        query = query.filter(Announcement.id < last_id)
+        
+    return query.order_by(Announcement.id.desc())\
+                .limit(limit)\
+                .all()
+
 def create_announcement(db: Session, data: AnnouncementCreate, current_user: User):
     if current_user.role not in [UserRole.admin, UserRole.manager]:
         raise HTTPException(status_code=403, detail="Only Admins and Managers can post announcements.")
@@ -49,7 +67,6 @@ def create_announcement(db: Session, data: AnnouncementCreate, current_user: Use
             "content": data.content
         }
 
-        # Handle Link Preview
         if data.content:
             url = extract_url(data.content)
             if url:
@@ -60,12 +77,8 @@ def create_announcement(db: Session, data: AnnouncementCreate, current_user: Use
         db.add(new_announcement)
         db.flush() 
 
-        # Handle Attachments
         for file in data.attachments:
-            attachment = AnnouncementAttachment(
-                announcement_id=new_announcement.id,
-                **file.dict()
-            )
+            attachment = AnnouncementAttachment(announcement_id=new_announcement.id, **file.dict())
             db.add(attachment)
 
         db.commit()
@@ -80,7 +93,6 @@ def delete_announcement(db: Session, announcement_id: int, current_user: User):
     if not post:
         raise HTTPException(status_code=404, detail="Announcement not found")
     
-    # Permission: Admin, or the Author themselves
     if current_user.role != UserRole.admin and post.author_id != current_user.id:
         raise HTTPException(status_code=403, detail="You do not have permission to delete this post.")
 
@@ -93,15 +105,8 @@ def delete_announcement(db: Session, announcement_id: int, current_user: User):
         raise HTTPException(status_code=500, detail=f"Failed to delete post: {str(e)}")
 
 def mark_as_viewed(db: Session, announcement_id: int, current_user: User):
-    # Check if already viewed
-    exists = db.query(AnnouncementView).filter_by(
-        announcement_id=announcement_id, 
-        user_id=current_user.id
-    ).first()
-    
-    if exists:
-        return {"status": "already_viewed"}
-        
+    exists = db.query(AnnouncementView).filter_by(announcement_id=announcement_id, user_id=current_user.id).first()
+    if exists: return {"status": "already_viewed"}
     try:
         view = AnnouncementView(announcement_id=announcement_id, user_id=current_user.id)
         db.add(view)
@@ -114,31 +119,17 @@ def mark_as_viewed(db: Session, announcement_id: int, current_user: User):
 
 def toggle_reaction(db: Session, announcement_id: int, emoji: str, current_user: User):
     try:
-        existing_reaction = db.query(AnnouncementReaction).filter_by(
-            announcement_id=announcement_id, user_id=current_user.id
-        ).first()
-
-        if existing_reaction:
-            if existing_reaction.emoji == emoji:
-                db.delete(existing_reaction) # Toggle Off
-            else:
-                existing_reaction.emoji = emoji # Change Emoji
+        existing = db.query(AnnouncementReaction).filter_by(announcement_id=announcement_id, user_id=current_user.id).first()
+        if existing:
+            if existing.emoji == emoji: db.delete(existing)
+            else: existing.emoji = emoji
         else:
-            new_reaction = AnnouncementReaction(
-                announcement_id=announcement_id,
-                user_id=current_user.id,
-                emoji=emoji
-            )
-            db.add(new_reaction)
-        
+            db.add(AnnouncementReaction(announcement_id=announcement_id, user_id=current_user.id, emoji=emoji))
         db.commit()
         return {"status": "success"}
-    except Exception as e:
+    except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="Reaction failed")
 
 def get_post_viewers(db: Session, announcement_id: int):
-    return db.query(AnnouncementView)\
-             .options(joinedload(AnnouncementView.user))\
-             .filter(AnnouncementView.announcement_id == announcement_id)\
-             .all()
+    return db.query(AnnouncementView).options(joinedload(AnnouncementView.user)).filter(AnnouncementView.announcement_id == announcement_id).all()

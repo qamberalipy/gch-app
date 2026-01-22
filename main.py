@@ -36,6 +36,7 @@ from app.signature import signature_router
 from app.upload import upload_router
 from app.content_vault import content_vault_router
 from app.announcement import announcement_router
+from app.announcement.announcement import ws_router as announcement_ws_router # Import explicitly
 
 # --- 2. IMPORT WEB (HTML) ROUTERS ---
 from app.web.routers import auth_views
@@ -121,6 +122,7 @@ app.include_router(user_views.user_view)
 app.include_router(task_views.task_views)
 app.include_router(signature_views.signature_views)
 app.include_router(announcement_views.announcement_views)
+app.include_router(announcement_ws_router, prefix="/api/announcement")
 
 app.include_router(main_router)         
 root_router.include_router(user_router) 

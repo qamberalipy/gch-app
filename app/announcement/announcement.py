@@ -1,63 +1,141 @@
 # app/announcement/announcement.py
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException, Body, WebSocket, WebSocketDisconnect, Query, status
 from sqlalchemy.orm import Session
+from typing import List, Optional
+import json
+
 import app.core.db.session as _database
 import app.user.user as _user_auth
 from app.announcement import service, schema
+from app.user.models import User
+# IMPORTANT: Ensure this import exists for the manual auth fix
+from app.Shared.helpers import decode_token 
+
+# --- 1. WebSocket Connection Manager ---
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: dict):
+        # Iterate over a copy to avoid modification errors
+        for connection in self.active_connections[:]:
+            try:
+                await connection.send_json(message)
+            except Exception:
+                self.disconnect(connection)
+
+manager = ConnectionManager()
 
 def get_db():
     db = _database.SessionLocal()
     try: yield db
     finally: db.close()
 
+ws_router = APIRouter()
 router = APIRouter()
 
-# --- NEW: Live URL Preview Endpoint ---
+# --- 2. WebSocket Endpoint (FIXED) ---
+@ws_router.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
+    """
+    Real-time feed connection.
+    Fixes HTTPBearer error by manually reading the token from cookies.
+    """
+    # 1. Manual Auth via Cookie (Browser sends cookies, but not headers for WS)
+    token = websocket.cookies.get("access_token")
+    user = None
+    
+    if token:
+        try:
+            # Clean token if it has "Bearer " prefix
+            if token.startswith("Bearer "): 
+                token = token.split(" ")[1]
+            
+            # Decode using your helper
+            payload = decode_token(token)
+            user_id = payload.get("sub") or payload.get("user_id")
+            
+            if user_id:
+                user = db.query(User).filter(User.id == user_id).first()
+        except Exception:
+            pass # Invalid token
+
+    # 2. Reject if not authenticated
+    if not user:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    # 3. Connect
+    await manager.connect(websocket)
+    try:
+        while True:
+            # Keep connection alive
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
+# --- 3. REST Endpoints (Broadcasts Added) ---
+
 @router.post("/preview-link")
 def preview_link(
     body: dict = Body(...),
     current_user = Depends(_user_auth.get_current_user)
 ):
-    """
-    Fetches OpenGraph metadata for a URL before posting.
-    Called live as the user types.
-    """
     url = body.get("url")
-    if not url:
-        return {}
-    # Reuses your existing service logic
-    return service.fetch_url_metadata(url)
-
-# --- Standard Endpoints ---
+    return service.fetch_url_metadata(url) if url else {}
 
 @router.post("/", response_model=schema.AnnouncementResponse)
-def create_post(
+async def create_post(
     data: schema.AnnouncementCreate,
     db: Session = Depends(get_db),
     current_user = Depends(_user_auth.get_current_user)
 ):
-    return service.create_announcement(db, data, current_user)
+    new_post = service.create_announcement(db, data, current_user)
+    
+    # Broadcast New Post
+    try:
+        post_data = schema.AnnouncementResponse.from_orm(new_post).dict()
+    except AttributeError:
+        post_data = schema.AnnouncementResponse.from_orm(new_post).model_dump()
+        
+    if post_data.get('created_at'): 
+        post_data['created_at'] = str(post_data['created_at'])
+    
+    await manager.broadcast({"type": "new_post", "data": post_data})
+    
+    return new_post
 
 @router.get("/", response_model=list[schema.AnnouncementResponse])
 def get_feed(
-    skip: int = 0, 
-    limit: int = 50,  # Increased limit for chat feel
+    last_id: Optional[int] = Query(None, description="ID of the last loaded post"),
+    limit: int = 20,
     db: Session = Depends(get_db),
     current_user = Depends(_user_auth.get_current_user)
 ):
-    # Fetch posts. We will reverse them in Frontend for Chat Layout.
-    return db.query(service.Announcement)\
-        .order_by(service.Announcement.created_at.desc())\
-        .offset(skip).limit(limit).all()
+    return service.get_feed(db, last_id, limit)
 
 @router.delete("/{id}")
-def delete_post(
+async def delete_post(
     id: int,
     db: Session = Depends(get_db),
     current_user = Depends(_user_auth.get_current_user)
 ):
-    return service.delete_announcement(db, id, current_user)
+    result = service.delete_announcement(db, id, current_user)
+    
+    # Broadcast Deletion
+    await manager.broadcast({"type": "delete_post", "id": id})
+    
+    return result
 
+# ... (Keep react_to_post, mark_viewed, get_viewers as they are)
 @router.post("/{id}/react")
 def react_to_post(
     id: int, 
@@ -81,7 +159,6 @@ def get_viewers(
     db: Session = Depends(get_db),
     current_user = Depends(_user_auth.get_current_user)
 ):
-    # Restricted to Admin/Manager
     if current_user.role not in ["admin", "manager"]:
          raise HTTPException(status_code=403, detail="Not authorized")
     return service.get_post_viewers(db, id)
