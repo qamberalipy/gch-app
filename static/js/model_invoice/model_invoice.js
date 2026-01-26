@@ -1,356 +1,326 @@
-// static/js/model_invoice/model_invoice.js
+/**
+ * model_invoice.js
+ * Theme: Grail (Task Assigner Style)
+ */
 
-console.log("Model Invoice JS Initializing...");
-
+// State
 let currentPage = 1;
+let pageSize = 10;
 let totalItems = 0;
-const pageSize = 10;
-let invoiceModal;
+let activeFilters = { user_id: '', date_from: '', date_to: '' };
+let cachedCreators = []; // Store creators for easy access
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM Loaded - Model Invoice");
-    
-    // Initialize Modal
-    const modalEl = document.getElementById('invoiceModal');
-    if (modalEl) {
-        invoiceModal = new bootstrap.Modal(modalEl);
-    }
-
-    // Attach Event Listeners (Safe method)
-    document.getElementById('btnNewInvoice')?.addEventListener('click', openInvoiceModal);
-    document.getElementById('btnApplyFilters')?.addEventListener('click', () => loadInvoices(1));
-    document.getElementById('btnResetFilters')?.addEventListener('click', resetFilters);
-    document.getElementById('btnSave')?.addEventListener('click', submitInvoice);
-    
-    document.getElementById('btnPrevPage')?.addEventListener('click', () => {
-        if (currentPage > 1) loadInvoices(currentPage - 1);
-    });
-    
-    document.getElementById('btnNextPage')?.addEventListener('click', () => {
-        const totalPages = Math.ceil(totalItems / pageSize);
-        if (currentPage < totalPages) loadInvoices(currentPage + 1);
-    });
-
-    // Initial Load
+$(document).ready(function() {
+    setDefaultDates(); // Set THIS Month by default
     loadCreators();
-    loadInvoices(1);
-    setupLiveCalculation();
+    loadData();
+
+    // Event Listeners
+    $("#filterUser, #filterDateFrom, #filterDateTo").on("change", function() {
+        activeFilters.user_id = $("#filterUser").val();
+        activeFilters.date_from = $("#filterDateFrom").val();
+        activeFilters.date_to = $("#filterDateTo").val();
+        currentPage = 1;
+        loadData();
+    });
+
+    $("#invoiceForm").on("submit", handleFormSubmit);
+
+    // Live Calculation
+    $(".js-calc").on("input", calculateTotal);
+
+    // Pagination
+    $("#btnPrevPage").click(() => { if(currentPage > 1) { currentPage--; loadData(); }});
+    $("#btnNextPage").click(() => { 
+        const max = Math.ceil(totalItems/pageSize); 
+        if(currentPage < max) { currentPage++; loadData(); }
+    });
 });
 
-// --- Formatting ---
-const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+// --- Initialization ---
+
+function setDefaultDates() {
+    // Calculate CURRENT month range
+    const now = new Date();
+    // 1st day of current month
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    // Last day of current month (Day 0 of next month)
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    // Format to YYYY-MM-DD
+    const formatDate = (d) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    // Set DOM inputs
+    $("#filterDateFrom").val(formatDate(firstDay));
+    $("#filterDateTo").val(formatDate(lastDay));
+
+    // Update active filters
+    activeFilters.date_from = formatDate(firstDay);
+    activeFilters.date_to = formatDate(lastDay);
+}
+
+// --- Data Loading ---
+
+function loadCreators() {
+    axios.get('/api/model_invoice/creators')
+        .then(res => {
+            cachedCreators = res.data;
+            const filterSelect = $("#filterUser");
+            const dropdownMenu = $("#userDropdownMenu");
+
+            // 1. Populate Filter (Simple Select)
+            const opts = cachedCreators.map(u => `<option value="${u.id}">${u.full_name || u.username}</option>`).join('');
+            filterSelect.append(opts);
+
+            // 2. Populate Custom Modal Dropdown (With Images)
+            dropdownMenu.empty();
+            if(cachedCreators.length === 0) {
+                 dropdownMenu.append('<li><span class="dropdown-item text-muted">No creators found</span></li>');
+                 return;
+            }
+
+            cachedCreators.forEach(u => {
+                const pic = u.profile_picture_url || `https://ui-avatars.com/api/?name=${u.full_name || u.username}&background=random&color=fff&background=C89E47`;
+                const name = u.full_name || u.username;
+                
+                const itemHtml = `
+                    <li>
+                        <div class="custom-user-item" onclick="selectCreator(${u.id}, '${name}', '${pic}')">
+                            <img src="${pic}" class="dropdown-avatar" alt="u">
+                            <span>${name}</span>
+                        </div>
+                    </li>
+                `;
+                dropdownMenu.append(itemHtml);
+            });
+        })
+        .catch(err => console.error("Failed to load creators:", err));
+}
+
+// Helper to select creator in modal
+window.selectCreator = function(id, name, picUrl) {
+    $("#inputUserId").val(id);
+    $("#selectedUserText").html(`
+        <div class="d-flex align-items-center">
+            <img src="${picUrl}" class="dropdown-avatar" style="width:24px;height:24px;">
+            <span>${name}</span>
+        </div>
+    `);
 };
 
-// --- Toast Helper ---
-function showToast(message, isError = false) {
-    const toastEl = document.getElementById('liveToast');
-    const toastTitle = document.getElementById('toastTitle');
-    const toastBody = document.getElementById('toastMessage');
+function loadData() {
+    const tbody = $("#invoiceTableBody");
+    tbody.html(`<tr><td colspan="6" class="text-center py-5"><div class="spinner-border text-warning"></div></td></tr>`);
     
-    if(!toastEl) return;
+    // Call global loader
+    if(typeof myshowLoader === 'function') myshowLoader();
 
-    toastBody.textContent = message;
-    if (isError) {
-        toastTitle.className = 'me-auto text-danger fw-bold';
-        toastTitle.textContent = 'Error';
-    } else {
-        toastTitle.className = 'me-auto text-success fw-bold';
-        toastTitle.textContent = 'Success';
-    }
+    // Clean params
+    const params = { page: currentPage, limit: pageSize };
+    if (activeFilters.user_id) params.user_id = activeFilters.user_id;
+    if (activeFilters.date_from) params.date_from = activeFilters.date_from;
+    if (activeFilters.date_to) params.date_to = activeFilters.date_to;
 
-    const toast = new bootstrap.Toast(toastEl);
-    toast.show();
-}
-
-// --- Live Calculation ---
-function setupLiveCalculation() {
-    const inputs = document.querySelectorAll('.money-input');
-    const totalDisplay = document.getElementById('displayTotal');
-
-    inputs.forEach(input => {
-        input.addEventListener('input', () => {
-            let total = 0;
-            inputs.forEach(inp => total += parseFloat(inp.value) || 0);
-            if(totalDisplay) totalDisplay.textContent = formatCurrency(total);
+    axios.get('/api/model_invoice/', { params: params })
+        .then(res => {
+            totalItems = res.data.total;
+            renderTable(res.data.items);
+            updatePaginationUI();
+        })
+        .catch(err => {
+            console.error(err);
+            tbody.html(`<tr><td colspan="6" class="text-center text-danger py-4">Failed to load data.</td></tr>`);
+        })
+        .finally(() => {
+             // Hide global loader
+             if(typeof myhideLoader === 'function') myhideLoader();
         });
-    });
 }
 
-// --- Load Data ---
-async function loadInvoices(page) {
-    const tableBody = document.getElementById('invoiceTableBody');
-    const emptyState = document.getElementById('emptyState');
-    const btnPrev = document.getElementById('btnPrevPage');
-    const btnNext = document.getElementById('btnNextPage');
-    const pageInfo = document.getElementById('paginationInfo');
-    
-    // Show loading state
-    if(tableBody) {
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="5" class="text-center py-5">
-                    <div class="spinner-border text-warning" role="status"></div>
-                    <p class="text-xs text-muted mt-2">Loading...</p>
-                </td>
-            </tr>`;
-    }
-    if(emptyState) emptyState.classList.add('d-none');
+function renderTable(items) {
+    const tbody = $("#invoiceTableBody");
+    tbody.empty();
 
-    // Prepare Query
-    const userId = document.getElementById('filterUser')?.value;
-    const dateFrom = document.getElementById('filterDateFrom')?.value;
-    const dateTo = document.getElementById('filterDateTo')?.value;
-
-    let query = new URLSearchParams({
-        page: page,
-        size: pageSize
-    });
-    
-    if (userId) query.append('user_id', userId);
-    if (dateFrom) query.append('from_date', dateFrom);
-    if (dateTo) query.append('to_date', dateTo);
-
-    try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`/api/model_invoice/?${query.toString()}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to fetch data');
-        }
-        
-        const data = await response.json();
-        
-        currentPage = data.page;
-        totalItems = data.total;
-        
-        renderTable(data.items);
-        updatePaginationUI(btnPrev, btnNext, pageInfo);
-
-    } catch (error) {
-        console.error("Load Error:", error);
-        if(tableBody) tableBody.innerHTML = '';
-        if(emptyState) {
-            emptyState.innerHTML = `<p class="text-danger small">Error loading data: ${error.message}</p>`;
-            emptyState.classList.remove('d-none');
-        }
-    }
-}
-
-function renderTable(invoices) {
-    const tableBody = document.getElementById('invoiceTableBody');
-    const emptyState = document.getElementById('emptyState');
-    
-    if (!tableBody) return;
-    tableBody.innerHTML = '';
-
-    if (!invoices || invoices.length === 0) {
-        if(emptyState) emptyState.classList.remove('d-none');
+    if (items.length === 0) {
+        tbody.html(`<tr><td colspan="6" class="text-center text-muted py-5">No revenue records found for this period.</td></tr>`);
         return;
     }
-    
-    if(emptyState) emptyState.classList.add('d-none');
 
-    invoices.forEach(inv => {
-        const userName = inv.user ? (inv.user.full_name || inv.user.username) : 'Unknown User';
-        const userImg = inv.user && inv.user.profile_picture_url ? inv.user.profile_picture_url : '/static/img/default-avatar.png';
+    items.forEach(item => {
+        const u = item.user || { full_name: 'Unknown', profile_picture_url: '' };
+        const pic = u.profile_picture_url || `https://ui-avatars.com/api/?name=${u.full_name}&background=random`;
         
-        // Date Fix
-        let dateStr = inv.invoice_date;
-        try {
-             // Split YYYY-MM-DD manually to prevent timezone offset issues
-            const parts = inv.invoice_date.split('-');
-            if(parts.length === 3) {
-                 const d = new Date(parts[0], parts[1] - 1, parts[2]);
-                 dateStr = d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-            }
-        } catch(e) { console.error("Date parse error", e); }
+        // Pass item securely to onclick using base64 or ID fetch - simplified here using object
+        // To avoid quote escaping issues, we'll fetch details by ID in edit, but here we can pass basic data
+        // For safety, we just pass ID to edit and fetch fresh, or use a data-attribute approach. 
+        // We will stick to the previous object passing but ensure proper escaping if needed.
+        // Or better: attach data to the row element.
         
-        // We use window.editInvoice to ensure global scope access for onclick
+        // Simple fix for object passing in string:
+        const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+
         const row = `
             <tr>
-                <td class="fw-bold text-secondary">#${inv.id}</td>
                 <td>
                     <div class="d-flex align-items-center">
-                        <img src="${userImg}" class="user-avatar-small" alt="dp">
-                        <div>
-                            <div class="fw-bold text-dark text-sm">${userName}</div>
-                            <div class="text-muted text-xs">ID: ${inv.user_id}</div>
-                        </div>
+                        <img src="${pic}" class="user-avatar-small">
+                        <span class="fw-bold text-dark small">${u.full_name || u.username}</span>
                     </div>
                 </td>
-                <td class="text-secondary text-sm font-weight-500">${dateStr}</td>
-                <td class="text-end fw-bold text-success">${formatCurrency(inv.total_earnings)}</td>
+                <td><span class="text-dark small">${item.invoice_date}</span></td>
+                <td class="text-end text-muted small">${fmtMoney(item.subscription)}</td>
+                <td class="text-end text-muted small">${fmtMoney(item.tips + item.messages)}</td>
+                <td class="text-end"><span class="fw-bold text-success">${fmtMoney(item.total_earnings)}</span></td>
                 <td class="text-end">
-                    <i class="ri-pencil-fill action-icon me-2" onclick='window.editInvoice(${JSON.stringify(inv)})' title="Edit"></i>
-                    <i class="ri-delete-bin-line action-icon delete" onclick="window.deleteInvoice(${inv.id})" title="Delete"></i>
+                    <i class="ri-pencil-line action-icon me-2" onclick="openEditModal(${itemJson})"></i>
+                    <i class="ri-delete-bin-line action-icon delete" onclick="deleteInvoice(${item.id})"></i>
                 </td>
             </tr>
         `;
-        tableBody.insertAdjacentHTML('beforeend', row);
+        tbody.append(row);
     });
 }
 
-function updatePaginationUI(btnPrev, btnNext, pageInfo) {
-    if(!btnPrev || !btnNext || !pageInfo) return;
+// --- Modal Logic ---
 
-    const totalPages = Math.ceil(totalItems / pageSize);
-    const start = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-    const end = Math.min(currentPage * pageSize, totalItems);
-
-    pageInfo.innerText = `Showing ${start}-${end} of ${totalItems}`;
+function openCreateModal() {
+    $("#invoiceForm")[0].reset();
+    $("#invoiceId").val("");
+    $("#inputUserId").val("");
+    $("#selectedUserText").text("Select Creator..."); // Reset dropdown text
     
-    btnPrev.disabled = currentPage === 1;
-    btnNext.disabled = currentPage >= totalPages || totalItems === 0;
-}
-
-function resetFilters() {
-    if(document.getElementById('filterUser')) document.getElementById('filterUser').value = '';
-    if(document.getElementById('filterDateFrom')) document.getElementById('filterDateFrom').value = '';
-    if(document.getElementById('filterDateTo')) document.getElementById('filterDateTo').value = '';
-    loadInvoices(1);
-}
-
-// --- Creators Dropdown ---
-async function loadCreators() {
-    try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('/api/users/?role=digital_creator', {
-             headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if(!response.ok) return;
-        const users = await response.json();
-        
-        const filterSelect = document.getElementById('filterUser');
-        const formSelect = document.getElementById('inputUser');
-
-        // Clear existing (except first option) if re-running
-        if(filterSelect && filterSelect.options.length > 1) filterSelect.length = 1;
-        if(formSelect && formSelect.options.length > 1) formSelect.length = 1;
-
-        users.forEach(u => {
-            const option = `<option value="${u.id}">${u.full_name || u.username}</option>`;
-            if(filterSelect) filterSelect.insertAdjacentHTML('beforeend', option);
-            if(formSelect) formSelect.insertAdjacentHTML('beforeend', option);
-        });
-    } catch (error) {
-        console.error("Could not load creators", error);
-    }
-}
-
-// --- Functions attached to WINDOW for Global Scope Access ---
-
-// 1. Open Modal
-function openInvoiceModal() {
-    document.getElementById('invoiceForm').reset();
-    document.getElementById('invoiceId').value = '';
-    document.getElementById('modalTitle').innerText = "Add Revenue Record";
-    document.getElementById('displayTotal').innerText = "$0.00";
+    $("#modalLabel").text("Add Revenue Record");
+    $("#displayTotal").text("$0.00");
     document.getElementById('inputDate').valueAsDate = new Date();
-    
-    if(invoiceModal) invoiceModal.show();
+    $("#invoiceModal").modal("show");
 }
 
-// 2. Edit Invoice
-window.editInvoice = function(data) {
-    document.getElementById('modalTitle').innerText = "Edit Revenue Record";
-    document.getElementById('invoiceId').value = data.id;
-    document.getElementById('inputUser').value = data.user_id;
-    document.getElementById('inputDate').value = data.invoice_date;
+function openEditModal(item) {
+    $("#invoiceForm")[0].reset();
+    $("#invoiceId").val(item.id);
     
-    document.getElementById('inputSubs').value = data.subscription || '';
-    document.getElementById('inputTips').value = data.tips || '';
-    document.getElementById('inputMsgs').value = data.messages || '';
-    document.getElementById('inputPosts').value = data.posts || '';
-    document.getElementById('inputReferrals').value = data.referrals || '';
-    document.getElementById('inputOthers').value = data.others || '';
+    // Set Dropdown UI
+    const u = item.user || {};
+    const pic = u.profile_picture_url || `https://ui-avatars.com/api/?name=${u.full_name}&background=random`;
+    selectCreator(item.user_id, u.full_name || u.username, pic);
 
-    const total = (data.subscription || 0) + (data.tips || 0) + (data.messages || 0) + 
-                  (data.posts || 0) + (data.referrals || 0) + (data.others || 0);
-    document.getElementById('displayTotal').innerText = formatCurrency(total);
-
-    if(invoiceModal) invoiceModal.show();
-};
-
-// 3. Submit
-async function submitInvoice() {
-    const btn = document.getElementById('btnSave');
-    const spinner = document.getElementById('btnSaveSpinner');
-    const form = document.getElementById('invoiceForm');
+    $("#inputDate").val(item.invoice_date);
     
-    if (!form.checkValidity()) {
-        form.reportValidity();
+    $("#inputSubs").val(item.subscription);
+    $("#inputTips").val(item.tips);
+    $("#inputMsgs").val(item.messages);
+    $("#inputPosts").val(item.posts);
+    $("#inputReferrals").val(item.referrals);
+    $("#inputStreams").val(item.streams);
+    $("#inputOthers").val(item.others);
+    
+    calculateTotal();
+    $("#modalLabel").text("Edit Revenue Record");
+    $("#invoiceModal").modal("show");
+}
+
+function calculateTotal() {
+    let sum = 0;
+    $(".js-calc").each(function() {
+        sum += parseFloat($(this).val()) || 0;
+    });
+    $("#displayTotal").text(fmtMoney(sum));
+}
+
+function handleFormSubmit(e) {
+    e.preventDefault();
+    
+    // Validate User Selection
+    const userId = $("#inputUserId").val();
+    if(!userId) {
+        showToastMessage('warning', 'Please select a creator.');
         return;
     }
 
-    const id = document.getElementById('invoiceId').value;
-    const isEdit = !!id;
-    
+    if(typeof myshowLoader === 'function') myshowLoader();
+
+    const id = $("#invoiceId").val();
     const payload = {
-        user_id: document.getElementById('inputUser').value,
-        invoice_date: document.getElementById('inputDate').value,
-        subscription: parseFloat(document.getElementById('inputSubs').value) || 0,
-        tips: parseFloat(document.getElementById('inputTips').value) || 0,
-        messages: parseFloat(document.getElementById('inputMsgs').value) || 0,
-        posts: parseFloat(document.getElementById('inputPosts').value) || 0,
-        referrals: parseFloat(document.getElementById('inputReferrals').value) || 0,
-        others: parseFloat(document.getElementById('inputOthers').value) || 0,
+        user_id: parseInt(userId),
+        invoice_date: $("#inputDate").val(),
+        subscription: parseFloat($("#inputSubs").val()) || 0,
+        tips: parseFloat($("#inputTips").val()) || 0,
+        messages: parseFloat($("#inputMsgs").val()) || 0,
+        posts: parseFloat($("#inputPosts").val()) || 0,
+        referrals: parseFloat($("#inputReferrals").val()) || 0,
+        streams: parseFloat($("#inputStreams").val()) || 0,
+        others: parseFloat($("#inputOthers").val()) || 0
     };
 
-    btn.disabled = true;
-    if(spinner) spinner.classList.remove('d-none');
+    const promise = id 
+        ? axios.put(`/api/model_invoice/${id}`, payload)
+        : axios.post('/api/model_invoice/', payload);
 
-    const url = isEdit ? `/api/model_invoice/${id}` : '/api/model_invoice/';
-    const method = isEdit ? 'PUT' : 'POST';
-
-    try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(url, {
-            method: method,
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(payload)
+    promise
+        .then(() => {
+            $("#invoiceModal").modal("hide");
+            showToastMessage('success', "Record Saved Successfully");
+            loadData();
+        })
+        .catch(err => {
+            const msg = err.response?.data?.detail || "Operation Failed";
+            showToastMessage('error', msg);
+        })
+        .finally(() => {
+            if(typeof myhideLoader === 'function') myhideLoader();
         });
-
-        if (response.ok) {
-            if(invoiceModal) invoiceModal.hide();
-            loadInvoices(currentPage); 
-            showToast(isEdit ? 'Record updated successfully!' : 'Record added successfully!');
-        } else {
-            showToast('Failed to save record.', true);
-        }
-    } catch (e) {
-        console.error(e);
-        showToast('Network error occurred.', true);
-    } finally {
-        btn.disabled = false;
-        if(spinner) spinner.classList.add('d-none');
-    }
 }
 
-// 4. Delete
-window.deleteInvoice = async function(id) {
-    if (!confirm("Are you sure? This action cannot be undone.")) return;
-
-    try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`/api/model_invoice/${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (response.ok) {
-            loadInvoices(currentPage);
-            showToast('Record deleted.');
-        } else {
-            showToast('Failed to delete record.', true);
+function deleteInvoice(id) {
+    Swal.fire({
+        title: 'Are you sure?',
+        text: "You won't be able to revert this!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#C89E47',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            if(typeof myshowLoader === 'function') myshowLoader();
+            
+            axios.delete(`/api/model_invoice/${id}`)
+                .then(() => { 
+                    Swal.fire('Deleted!', 'The record has been deleted.', 'success');
+                    loadData(); 
+                })
+                .catch(() => {
+                    Swal.fire('Error!', 'Failed to delete record.', 'error');
+                })
+                .finally(() => {
+                    if(typeof myhideLoader === 'function') myhideLoader();
+                });
         }
-    } catch (e) {
-        console.error(e);
-        showToast('Error deleting record.', true);
-    }
-};
+    });
+}
+
+// --- Utilities ---
+function resetFilters() {
+    $("#filterUser").val("");
+    setDefaultDates(); 
+    $("#filterUser").trigger("change");
+}
+
+function updatePaginationUI() {
+    const max = Math.ceil(totalItems/pageSize) || 1;
+    const start = (currentPage-1)*pageSize + 1;
+    const end = Math.min(currentPage*pageSize, totalItems);
+    
+    $("#paginationInfo").text(`Showing ${totalItems === 0 ? 0 : start}-${end} of ${totalItems}`);
+    $("#btnPrevPage").prop("disabled", currentPage === 1);
+    $("#btnNextPage").prop("disabled", currentPage >= max || totalItems === 0);
+}
+
+function fmtMoney(val) {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
+}
