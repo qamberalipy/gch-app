@@ -41,10 +41,12 @@ from app.upload import upload_router
 from app.content_vault import content_vault_router
 from app.announcement import announcement_router
 from app.announcement.announcement import ws_router as announcement_ws_router 
+from app.notification import notification_router
+from app.notification import ws_router as notification_ws_router
 from app.model_invoice import model_invoice_router
 # --- NEW: Notification Router ---
 # (Assumes you created app/notification/router.py as per previous instructions)
-from app.notification import router as notification_router 
+ 
 
 # --- 2. IMPORT WEB (HTML) ROUTERS ---
 from app.web.routers import auth_views
@@ -143,6 +145,7 @@ app.include_router(task_views.task_views)
 app.include_router(signature_views.signature_views)
 app.include_router(announcement_views.announcement_views)
 app.include_router(announcement_ws_router, prefix="/api/announcement")
+app.include_router(notification_ws_router, prefix="/api/notification")
 
 app.include_router(main_router)         
 root_router.include_router(user_router) 
@@ -151,9 +154,8 @@ root_router.include_router(signature_router)
 root_router.include_router(content_vault_router)
 root_router.include_router(upload_router)
 root_router.include_router(announcement_router)
+root_router.include_router(notification_router)
 root_router.include_router(model_invoice_router)
-# --- NEW: Include Notification API ---
-root_router.include_router(notification_router.router)
 
 app.include_router(root_router)        
 

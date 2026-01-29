@@ -1,80 +1,88 @@
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Body, HTTPException
+# app/notification/notification.py
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Body, status
 from sqlalchemy.orm import Session
-from app.core.db.session import get_db as get_db_shared # Assuming you export this or import from session.py
-from app.Shared.dependencies import get_current_user, get_db
-from app.Shared.helpers import decode_token
-from app.notification import service, models
-from app.user.models import User
+from typing import List
 
-router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
+import app.core.db.session as _database
+from app.notification import service, schema
+import app.user.user as _user_auth  # <--- CORRECT IMPORT
+from app.Shared.helpers import decode_token 
+
+# Define Routers
+ws_router = APIRouter()
+router = APIRouter()
+
+def get_db():
+    db = _database.SessionLocal()
+    try: yield db
+    finally: db.close()
 
 # --- 1. WebSocket Endpoint ---
-@router.websocket("/ws")
+@ws_router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
-    # Manual Cookie Auth (Same as your Announcement logic)
+    """
+    Real-time notification connection.
+    Uses Manual Cookie Auth (same as Announcement module).
+    """
     token = websocket.cookies.get("access_token")
     user_id = None
     
     if token:
         try:
-            if token.startswith("Bearer "): token = token.split(" ")[1]
+            if token.startswith("Bearer "): 
+                token = token.split(" ")[1]
             payload = decode_token(token)
             user_id = payload.get("sub") or payload.get("user_id")
-        except:
-            pass
-            
+        except Exception:
+            pass 
+
     if not user_id:
-        await websocket.close(code=1008)
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
     await service.ws_manager.connect(websocket, user_id)
     try:
         while True:
-            await websocket.receive_text() # Keep alive
+            await websocket.receive_text() # Keep connection alive
     except WebSocketDisconnect:
         service.ws_manager.disconnect(websocket, user_id)
 
 # --- 2. REST Endpoints ---
-@router.post("/device/token")
-def register_device(
-    token: str = Body(..., embed=True),
-    platform: str = Body("android", embed=True),
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user)
-):
-    """Called by Flutter app on startup"""
-    existing = db.query(models.UserDevice).filter(models.UserDevice.fcm_token == token).first()
-    if existing:
-        existing.user_id = user.id # Update owner if changed
-    else:
-        new_device = models.UserDevice(user_id=user.id, fcm_token=token, platform=platform)
-        db.add(new_device)
-    db.commit()
-    return {"message": "Device registered"}
 
-@router.get("/")
+@router.post("/device/token", response_model=dict)
+def register_device(
+    payload: schema.DeviceTokenCreate, 
+    db: Session = Depends(get_db),
+    current_user = Depends(_user_auth.get_current_user) # <--- CORRECT AUTH
+):
+    return service.register_device_token(db, current_user, payload)
+
+@router.get("/", response_model=List[schema.NotificationResponse])
 def get_notifications(
     limit: int = 20, 
     db: Session = Depends(get_db), 
-    user: User = Depends(get_current_user)
+    current_user = Depends(_user_auth.get_current_user)
 ):
-    """Fetch history for the Bell Icon"""
-    return db.query(models.Notification)\
-             .filter(models.Notification.recipient_id == user.id)\
-             .order_by(models.Notification.created_at.desc())\
-             .limit(limit).all()
+    return service.get_my_notifications(db, current_user, limit)
 
-@router.get("/unread-count")
-def get_unread_count(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    count = db.query(models.Notification)\
-              .filter(models.Notification.recipient_id == user.id, models.Notification.is_read == False)\
-              .count()
-    return {"count": count}
+@router.get("/unread-count", response_model=schema.UnreadCount)
+def get_unread_count(
+    db: Session = Depends(get_db), 
+    current_user = Depends(_user_auth.get_current_user)
+):
+    return service.count_unread(db, current_user)
 
 @router.put("/{id}/read")
-def mark_read(id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    notif = db.query(models.Notification).filter(models.Notification.id == id, models.Notification.recipient_id == user.id).first()
-    if notif:
-        notif.is_read = True
-        db.commit()
-    return {"status": "ok"}
+def mark_read(
+    id: int, 
+    db: Session = Depends(get_db), 
+    current_user = Depends(_user_auth.get_current_user)
+):
+    return service.mark_as_read(db, current_user, id)
+
+@router.post("/mark-all-read")
+def mark_all_read(
+    db: Session = Depends(get_db),
+    current_user = Depends(_user_auth.get_current_user)
+):
+    return service.mark_all_as_read(db, current_user)
