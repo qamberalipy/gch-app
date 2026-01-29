@@ -98,26 +98,22 @@
                 <div class="dropdown">
                     <div class="notification-trigger" id="notifDropdown" data-bs-toggle="dropdown" aria-expanded="false" data-bs-offset="0,15">
                         <i class="ri-notification-3-line"></i>
-                        <span class="notification-badge">3</span>
+                        <span class="notification-badge" id="notif-badge" style="display: none;">0</span>
                     </div>
 
                     <ul class="dropdown-menu dropdown-menu-end custom-dropdown-menu notification-dropdown" aria-labelledby="notifDropdown">
                         <li class="notification-header">
                             <span class="fw-semibold small">Notifications</span>
-                            <a href="#" class="text-decoration-none small text-muted" style="font-size: 0.75rem;">Mark all read</a>
+                            <a href="javascript:void(0)" onclick="markAllRead()" class="text-decoration-none small text-muted" style="font-size: 0.75rem;">Mark all read</a>
                         </li>
-                        <li>
-                            <a href="#" class="notification-item">
-                                <div class="notif-icon-box bg-light-blue"><i class="ri-shopping-bag-3-line"></i></div>
-                                <div>
-                                    <p class="mb-0 small fw-medium">New Order Received</p>
-                                    <span class="text-muted" style="font-size: 0.65rem;">2 min ago</span>
-                                </div>
-                            </a>
-                        </li>
+                        
+                        <div id="notif-list" style="max-height: 350px; overflow-y: auto;">
+                            <li class="text-center py-2"><small class="text-muted">Loading...</small></li>
+                        </div>
+
                         <li><hr class="dropdown-divider my-1"></li>
                         <li class="text-center py-1">
-                            <a href="#" class="small text-decoration-none fw-medium" style="color: var(--active-color);">View All</a>
+                            <a href="/notifications" class="small text-decoration-none fw-medium" style="color: var(--active-color);">View All</a>
                         </li>
                     </ul>
                 </div>
