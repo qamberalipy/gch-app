@@ -1,98 +1,18 @@
 # app/task/service.py
 import datetime
-import asyncio
 from sqlalchemy import desc, or_
 from sqlalchemy.orm import Session, joinedload, aliased
 from sqlalchemy.exc import SQLAlchemyError
 from fastapi import HTTPException, status, BackgroundTasks
-from typing import List, Optional, Any
+from typing import List, Optional, Set
 
 import app.task.models as _models
 import app.user.models as _user_models
 import app.task.schema as _schemas
-import app.core.db.session as _database 
+import app.notification.models as _notif_models 
+from app.notification.service import notify_users 
 
-# --- Notification Import ---
-from app.notification.service import send_smart_notification
-
-# ==========================================
-#   NOTIFICATION SAFETY HELPERS
-# ==========================================
-
-class ImmediateBackgroundTasks(BackgroundTasks):
-    """
-    Custom handler to execute FCM tasks immediately 
-    since we are already inside a background thread.
-    """
-    def add_task(self, func: Any, *args: Any, **kwargs: Any) -> None:
-        try:
-            func(*args, **kwargs)
-        except Exception as e:
-            print(f"FCM Immediate Execution Failed: {e}")
-
-def _run_async_notification(recipient_ids: List[int], title: str, body: str, entity_id: int, actor_id: int):
-    """
-    Safe wrapper: Creates its own DB session and Event Loop.
-    Wraps everything in try/except to protect the main app.
-    """
-    # 1. Create a fresh DB session (Essential for background threads)
-    new_db = _database.SessionLocal()
-    try:
-        # 2. Create a new event loop for this thread
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        # 3. Run the async 'send_smart_notification'
-        # We use ImmediateBackgroundTasks to force FCM to send NOW.
-        loop.run_until_complete(
-            send_smart_notification(
-                db=new_db,
-                recipient_ids=recipient_ids,
-                title=title,
-                body=body,
-                background_tasks=ImmediateBackgroundTasks(), # <--- THE FIX
-                entity_type="task",
-                entity_id=entity_id,
-                click_url=f"/task_assigner", 
-                actor_id=actor_id
-            )
-        )
-        loop.close()
-    except Exception as e:
-        # Log error but DO NOT crash the application
-        print(f"Background Notification Failed: {e}")
-    finally:
-        new_db.close()
-
-def _trigger_notification(
-    bt: BackgroundTasks, 
-    recipients: List[int], 
-    title: str, 
-    body: str, 
-    task_id: int, 
-    actor_id: int
-):
-    """
-    Schedules the safe wrapper.
-    """
-    unique_ids = list(set(recipients))
-    if not unique_ids:
-        return
-
-    # Add the safe wrapper to FastAPI's background queue
-    bt.add_task(
-        _run_async_notification,
-        unique_ids,
-        title,
-        body,
-        task_id,
-        actor_id
-    )
-
-# ==========================================
-#   CORE SERVICE FUNCTIONS
-# ==========================================
-
+# --- Helpers ---
 def get_task_or_404(db: Session, task_id: int):
     task = db.query(_models.Task).options(
         joinedload(_models.Task.assigner),
@@ -121,15 +41,23 @@ def get_my_assignees(db: Session, current_user: _user_models.User):
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=f"DB Error: {str(e)}")
 
-# --- 1. Create Task ---
+def _get_admin_ids(db: Session) -> List[int]:
+    """Helper to fetch all Admin IDs for notifications"""
+    admins = db.query(_user_models.User.id).filter(
+        _user_models.User.role == _user_models.UserRole.admin,
+        _user_models.User.is_deleted == False
+    ).all()
+    return [a.id for a in admins]
+
+# --- 1. Create Task (HIERARCHY FIXED) ---
 def create_task(
     db: Session, 
     task_in: _schemas.TaskCreate, 
     current_user: _user_models.User,
     background_tasks: BackgroundTasks 
 ):
-    # [Validation Logic]
     try:
+        # A. Validation
         assignee = db.query(_user_models.User).filter(
             _user_models.User.id == task_in.assignee_id,
             _user_models.User.role == _user_models.UserRole.digital_creator,
@@ -147,7 +75,7 @@ def create_task(
                 if assignee.manager_id != current_user.id:
                     raise HTTPException(status_code=403, detail="You can only assign tasks to models in your team.")
 
-        # [Data Preparation]
+        # B. Creation
         data = task_in.dict()
         attachments_data = data.pop("attachments", [])
         tags_list = data.pop("req_outfit_tags", [])
@@ -158,6 +86,7 @@ def create_task(
             req_outfit_tags=tags_csv,
             assigner_id=current_user.id
         )
+        # Ensure Enum Values are stored as strings
         new_task.status = task_in.status.value
         new_task.priority = task_in.priority.value
         new_task.req_content_type = task_in.req_content_type.value
@@ -183,37 +112,45 @@ def create_task(
         db.commit()
         db.refresh(new_task)
 
-        # [SAFE NOTIFICATION BLOCK]
+        # C. [CORRECTED HIERARCHY NOTIFICATION]
         try:
-            recipient_ids = set()
-            recipient_ids.add(new_task.assignee_id)
+            # 1. Start with the Creator (Assignee)
+            recipients: Set[int] = {new_task.assignee_id}
+            
+            # 2. Fetch Admins
+            admin_ids = _get_admin_ids(db)
 
-            admin_ids = [u.id for u in db.query(_user_models.User).filter(
-                _user_models.User.role == _user_models.UserRole.admin, 
-                _user_models.User.is_deleted == False
-            ).all()]
-
+            # 3. Apply Hierarchy Rules
             if current_user.role == _user_models.UserRole.manager:
-                recipient_ids.add(current_user.id)
-                recipient_ids.update(admin_ids)
-            elif current_user.role == _user_models.UserRole.team_member:
-                if current_user.manager_id:
-                    recipient_ids.add(current_user.manager_id)
-                recipient_ids.update(admin_ids)
-            elif current_user.role == _user_models.UserRole.admin:
-                recipient_ids.add(current_user.id)
+                # Rule: "If assigned by Manager -> Manager and Admin"
+                recipients.add(current_user.id) # Manager (Self)
+                recipients.update(admin_ids)    # Admins
 
-            _trigger_notification(
-                background_tasks,
-                list(recipient_ids),
-                "New Task Assigned",
-                f"{current_user.full_name} assigned a new task: {new_task.title}",
-                new_task.id,
-                current_user.id
+            elif current_user.role == _user_models.UserRole.team_member:
+                # Rule: "If assigned by Team Member -> Corresponding Manager and Admin"
+                if current_user.manager_id:
+                    recipients.add(current_user.manager_id) # Manager
+                recipients.update(admin_ids)                # Admins
+
+            elif current_user.role == _user_models.UserRole.admin:
+                # Rule: "If assigned by Admin -> Only Admin" (Creators still get it)
+                recipients.update(admin_ids)
+                # Note: Managers are explicitly EXCLUDED here as per requirement
+
+            # 4. Send Notification
+            notify_users(
+                background_tasks=background_tasks,
+                recipient_ids=list(recipients),
+                title="New Task Assigned",
+                body=f"{current_user.full_name} assigned: {new_task.title}",
+                category=_notif_models.NotificationCategory.TASK,
+                severity=_notif_models.NotificationSeverity.HIGH,
+                entity_id=new_task.id,
+                click_url=f"/task_assigner",
+                actor_id=current_user.id
             )
         except Exception as e:
-            # Silently fail notification, but TASK IS SUCCESSFUL
-            print(f"Notification Error (Ignored): {e}")
+            print(f"Notification Error: {e}")
 
         return new_task
 
@@ -239,9 +176,9 @@ def update_task(
 
     try:
         update_data = updates.dict(exclude_unset=True)
-        
         old_status = task.status
         new_status = None
+        
         if 'status' in update_data:
             val = update_data['status']
             new_status = val.value if hasattr(val, 'value') else val
@@ -258,29 +195,41 @@ def update_task(
         db.commit()
         db.refresh(task)
 
-        # [SAFE NOTIFICATION BLOCK]
+        # [NOTIFICATION: Status Updates]
         if new_status and new_status != old_status:
             try:
-                recipients = []
-                title = "Task Updated"
-                body = f"Task '{task.title}' status changed to {new_status}"
-
+                recipients = set()
+                
+                # If Creator updates -> Notify Assigner + Manager + Admins
                 if current_user.id == task.assignee_id:
-                    recipients.append(task.assigner_id)
-                    body = f"{current_user.full_name} updated status to {new_status}"
-                elif current_user.id == task.assigner_id:
-                    recipients.append(task.assignee_id)
-                elif current_user.role == _user_models.UserRole.admin:
-                    recipients.append(task.assignee_id)
-                    if task.assigner_id != current_user.id:
-                        recipients.append(task.assigner_id)
+                    recipients.add(task.assigner_id)
+                    # Add Manager if Assigner is Team Member
+                    assigner = db.query(_user_models.User).filter(_user_models.User.id == task.assigner_id).first()
+                    if assigner and assigner.role == _user_models.UserRole.team_member and assigner.manager_id:
+                        recipients.add(assigner.manager_id)
+                    # Add Admins
+                    recipients.update(_get_admin_ids(db))
+                    
+                    body_text = f"{current_user.full_name} updated status to {new_status}"
+                else:
+                    # If Supervisor updates -> Notify Creator
+                    recipients.add(task.assignee_id)
+                    body_text = f"Status updated to {new_status}"
 
                 if recipients:
-                    _trigger_notification(
-                        background_tasks, recipients, title, body, task.id, current_user.id
+                    notify_users(
+                        background_tasks=background_tasks,
+                        recipient_ids=list(recipients),
+                        title="Task Updated",
+                        body=body_text,
+                        category=_notif_models.NotificationCategory.TASK,
+                        severity=_notif_models.NotificationSeverity.NORMAL,
+                        entity_id=task.id,
+                        click_url=f"/task_assigner",
+                        actor_id=current_user.id
                     )
             except Exception as e:
-                print(f"Notification Error (Ignored): {e}")
+                print(f"Notification Error: {e}")
 
         return task
     except SQLAlchemyError as e:
@@ -305,7 +254,6 @@ def delete_task(
     if not can_delete:
         raise HTTPException(status_code=403, detail="You can only delete tasks you created.")
 
-    # Capture data before deletion
     assignee_id = task.assignee_id
     task_title = task.title
 
@@ -313,19 +261,19 @@ def delete_task(
         db.delete(task)
         db.commit()
 
-        # [SAFE NOTIFICATION BLOCK]
-        try:
-            if assignee_id != current_user.id:
-                _trigger_notification(
-                    background_tasks,
-                    [assignee_id],
-                    "Task Cancelled",
-                    f"Task '{task_title}' was removed by {current_user.full_name}",
-                    0, 
-                    current_user.id
-                )
-        except Exception as e:
-            print(f"Notification Error (Ignored): {e}")
+        # Notify Assignee if they didn't delete it
+        if assignee_id != current_user.id:
+            notify_users(
+                background_tasks=background_tasks,
+                recipient_ids=[assignee_id],
+                title="Task Cancelled",
+                body=f"Task '{task_title}' was removed",
+                category=_notif_models.NotificationCategory.TASK,
+                severity=_notif_models.NotificationSeverity.NORMAL,
+                entity_id=0, 
+                click_url="/task_assigner",
+                actor_id=current_user.id
+            )
 
         return {"message": "Task deleted successfully"}
     except SQLAlchemyError as e:
@@ -374,18 +322,28 @@ def submit_task_work(
         db.commit()
         db.refresh(task)
 
-        # [SAFE NOTIFICATION BLOCK]
-        try:
-            _trigger_notification(
-                background_tasks,
-                [task.assigner_id],
-                "Task Submitted",
-                f"{current_user.full_name} submitted work for '{task.title}'",
-                task.id,
-                current_user.id
-            )
-        except Exception as e:
-            print(f"Notification Error (Ignored): {e}")
+        # [NOTIFICATION: Submission]
+        # Notify Assigner + Manager + Admins
+        recipients = set()
+        recipients.add(task.assigner_id)
+        
+        assigner = db.query(_user_models.User).filter(_user_models.User.id == task.assigner_id).first()
+        if assigner and assigner.role == _user_models.UserRole.team_member and assigner.manager_id:
+            recipients.add(assigner.manager_id)
+            
+        recipients.update(_get_admin_ids(db))
+
+        notify_users(
+            background_tasks=background_tasks,
+            recipient_ids=list(recipients),
+            title="Task Submitted",
+            body=f"{current_user.full_name} submitted work for '{task.title}'",
+            category=_notif_models.NotificationCategory.TASK,
+            severity=_notif_models.NotificationSeverity.HIGH,
+            entity_id=task.id,
+            click_url=f"/task_assigner",
+            actor_id=current_user.id
+        )
 
         return task
 
@@ -393,7 +351,7 @@ def submit_task_work(
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Submission failed: {str(e)}")
 
-# --- 5. Get All Tasks (No Changes needed) ---
+# --- 5. Get All Tasks (Unchanged) ---
 def get_all_tasks(
     db: Session, 
     current_user: _user_models.User, 
@@ -461,10 +419,9 @@ def get_all_tasks(
             "tasks": tasks
         }
     except SQLAlchemyError as e:
-        print(f"Database error in get_all_tasks: {str(e)}")
         raise HTTPException(status_code=500, detail=f"DB Error: {str(e)}")
 
-# --- 6. Chat & Content (No Changes needed) ---
+# --- 6. Chat & Content (Unchanged) ---
 def get_chat_history(db: Session, task_id: int, direction: int = 0, last_message_id: int = 0, limit: int = 10):
     query = db.query(_models.TaskChat)\
         .options(joinedload(_models.TaskChat.author))\

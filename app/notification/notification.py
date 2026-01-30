@@ -1,5 +1,5 @@
 # app/notification/notification.py
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Body, status
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Body, status,Query
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -57,13 +57,18 @@ def register_device(
 ):
     return service.register_device_token(db, current_user, payload)
 
-@router.get("/", response_model=List[schema.NotificationResponse], tags=["Notification API"])
+@router.get("/", response_model=schema.PaginatedNotificationResponse, tags=["Notification API"])
 def get_notifications(
-    limit: int = 20, 
+    limit: int = 20,
+    skip: int = 0,
+    filter: str = Query("all", regex="^(all|unread)$"), # Validate input
     db: Session = Depends(get_db), 
     current_user = Depends(_user_auth.get_current_user)
 ):
-    return service.get_my_notifications(db, current_user, limit)
+    """
+    Fetch notifications with pagination and filtering.
+    """
+    return service.get_my_notifications(db, current_user, filter, limit, skip)
 
 @router.get("/unread-count", response_model=schema.UnreadCount, tags=["Notification API"])
 def get_unread_count(
