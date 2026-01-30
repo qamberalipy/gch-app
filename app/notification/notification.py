@@ -19,7 +19,7 @@ def get_db():
 
 # --- 1. WebSocket Endpoint ---
 @ws_router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
+async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db), tags=["Notification API"]):
     """
     Real-time notification connection.
     Uses Manual Cookie Auth (same as Announcement module).
@@ -49,7 +49,7 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
 
 # --- 2. REST Endpoints ---
 
-@router.post("/device/token", response_model=dict)
+@router.post("/device/token", response_model=dict, tags=["Notification API"])
 def register_device(
     payload: schema.DeviceTokenCreate, 
     db: Session = Depends(get_db),
@@ -57,7 +57,7 @@ def register_device(
 ):
     return service.register_device_token(db, current_user, payload)
 
-@router.get("/", response_model=List[schema.NotificationResponse])
+@router.get("/", response_model=List[schema.NotificationResponse], tags=["Notification API"])
 def get_notifications(
     limit: int = 20, 
     db: Session = Depends(get_db), 
@@ -65,14 +65,14 @@ def get_notifications(
 ):
     return service.get_my_notifications(db, current_user, limit)
 
-@router.get("/unread-count", response_model=schema.UnreadCount)
+@router.get("/unread-count", response_model=schema.UnreadCount, tags=["Notification API"])
 def get_unread_count(
     db: Session = Depends(get_db), 
     current_user = Depends(_user_auth.get_current_user)
 ):
     return service.count_unread(db, current_user)
 
-@router.put("/{id}/read")
+@router.put("/{id}/read", tags=["Notification API"])
 def mark_read(
     id: int, 
     db: Session = Depends(get_db), 
@@ -80,7 +80,7 @@ def mark_read(
 ):
     return service.mark_as_read(db, current_user, id)
 
-@router.post("/mark-all-read")
+@router.post("/mark-all-read", tags=["Notification API"])
 def mark_all_read(
     db: Session = Depends(get_db),
     current_user = Depends(_user_auth.get_current_user)

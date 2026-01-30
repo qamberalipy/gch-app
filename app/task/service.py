@@ -1,14 +1,97 @@
 # app/task/service.py
 import datetime
+import asyncio
 from sqlalchemy import desc, or_
 from sqlalchemy.orm import Session, joinedload, aliased
 from sqlalchemy.exc import SQLAlchemyError
-from fastapi import HTTPException, status
-from typing import List, Optional
+from fastapi import HTTPException, status, BackgroundTasks
+from typing import List, Optional, Any
 
 import app.task.models as _models
 import app.user.models as _user_models
 import app.task.schema as _schemas
+import app.core.db.session as _database 
+
+# --- Notification Import ---
+from app.notification.service import send_smart_notification
+
+# ==========================================
+#   NOTIFICATION SAFETY HELPERS
+# ==========================================
+
+class ImmediateBackgroundTasks(BackgroundTasks):
+    """
+    Custom handler to execute FCM tasks immediately 
+    since we are already inside a background thread.
+    """
+    def add_task(self, func: Any, *args: Any, **kwargs: Any) -> None:
+        try:
+            func(*args, **kwargs)
+        except Exception as e:
+            print(f"FCM Immediate Execution Failed: {e}")
+
+def _run_async_notification(recipient_ids: List[int], title: str, body: str, entity_id: int, actor_id: int):
+    """
+    Safe wrapper: Creates its own DB session and Event Loop.
+    Wraps everything in try/except to protect the main app.
+    """
+    # 1. Create a fresh DB session (Essential for background threads)
+    new_db = _database.SessionLocal()
+    try:
+        # 2. Create a new event loop for this thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        # 3. Run the async 'send_smart_notification'
+        # We use ImmediateBackgroundTasks to force FCM to send NOW.
+        loop.run_until_complete(
+            send_smart_notification(
+                db=new_db,
+                recipient_ids=recipient_ids,
+                title=title,
+                body=body,
+                background_tasks=ImmediateBackgroundTasks(), # <--- THE FIX
+                entity_type="task",
+                entity_id=entity_id,
+                click_url=f"/task_assigner", 
+                actor_id=actor_id
+            )
+        )
+        loop.close()
+    except Exception as e:
+        # Log error but DO NOT crash the application
+        print(f"Background Notification Failed: {e}")
+    finally:
+        new_db.close()
+
+def _trigger_notification(
+    bt: BackgroundTasks, 
+    recipients: List[int], 
+    title: str, 
+    body: str, 
+    task_id: int, 
+    actor_id: int
+):
+    """
+    Schedules the safe wrapper.
+    """
+    unique_ids = list(set(recipients))
+    if not unique_ids:
+        return
+
+    # Add the safe wrapper to FastAPI's background queue
+    bt.add_task(
+        _run_async_notification,
+        unique_ids,
+        title,
+        body,
+        task_id,
+        actor_id
+    )
+
+# ==========================================
+#   CORE SERVICE FUNCTIONS
+# ==========================================
 
 def get_task_or_404(db: Session, task_id: int):
     task = db.query(_models.Task).options(
@@ -39,7 +122,13 @@ def get_my_assignees(db: Session, current_user: _user_models.User):
         raise HTTPException(status_code=500, detail=f"DB Error: {str(e)}")
 
 # --- 1. Create Task ---
-def create_task(db: Session, task_in: _schemas.TaskCreate, current_user: _user_models.User):
+def create_task(
+    db: Session, 
+    task_in: _schemas.TaskCreate, 
+    current_user: _user_models.User,
+    background_tasks: BackgroundTasks 
+):
+    # [Validation Logic]
     try:
         assignee = db.query(_user_models.User).filter(
             _user_models.User.id == task_in.assignee_id,
@@ -58,24 +147,23 @@ def create_task(db: Session, task_in: _schemas.TaskCreate, current_user: _user_m
                 if assignee.manager_id != current_user.id:
                     raise HTTPException(status_code=403, detail="You can only assign tasks to models in your team.")
 
+        # [Data Preparation]
         data = task_in.dict()
         attachments_data = data.pop("attachments", [])
         tags_list = data.pop("req_outfit_tags", [])
         tags_csv = ",".join(tags_list) if tags_list else None
 
-        # [SAFE] .value ensures we save the string "To Do", "PPV" etc.
         new_task = _models.Task(
             **data,
             req_outfit_tags=tags_csv,
             assigner_id=current_user.id
         )
-        # Ensure enums are passed as values just in case
         new_task.status = task_in.status.value
         new_task.priority = task_in.priority.value
         new_task.req_content_type = task_in.req_content_type.value
 
         db.add(new_task)
-        db.flush()
+        db.flush() 
 
         for file_data in attachments_data:
             vault_item = _models.ContentVault(
@@ -87,13 +175,46 @@ def create_task(db: Session, task_in: _schemas.TaskCreate, current_user: _user_m
                 mime_type=file_data['mime_type'],
                 duration_seconds=file_data.get('duration_seconds', 0),
                 tags=file_data.get('tags', 'Reference'), 
-                content_type=new_task.req_content_type, # Is already string from above
+                content_type=new_task.req_content_type,
                 status=_models.ContentStatus.approved.value
             )
             db.add(vault_item)
 
         db.commit()
         db.refresh(new_task)
+
+        # [SAFE NOTIFICATION BLOCK]
+        try:
+            recipient_ids = set()
+            recipient_ids.add(new_task.assignee_id)
+
+            admin_ids = [u.id for u in db.query(_user_models.User).filter(
+                _user_models.User.role == _user_models.UserRole.admin, 
+                _user_models.User.is_deleted == False
+            ).all()]
+
+            if current_user.role == _user_models.UserRole.manager:
+                recipient_ids.add(current_user.id)
+                recipient_ids.update(admin_ids)
+            elif current_user.role == _user_models.UserRole.team_member:
+                if current_user.manager_id:
+                    recipient_ids.add(current_user.manager_id)
+                recipient_ids.update(admin_ids)
+            elif current_user.role == _user_models.UserRole.admin:
+                recipient_ids.add(current_user.id)
+
+            _trigger_notification(
+                background_tasks,
+                list(recipient_ids),
+                "New Task Assigned",
+                f"{current_user.full_name} assigned a new task: {new_task.title}",
+                new_task.id,
+                current_user.id
+            )
+        except Exception as e:
+            # Silently fail notification, but TASK IS SUCCESSFUL
+            print(f"Notification Error (Ignored): {e}")
+
         return new_task
 
     except SQLAlchemyError as e:
@@ -101,7 +222,13 @@ def create_task(db: Session, task_in: _schemas.TaskCreate, current_user: _user_m
         raise HTTPException(status_code=500, detail=f"DB Error: {str(e)}")
 
 # --- 2. Update Task ---
-def update_task(db: Session, task_id: int, updates: _schemas.TaskUpdate, current_user: _user_models.User):
+def update_task(
+    db: Session, 
+    task_id: int, 
+    updates: _schemas.TaskUpdate, 
+    current_user: _user_models.User,
+    background_tasks: BackgroundTasks
+):
     task = get_task_or_404(db, task_id)
 
     if current_user.role == _user_models.UserRole.digital_creator:
@@ -112,26 +239,63 @@ def update_task(db: Session, task_id: int, updates: _schemas.TaskUpdate, current
 
     try:
         update_data = updates.dict(exclude_unset=True)
+        
+        old_status = task.status
+        new_status = None
+        if 'status' in update_data:
+            val = update_data['status']
+            new_status = val.value if hasattr(val, 'value') else val
+
         if 'req_outfit_tags' in update_data:
             tags_list = update_data.pop('req_outfit_tags')
             task.req_outfit_tags = ",".join(tags_list) if tags_list else None
 
         for key, value in update_data.items():
-            # [SAFE] If value is an Enum, extract .value
             if hasattr(value, 'value'):
                 value = value.value
             setattr(task, key, value)
             
         db.commit()
         db.refresh(task)
+
+        # [SAFE NOTIFICATION BLOCK]
+        if new_status and new_status != old_status:
+            try:
+                recipients = []
+                title = "Task Updated"
+                body = f"Task '{task.title}' status changed to {new_status}"
+
+                if current_user.id == task.assignee_id:
+                    recipients.append(task.assigner_id)
+                    body = f"{current_user.full_name} updated status to {new_status}"
+                elif current_user.id == task.assigner_id:
+                    recipients.append(task.assignee_id)
+                elif current_user.role == _user_models.UserRole.admin:
+                    recipients.append(task.assignee_id)
+                    if task.assigner_id != current_user.id:
+                        recipients.append(task.assigner_id)
+
+                if recipients:
+                    _trigger_notification(
+                        background_tasks, recipients, title, body, task.id, current_user.id
+                    )
+            except Exception as e:
+                print(f"Notification Error (Ignored): {e}")
+
         return task
     except SQLAlchemyError as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Update failed: {str(e)}")
 
 # --- 3. Delete Task ---
-def delete_task(db: Session, task_id: int, current_user: _user_models.User):
+def delete_task(
+    db: Session, 
+    task_id: int, 
+    current_user: _user_models.User,
+    background_tasks: BackgroundTasks
+):
     task = get_task_or_404(db, task_id)
+    
     can_delete = False
     if current_user.role == _user_models.UserRole.admin:
         can_delete = True
@@ -141,16 +305,41 @@ def delete_task(db: Session, task_id: int, current_user: _user_models.User):
     if not can_delete:
         raise HTTPException(status_code=403, detail="You can only delete tasks you created.")
 
+    # Capture data before deletion
+    assignee_id = task.assignee_id
+    task_title = task.title
+
     try:
         db.delete(task)
         db.commit()
+
+        # [SAFE NOTIFICATION BLOCK]
+        try:
+            if assignee_id != current_user.id:
+                _trigger_notification(
+                    background_tasks,
+                    [assignee_id],
+                    "Task Cancelled",
+                    f"Task '{task_title}' was removed by {current_user.full_name}",
+                    0, 
+                    current_user.id
+                )
+        except Exception as e:
+            print(f"Notification Error (Ignored): {e}")
+
         return {"message": "Task deleted successfully"}
     except SQLAlchemyError as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
 
 # --- 4. Submit Task ---
-def submit_task_work(db: Session, task_id: int, submission: _schemas.TaskSubmission, current_user: _user_models.User):
+def submit_task_work(
+    db: Session, 
+    task_id: int, 
+    submission: _schemas.TaskSubmission, 
+    current_user: _user_models.User,
+    background_tasks: BackgroundTasks
+):
     task = get_task_or_404(db, task_id)
 
     if task.assignee_id != current_user.id:
@@ -172,7 +361,6 @@ def submit_task_work(db: Session, task_id: int, submission: _schemas.TaskSubmiss
             )
             db.add(vault_item)
 
-        # [SAFE] Explicit string set
         task.status = _models.TaskStatus.completed.value
         task.completed_at = datetime.datetime.now()
         
@@ -185,13 +373,27 @@ def submit_task_work(db: Session, task_id: int, submission: _schemas.TaskSubmiss
         db.add(sys_msg)
         db.commit()
         db.refresh(task)
+
+        # [SAFE NOTIFICATION BLOCK]
+        try:
+            _trigger_notification(
+                background_tasks,
+                [task.assigner_id],
+                "Task Submitted",
+                f"{current_user.full_name} submitted work for '{task.title}'",
+                task.id,
+                current_user.id
+            )
+        except Exception as e:
+            print(f"Notification Error (Ignored): {e}")
+
         return task
 
     except SQLAlchemyError as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Submission failed: {str(e)}")
 
-# --- 5. Get All Tasks ---
+# --- 5. Get All Tasks (No Changes needed) ---
 def get_all_tasks(
     db: Session, 
     current_user: _user_models.User, 
@@ -223,8 +425,6 @@ def get_all_tasks(
             else:
                 return {"total": 0, "skip": skip, "limit": limit, "tasks": []}
 
-        # [SAFE] Compare strings. 
-        # Since 'status' in DB is string "To Do", and input 'status' is string "To Do", this works.
         if status:
             query = query.filter(_models.Task.status == status)
 
@@ -264,40 +464,24 @@ def get_all_tasks(
         print(f"Database error in get_all_tasks: {str(e)}")
         raise HTTPException(status_code=500, detail=f"DB Error: {str(e)}")
 
-# --- 6. Chat & Content ---
-# app/task/service.py
-
+# --- 6. Chat & Content (No Changes needed) ---
 def get_chat_history(db: Session, task_id: int, direction: int = 0, last_message_id: int = 0, limit: int = 10):
-    """
-    Fetches chat messages with pagination.
-    direction 1: Load Older (Scroll Up) -> IDs < last_message_id
-    direction 2: Load Newer (Refresh/Scroll Down) -> IDs > last_message_id
-    Default: Load Latest (Initial Load)
-    """
     query = db.query(_models.TaskChat)\
         .options(joinedload(_models.TaskChat.author))\
         .filter(_models.TaskChat.task_id == task_id)
 
     if direction == 1 and last_message_id > 0:
-        # Fetch older messages (reverse chronological order relative to cursor)
         query = query.filter(_models.TaskChat.id < last_message_id)\
                      .order_by(_models.TaskChat.id.desc())
-    
     elif direction == 2 and last_message_id > 0:
-        # Fetch newer messages (chronological order relative to cursor)
         query = query.filter(_models.TaskChat.id > last_message_id)\
                      .order_by(_models.TaskChat.id.asc())
-    
     else:
-        # Default: Fetch latest messages (newest first)
         query = query.order_by(_models.TaskChat.id.desc())
 
     messages = query.limit(limit).all()
-
-    # If we fetched using DESC order (Older or Default), reverse list to return in Chronological ASC order
     if direction != 2:
         messages.reverse()
-
     return messages
 
 def send_chat_message(db: Session, task_id: int, message: str, current_user: _user_models.User):

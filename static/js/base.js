@@ -102,8 +102,10 @@ function initNotificationSystem() {
 
     // 3. Connect to WebSocket
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    // Ensure this matches your route in router.py
-    const wsUrl = `${protocol}://${window.location.host}/api/notifications/ws`;
+    
+    // [CORRECTION] Changed 'notifications' to 'notification' (Singular)
+    // The backend route prefix is /api/notification
+    const wsUrl = `${protocol}://${window.location.host}/api/notification/ws`;
     
     const socket = new WebSocket(wsUrl);
 
@@ -131,7 +133,8 @@ function initNotificationSystem() {
 }
 
 function fetchUnreadCount() {
-    axios.get('/api/notifications/unread-count')
+    // [CORRECTION] Changed 'notifications' to 'notification'
+    axios.get('/api/notification/unread-count')
         .then(res => {
             updateBadge(res.data.count);
         })
@@ -149,7 +152,8 @@ function updateBadge(count) {
 }
 
 function fetchNotificationList() {
-    axios.get('/api/notifications?limit=10')
+    // [CORRECTION] Changed 'notifications' to 'notification'
+    axios.get('/api/notification?limit=10')
         .then(res => {
             const list = $('#notif-list');
             list.empty();
@@ -181,8 +185,9 @@ function fetchNotificationList() {
 }
 
 function handleNotifClick(id, link) {
+    // [CORRECTION] Changed 'notifications' to 'notification'
     // 1. Mark as read
-    axios.put(`/api/notifications/${id}/read`)
+    axios.put(`/api/notification/${id}/read`)
         .then(() => {
             // 2. Redirect
             if (link && link !== 'null' && link !== 'undefined') {
@@ -195,9 +200,8 @@ function handleNotifClick(id, link) {
 }
 
 function markAllRead() {
-    // Requires a backend endpoint for this, or loop through displayed IDs
-    // Assuming you implement POST /mark-all-read
-    /* axios.post('/api/notifications/mark-all-read').then(() => {
+    // [CORRECTION] Assuming you create this endpoint, ensure it uses 'notification'
+    /* axios.post('/api/notification/mark-all-read').then(() => {
         fetchUnreadCount();
         fetchNotificationList();
     });

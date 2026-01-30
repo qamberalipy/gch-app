@@ -44,7 +44,7 @@ router = APIRouter()
 
 # --- 2. WebSocket Endpoint (FIXED) ---
 @ws_router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
+async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db), tags=["Announcement API"]):
     """
     Real-time feed connection.
     Fixes HTTPBearer error by manually reading the token from cookies.
@@ -84,7 +84,7 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
 
 # --- 3. REST Endpoints (Broadcasts Added) ---
 
-@router.post("/preview-link")
+@router.post("/preview-link", tags=["Announcement API"])
 def preview_link(
     body: dict = Body(...),
     current_user = Depends(_user_auth.get_current_user)
@@ -92,7 +92,7 @@ def preview_link(
     url = body.get("url")
     return service.fetch_url_metadata(url) if url else {}
 
-@router.post("/", response_model=schema.AnnouncementResponse)
+@router.post("/", response_model=schema.AnnouncementResponse, tags=["Announcement API"])
 async def create_post(
     data: schema.AnnouncementCreate,
     db: Session = Depends(get_db),
@@ -113,7 +113,7 @@ async def create_post(
     
     return new_post
 
-@router.get("/", response_model=list[schema.AnnouncementResponse])
+@router.get("/", response_model=list[schema.AnnouncementResponse], tags=["Announcement API"])
 def get_feed(
     last_id: Optional[int] = Query(None, description="ID of the last loaded post"),
     limit: int = 20,
@@ -122,7 +122,7 @@ def get_feed(
 ):
     return service.get_feed(db, last_id, limit)
 
-@router.delete("/{id}")
+@router.delete("/{id}", tags=["Announcement API"])
 async def delete_post(
     id: int,
     db: Session = Depends(get_db),
@@ -136,7 +136,7 @@ async def delete_post(
     return result
 
 # ... (Keep react_to_post, mark_viewed, get_viewers as they are)
-@router.post("/{id}/react")
+@router.post("/{id}/react", tags=["Announcement API"])
 def react_to_post(
     id: int, 
     reaction: schema.ReactionCreate,
@@ -145,7 +145,7 @@ def react_to_post(
 ):
     return service.toggle_reaction(db, id, reaction.emoji, current_user)
 
-@router.post("/{id}/view")
+@router.post("/{id}/view", tags=["Announcement API"])
 def mark_viewed(
     id: int,
     db: Session = Depends(get_db),
@@ -153,7 +153,7 @@ def mark_viewed(
 ):
     return service.mark_as_viewed(db, id, current_user)
 
-@router.get("/{id}/viewers", response_model=list[schema.ViewerResponse])
+@router.get("/{id}/viewers", response_model=list[schema.ViewerResponse], tags=["Announcement API"])
 def get_viewers(
     id: int,
     db: Session = Depends(get_db),
