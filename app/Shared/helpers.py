@@ -18,7 +18,7 @@ load_dotenv(".env")
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 JWT_SECRET = os.getenv("JWT_SECRET")
-ACCESS_TOKEN_EXPIRE_SECONDS = 1800 
+ACCESS_TOKEN_EXPIRE_SECONDS = 180000 
 REFRESH_TOKEN_EXPIRE_SECONDS = 60 * 60 * 24 * 7 
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", "qamber.qsol@gmail.com")
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "rswiitydiojgupnh")
