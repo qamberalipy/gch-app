@@ -63,3 +63,8 @@ async def model_invoice_view(request: Request):
 async def model_invoice_report_view(request: Request):
     context = get_template_context(request)
     return templates.TemplateResponse("model_invoice/model_invoice_report.html", context)
+
+@user_view.get("/notifications")
+async def view_notifications_page(request: Request):
+    context= get_template_context(request)
+    return templates.TemplateResponse("notifications.html", context)

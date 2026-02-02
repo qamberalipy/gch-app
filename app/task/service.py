@@ -3,13 +3,16 @@ import datetime
 from sqlalchemy import desc, or_
 from sqlalchemy.orm import Session, joinedload, aliased
 from sqlalchemy.exc import SQLAlchemyError
-from fastapi import HTTPException, status
-from typing import List, Optional
+from fastapi import HTTPException, status, BackgroundTasks
+from typing import List, Optional, Set
 
 import app.task.models as _models
 import app.user.models as _user_models
 import app.task.schema as _schemas
+import app.notification.models as _notif_models 
+from app.notification.service import notify_users 
 
+# --- Helpers ---
 def get_task_or_404(db: Session, task_id: int):
     task = db.query(_models.Task).options(
         joinedload(_models.Task.assigner),
@@ -38,9 +41,23 @@ def get_my_assignees(db: Session, current_user: _user_models.User):
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=f"DB Error: {str(e)}")
 
-# --- 1. Create Task ---
-def create_task(db: Session, task_in: _schemas.TaskCreate, current_user: _user_models.User):
+def _get_admin_ids(db: Session) -> List[int]:
+    """Helper to fetch all Admin IDs for notifications"""
+    admins = db.query(_user_models.User.id).filter(
+        _user_models.User.role == _user_models.UserRole.admin,
+        _user_models.User.is_deleted == False
+    ).all()
+    return [a.id for a in admins]
+
+# --- 1. Create Task (HIERARCHY FIXED) ---
+def create_task(
+    db: Session, 
+    task_in: _schemas.TaskCreate, 
+    current_user: _user_models.User,
+    background_tasks: BackgroundTasks 
+):
     try:
+        # A. Validation
         assignee = db.query(_user_models.User).filter(
             _user_models.User.id == task_in.assignee_id,
             _user_models.User.role == _user_models.UserRole.digital_creator,
@@ -58,24 +75,24 @@ def create_task(db: Session, task_in: _schemas.TaskCreate, current_user: _user_m
                 if assignee.manager_id != current_user.id:
                     raise HTTPException(status_code=403, detail="You can only assign tasks to models in your team.")
 
+        # B. Creation
         data = task_in.dict()
         attachments_data = data.pop("attachments", [])
         tags_list = data.pop("req_outfit_tags", [])
         tags_csv = ",".join(tags_list) if tags_list else None
 
-        # [SAFE] .value ensures we save the string "To Do", "PPV" etc.
         new_task = _models.Task(
             **data,
             req_outfit_tags=tags_csv,
             assigner_id=current_user.id
         )
-        # Ensure enums are passed as values just in case
+        # Ensure Enum Values are stored as strings
         new_task.status = task_in.status.value
         new_task.priority = task_in.priority.value
         new_task.req_content_type = task_in.req_content_type.value
 
         db.add(new_task)
-        db.flush()
+        db.flush() 
 
         for file_data in attachments_data:
             vault_item = _models.ContentVault(
@@ -87,13 +104,54 @@ def create_task(db: Session, task_in: _schemas.TaskCreate, current_user: _user_m
                 mime_type=file_data['mime_type'],
                 duration_seconds=file_data.get('duration_seconds', 0),
                 tags=file_data.get('tags', 'Reference'), 
-                content_type=new_task.req_content_type, # Is already string from above
+                content_type=new_task.req_content_type,
                 status=_models.ContentStatus.approved.value
             )
             db.add(vault_item)
 
         db.commit()
         db.refresh(new_task)
+
+        # C. [CORRECTED HIERARCHY NOTIFICATION]
+        try:
+            # 1. Start with the Creator (Assignee)
+            recipients: Set[int] = {new_task.assignee_id}
+            
+            # 2. Fetch Admins
+            admin_ids = _get_admin_ids(db)
+
+            # 3. Apply Hierarchy Rules
+            if current_user.role == _user_models.UserRole.manager:
+                # Rule: "If assigned by Manager -> Manager and Admin"
+                recipients.add(current_user.id) # Manager (Self)
+                recipients.update(admin_ids)    # Admins
+
+            elif current_user.role == _user_models.UserRole.team_member:
+                # Rule: "If assigned by Team Member -> Corresponding Manager and Admin"
+                if current_user.manager_id:
+                    recipients.add(current_user.manager_id) # Manager
+                recipients.update(admin_ids)                # Admins
+
+            elif current_user.role == _user_models.UserRole.admin:
+                # Rule: "If assigned by Admin -> Only Admin" (Creators still get it)
+                recipients.update(admin_ids)
+                # Note: Managers are explicitly EXCLUDED here as per requirement
+
+            # 4. Send Notification
+            notify_users(
+                background_tasks=background_tasks,
+                recipient_ids=list(recipients),
+                title="New Task Assigned",
+                body=f"{current_user.full_name} assigned: {new_task.title}",
+                category=_notif_models.NotificationCategory.TASK,
+                severity=_notif_models.NotificationSeverity.NORMAL,
+                entity_id=new_task.id,
+                click_url=f"/task_assigner",
+                actor_id=current_user.id
+            )
+        except Exception as e:
+            print(f"Notification Error: {e}")
+
         return new_task
 
     except SQLAlchemyError as e:
@@ -101,7 +159,13 @@ def create_task(db: Session, task_in: _schemas.TaskCreate, current_user: _user_m
         raise HTTPException(status_code=500, detail=f"DB Error: {str(e)}")
 
 # --- 2. Update Task ---
-def update_task(db: Session, task_id: int, updates: _schemas.TaskUpdate, current_user: _user_models.User):
+def update_task(
+    db: Session, 
+    task_id: int, 
+    updates: _schemas.TaskUpdate, 
+    current_user: _user_models.User,
+    background_tasks: BackgroundTasks
+):
     task = get_task_or_404(db, task_id)
 
     if current_user.role == _user_models.UserRole.digital_creator:
@@ -112,26 +176,75 @@ def update_task(db: Session, task_id: int, updates: _schemas.TaskUpdate, current
 
     try:
         update_data = updates.dict(exclude_unset=True)
+        old_status = task.status
+        new_status = None
+        
+        if 'status' in update_data:
+            val = update_data['status']
+            new_status = val.value if hasattr(val, 'value') else val
+
         if 'req_outfit_tags' in update_data:
             tags_list = update_data.pop('req_outfit_tags')
             task.req_outfit_tags = ",".join(tags_list) if tags_list else None
 
         for key, value in update_data.items():
-            # [SAFE] If value is an Enum, extract .value
             if hasattr(value, 'value'):
                 value = value.value
             setattr(task, key, value)
             
         db.commit()
         db.refresh(task)
+
+        # [NOTIFICATION: Status Updates]
+        if new_status and new_status != old_status:
+            try:
+                recipients = set()
+                
+                # If Creator updates -> Notify Assigner + Manager + Admins
+                if current_user.id == task.assignee_id:
+                    recipients.add(task.assigner_id)
+                    # Add Manager if Assigner is Team Member
+                    assigner = db.query(_user_models.User).filter(_user_models.User.id == task.assigner_id).first()
+                    if assigner and assigner.role == _user_models.UserRole.team_member and assigner.manager_id:
+                        recipients.add(assigner.manager_id)
+                    # Add Admins
+                    recipients.update(_get_admin_ids(db))
+                    
+                    body_text = f"{current_user.full_name} updated status to {new_status}"
+                else:
+                    # If Supervisor updates -> Notify Creator
+                    recipients.add(task.assignee_id)
+                    body_text = f"Status updated to {new_status}"
+
+                if recipients:
+                    notify_users(
+                        background_tasks=background_tasks,
+                        recipient_ids=list(recipients),
+                        title="Task Updated",
+                        body=body_text,
+                        category=_notif_models.NotificationCategory.TASK,
+                        severity=_notif_models.NotificationSeverity.NORMAL,
+                        entity_id=task.id,
+                        click_url=f"/task_assigner",
+                        actor_id=current_user.id
+                    )
+            except Exception as e:
+                print(f"Notification Error: {e}")
+
         return task
     except SQLAlchemyError as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Update failed: {str(e)}")
 
 # --- 3. Delete Task ---
-def delete_task(db: Session, task_id: int, current_user: _user_models.User):
+def delete_task(
+    db: Session, 
+    task_id: int, 
+    current_user: _user_models.User,
+    background_tasks: BackgroundTasks
+):
     task = get_task_or_404(db, task_id)
+    
     can_delete = False
     if current_user.role == _user_models.UserRole.admin:
         can_delete = True
@@ -141,16 +254,40 @@ def delete_task(db: Session, task_id: int, current_user: _user_models.User):
     if not can_delete:
         raise HTTPException(status_code=403, detail="You can only delete tasks you created.")
 
+    assignee_id = task.assignee_id
+    task_title = task.title
+
     try:
         db.delete(task)
         db.commit()
+
+        # Notify Assignee if they didn't delete it
+        if assignee_id != current_user.id:
+            notify_users(
+                background_tasks=background_tasks,
+                recipient_ids=[assignee_id],
+                title="Task Cancelled",
+                body=f"Task '{task_title}' was removed",
+                category=_notif_models.NotificationCategory.TASK,
+                severity=_notif_models.NotificationSeverity.NORMAL,
+                entity_id=0, 
+                click_url="/task_assigner",
+                actor_id=current_user.id
+            )
+
         return {"message": "Task deleted successfully"}
     except SQLAlchemyError as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
 
 # --- 4. Submit Task ---
-def submit_task_work(db: Session, task_id: int, submission: _schemas.TaskSubmission, current_user: _user_models.User):
+def submit_task_work(
+    db: Session, 
+    task_id: int, 
+    submission: _schemas.TaskSubmission, 
+    current_user: _user_models.User,
+    background_tasks: BackgroundTasks
+):
     task = get_task_or_404(db, task_id)
 
     if task.assignee_id != current_user.id:
@@ -172,7 +309,6 @@ def submit_task_work(db: Session, task_id: int, submission: _schemas.TaskSubmiss
             )
             db.add(vault_item)
 
-        # [SAFE] Explicit string set
         task.status = _models.TaskStatus.completed.value
         task.completed_at = datetime.datetime.now()
         
@@ -185,13 +321,37 @@ def submit_task_work(db: Session, task_id: int, submission: _schemas.TaskSubmiss
         db.add(sys_msg)
         db.commit()
         db.refresh(task)
+
+        # [NOTIFICATION: Submission]
+        # Notify Assigner + Manager + Admins
+        recipients = set()
+        recipients.add(task.assigner_id)
+        
+        assigner = db.query(_user_models.User).filter(_user_models.User.id == task.assigner_id).first()
+        if assigner and assigner.role == _user_models.UserRole.team_member and assigner.manager_id:
+            recipients.add(assigner.manager_id)
+            
+        recipients.update(_get_admin_ids(db))
+
+        notify_users(
+            background_tasks=background_tasks,
+            recipient_ids=list(recipients),
+            title="Task Submitted",
+            body=f"{current_user.full_name} submitted work for '{task.title}'",
+            category=_notif_models.NotificationCategory.TASK,
+            severity=_notif_models.NotificationSeverity.HIGH,
+            entity_id=task.id,
+            click_url=f"/task_assigner",
+            actor_id=current_user.id
+        )
+
         return task
 
     except SQLAlchemyError as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Submission failed: {str(e)}")
 
-# --- 5. Get All Tasks ---
+# --- 5. Get All Tasks (Unchanged) ---
 def get_all_tasks(
     db: Session, 
     current_user: _user_models.User, 
@@ -223,8 +383,6 @@ def get_all_tasks(
             else:
                 return {"total": 0, "skip": skip, "limit": limit, "tasks": []}
 
-        # [SAFE] Compare strings. 
-        # Since 'status' in DB is string "To Do", and input 'status' is string "To Do", this works.
         if status:
             query = query.filter(_models.Task.status == status)
 
@@ -261,43 +419,26 @@ def get_all_tasks(
             "tasks": tasks
         }
     except SQLAlchemyError as e:
-        print(f"Database error in get_all_tasks: {str(e)}")
         raise HTTPException(status_code=500, detail=f"DB Error: {str(e)}")
 
-# --- 6. Chat & Content ---
-# app/task/service.py
-
+# --- 6. Chat & Content (Unchanged) ---
 def get_chat_history(db: Session, task_id: int, direction: int = 0, last_message_id: int = 0, limit: int = 10):
-    """
-    Fetches chat messages with pagination.
-    direction 1: Load Older (Scroll Up) -> IDs < last_message_id
-    direction 2: Load Newer (Refresh/Scroll Down) -> IDs > last_message_id
-    Default: Load Latest (Initial Load)
-    """
     query = db.query(_models.TaskChat)\
         .options(joinedload(_models.TaskChat.author))\
         .filter(_models.TaskChat.task_id == task_id)
 
     if direction == 1 and last_message_id > 0:
-        # Fetch older messages (reverse chronological order relative to cursor)
         query = query.filter(_models.TaskChat.id < last_message_id)\
                      .order_by(_models.TaskChat.id.desc())
-    
     elif direction == 2 and last_message_id > 0:
-        # Fetch newer messages (chronological order relative to cursor)
         query = query.filter(_models.TaskChat.id > last_message_id)\
                      .order_by(_models.TaskChat.id.asc())
-    
     else:
-        # Default: Fetch latest messages (newest first)
         query = query.order_by(_models.TaskChat.id.desc())
 
     messages = query.limit(limit).all()
-
-    # If we fetched using DESC order (Older or Default), reverse list to return in Chronological ASC order
     if direction != 2:
         messages.reverse()
-
     return messages
 
 def send_chat_message(db: Session, task_id: int, message: str, current_user: _user_models.User):
