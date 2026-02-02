@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -41,11 +41,12 @@ def list_signatures(
 @router.post("/", response_model=_schemas.SignatureOut, status_code=status.HTTP_201_CREATED, tags=["SIGNATURE API"])
 def create_signature_request(
     request_in: _schemas.SignatureCreate,
+    background_tasks: BackgroundTasks, # <--- Added
     current_user: _user_models.User = Depends(_user_auth.get_current_user),
     db: Session = Depends(get_db)
 ):
     """Create a new signature request."""
-    return _services.create_signature_request(db, request_in, current_user)
+    return _services.create_signature_request(db, request_in, current_user, background_tasks)
 
 @router.get("/{id}", response_model=_schemas.SignatureOut, tags=["SIGNATURE API"])
 def get_signature_request(
@@ -69,11 +70,12 @@ def update_signature_request(
 @router.delete("/{id}", status_code=status.HTTP_200_OK, tags=["SIGNATURE API"])
 def delete_signature_request(
     id: int,
+    background_tasks: BackgroundTasks, # <--- Added
     current_user: _user_models.User = Depends(_user_auth.get_current_user),
     db: Session = Depends(get_db)
 ):
     """Delete a request (if not signed yet)."""
-    return _services.delete_signature_request(db, id, current_user)
+    return _services.delete_signature_request(db, id, current_user, background_tasks)
 
 # --- Action: Sign Document ---
 
@@ -82,9 +84,10 @@ def sign_document(
     id: int,
     sign_in: _schemas.SignatureSign,
     request: Request,
+    background_tasks: BackgroundTasks, # <--- Added
     current_user: _user_models.User = Depends(_user_auth.get_current_user),
     db: Session = Depends(get_db)
 ):
     """Digital Creator signs the document."""
     client_ip = request.client.host
-    return _services.sign_document(db, id, sign_in, current_user, client_ip)
+    return _services.sign_document(db, id, sign_in, current_user, client_ip, background_tasks)

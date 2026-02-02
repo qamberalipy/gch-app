@@ -42,49 +42,33 @@ def get_db():
 ws_router = APIRouter()
 router = APIRouter()
 
-# --- 2. WebSocket Endpoint (FIXED) ---
+# --- WebSocket Endpoint (Unchanged) ---
 @ws_router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
-    """
-    Real-time feed connection.
-    Fixes HTTPBearer error by manually reading the token from cookies.
-    """
-    # 1. Manual Auth via Cookie (Browser sends cookies, but not headers for WS)
+async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db), tags=["Announcement API"]):
     token = websocket.cookies.get("access_token")
     user = None
-    
     if token:
         try:
-            # Clean token if it has "Bearer " prefix
-            if token.startswith("Bearer "): 
-                token = token.split(" ")[1]
-            
-            # Decode using your helper
+            if token.startswith("Bearer "): token = token.split(" ")[1]
             payload = decode_token(token)
             user_id = payload.get("sub") or payload.get("user_id")
-            
             if user_id:
                 user = db.query(User).filter(User.id == user_id).first()
         except Exception:
-            pass # Invalid token
-
-    # 2. Reject if not authenticated
+            pass 
     if not user:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
-
-    # 3. Connect
     await manager.connect(websocket)
     try:
         while True:
-            # Keep connection alive
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
 # --- 3. REST Endpoints (Broadcasts Added) ---
 
-@router.post("/preview-link")
+@router.post("/preview-link", tags=["Announcement API"])
 def preview_link(
     body: dict = Body(...),
     current_user = Depends(_user_auth.get_current_user)
@@ -92,7 +76,7 @@ def preview_link(
     url = body.get("url")
     return service.fetch_url_metadata(url) if url else {}
 
-@router.post("/", response_model=schema.AnnouncementResponse)
+@router.post("/", response_model=schema.AnnouncementResponse, tags=["Announcement API"])
 async def create_post(
     data: schema.AnnouncementCreate,
     db: Session = Depends(get_db),
@@ -110,19 +94,22 @@ async def create_post(
         post_data['created_at'] = str(post_data['created_at'])
     
     await manager.broadcast({"type": "new_post", "data": post_data})
-    
     return new_post
 
-@router.get("/", response_model=list[schema.AnnouncementResponse])
+@router.get("/", response_model=list[schema.AnnouncementResponse], tags=["Announcement API"])
 def get_feed(
     last_id: Optional[int] = Query(None, description="ID of the last loaded post"),
+    direction: int = Query(0, description="0=Latest, 1=Older (Scroll Down), 2=Newer (Scroll Up)"), # <--- ADDED
     limit: int = 20,
     db: Session = Depends(get_db),
     current_user = Depends(_user_auth.get_current_user)
 ):
-    return service.get_feed(db, last_id, limit)
+    """
+    Get announcement feed with direction support.
+    """
+    return service.get_feed(db, direction, last_id, limit)
 
-@router.delete("/{id}")
+@router.delete("/{id}", tags=["Announcement API"])
 async def delete_post(
     id: int,
     db: Session = Depends(get_db),
@@ -136,7 +123,7 @@ async def delete_post(
     return result
 
 # ... (Keep react_to_post, mark_viewed, get_viewers as they are)
-@router.post("/{id}/react")
+@router.post("/{id}/react", tags=["Announcement API"])
 def react_to_post(
     id: int, 
     reaction: schema.ReactionCreate,
@@ -145,7 +132,7 @@ def react_to_post(
 ):
     return service.toggle_reaction(db, id, reaction.emoji, current_user)
 
-@router.post("/{id}/view")
+@router.post("/{id}/view", tags=["Announcement API"])
 def mark_viewed(
     id: int,
     db: Session = Depends(get_db),
@@ -153,7 +140,7 @@ def mark_viewed(
 ):
     return service.mark_as_viewed(db, id, current_user)
 
-@router.get("/{id}/viewers", response_model=list[schema.ViewerResponse])
+@router.get("/{id}/viewers", response_model=list[schema.ViewerResponse], tags=["Announcement API"])
 def get_viewers(
     id: int,
     db: Session = Depends(get_db),

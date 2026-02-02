@@ -19,6 +19,10 @@ from starlette.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import jwt
 
+# --- NEW: Firebase Admin SDK ---
+import firebase_admin
+from firebase_admin import credentials
+
 # --- Import Custom Exception ---
 from app.Shared.dependencies import HTML_LoginRequired
 
@@ -35,9 +39,16 @@ from app.task import task_router
 from app.signature import signature_router
 from app.upload import upload_router
 from app.content_vault import content_vault_router
+from app.dashboard import dashboard_router
 from app.announcement import announcement_router
-from app.announcement.announcement import ws_router as announcement_ws_router # Import explicitly
+from app.announcement.announcement import ws_router as announcement_ws_router 
+from app.notification import notification_router
+from app.notification import ws_router as notification_ws_router
 from app.model_invoice import model_invoice_router
+# --- NEW: Notification Router ---
+# (Assumes you created app/notification/router.py as per previous instructions)
+ 
+
 # --- 2. IMPORT WEB (HTML) ROUTERS ---
 from app.web.routers import auth_views
 from app.web.routers import user_views
@@ -63,7 +74,6 @@ async def authorization(
         token = request.cookies.get("access_token")
 
     # If no token is found, we continue. 
-    # (Public pages load fine; Protected pages fail later via dependencies)
     if not token:
         return
 
@@ -74,7 +84,6 @@ async def authorization(
 
     except jwt.ExpiredSignatureError:
         print("Token has expired.")
-        # Only strict API calls need immediate 401
         if credentials:
              raise HTTPException(status_code=401, detail="Token Expired")
     except jwt.InvalidTokenError:
@@ -87,6 +96,20 @@ async def authorization(
              raise HTTPException(status_code=401, detail="Authentication Error")
 
 root_router = APIRouter(dependencies=[Depends(authorization)])
+
+# --- NEW: Initialize Firebase ---
+try:
+    # Only initialize if not already initialized
+    if not firebase_admin._apps:
+        cred_path = "firebase-adminsdk.json" # Ensure this file exists in root
+        if os.path.exists(cred_path):
+            cred = credentials.Certificate(cred_path)
+            firebase_admin.initialize_app(cred)
+            print("✅ Firebase initialized successfully")
+        else:
+            print("⚠️ Warning: firebase-adminsdk.json not found. Mobile notifications will not work.")
+except Exception as e:
+    print(f"❌ Firebase init error: {e}")
 
 app = FastAPI(
     title="GCH App APIs", 
@@ -123,15 +146,19 @@ app.include_router(task_views.task_views)
 app.include_router(signature_views.signature_views)
 app.include_router(announcement_views.announcement_views)
 app.include_router(announcement_ws_router, prefix="/api/announcement")
+app.include_router(notification_ws_router, prefix="/api/notification")
 
 app.include_router(main_router)         
 root_router.include_router(user_router) 
 root_router.include_router(task_router)
 root_router.include_router(signature_router)
 root_router.include_router(content_vault_router)
+root_router.include_router(dashboard_router)
 root_router.include_router(upload_router)
 root_router.include_router(announcement_router)
+root_router.include_router(notification_router)
 root_router.include_router(model_invoice_router)
+
 app.include_router(root_router)        
 
 if __name__ == "__main__":
