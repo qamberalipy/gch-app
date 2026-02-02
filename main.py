@@ -39,6 +39,7 @@ from app.task import task_router
 from app.signature import signature_router
 from app.upload import upload_router
 from app.content_vault import content_vault_router
+from app.dashboard import dashboard_router
 from app.announcement import announcement_router
 from app.announcement.announcement import ws_router as announcement_ws_router 
 from app.notification import notification_router
@@ -152,6 +153,7 @@ root_router.include_router(user_router)
 root_router.include_router(task_router)
 root_router.include_router(signature_router)
 root_router.include_router(content_vault_router)
+root_router.include_router(dashboard_router)
 root_router.include_router(upload_router)
 root_router.include_router(announcement_router)
 root_router.include_router(notification_router)
