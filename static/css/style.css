@@ -322,3 +322,135 @@ body {
     .search-container { width: 180px; }
     .navbar-actions { gap: 1rem; }
 }
+/* --- Notification Dropdown Redesign --- */
+
+/* 1. The Container */
+.notification-dropdown {
+    width: 360px;
+    padding: 0;
+    border: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    overflow: hidden; /* Clips corners */
+}
+
+/* 2. Header & Footer */
+.notification-header {
+    padding: 16px 20px;
+    background: #fff;
+    border-bottom: 1px solid #f1f1f1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.notification-footer {
+    padding: 12px;
+    background: #fff;
+    border-top: 1px solid #f1f1f1;
+    text-align: center;
+}
+
+.view-all-link {
+    color: var(--active-color);
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.view-all-link:hover {
+    color: #d98600; /* Darker Gold */
+}
+
+/* 3. The Item */
+.notification-item {
+    display: flex;
+    align-items: start;
+    padding: 16px 20px;
+    text-decoration: none;
+    color: var(--primary-text);
+    transition: background-color 0.2s ease;
+    border-bottom: 1px solid #f9f9f9;
+}
+
+.notification-item:hover {
+    background-color: #f8f9fa;
+}
+
+.notification-item.unread {
+    background-color: #fffbf2; /* Very light gold tint for unread */
+}
+
+.notification-item.unread:before {
+    /* Optional: Left accent border for unread */
+    content: "";
+    position: absolute;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    background-color: var(--active-color);
+    display: none; /* Removed based on your minimalist request, enable if wanted */
+}
+
+/* 4. Icon Box (Pastel Colors) */
+.notif-icon-box {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+    flex-shrink: 0;
+    font-size: 1.2rem;
+}
+
+/* Color Palettes for Icons */
+.bg-soft-primary { background-color: #e3f2fd; color: #1976d2; } /* Blue */
+.bg-soft-success { background-color: #e8f5e9; color: #2e7d32; } /* Green */
+.bg-soft-warning { background-color: #fff8e1; color: #f57c00; } /* Orange */
+.bg-soft-danger  { background-color: #ffebee; color: #c62828; } /* Red */
+.bg-soft-info    { background-color: #e0f7fa; color: #0097a7; } /* Cyan */
+.bg-soft-secondary { background-color: #f5f5f5; color: #616161; } /* Grey */
+
+/* 5. Text Typography */
+.notif-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 2px;
+    line-height: 1.2;
+}
+
+.notif-body {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-bottom: 4px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Limit to 2 lines */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.notif-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.7rem;
+    color: #adb5bd;
+}
+
+/* 6. Severity Badge (Small Round Box) */
+.severity-badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.severity-critical { background-color: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+.severity-high     { background-color: #fff3e0; color: #ef6c00; border: 1px solid #ffe0b2; }
+.severity-normal   { display: none; } /* Hide normal severity to keep it clean */

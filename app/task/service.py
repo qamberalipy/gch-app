@@ -144,7 +144,7 @@ def create_task(
                 title="New Task Assigned",
                 body=f"{current_user.full_name} assigned: {new_task.title}",
                 category=_notif_models.NotificationCategory.TASK,
-                severity=_notif_models.NotificationSeverity.HIGH,
+                severity=_notif_models.NotificationSeverity.NORMAL,
                 entity_id=new_task.id,
                 click_url=f"/task_assigner",
                 actor_id=current_user.id

@@ -1,39 +1,37 @@
 /* static/js/base.js */
 
 // ==================================================
-// 1. GLOBAL AUDIO ENGINE (Industrial "Priming" Fix)
+// 1. GLOBAL AUDIO ENGINE (Silent Unlock Fix)
 // ==================================================
 
-// Robust Sound Source (Short "Pop" Sound)
-// For production, replacing this with a local file like "/static/audio/pop.mp3" is recommended.
 const AUDIO_SRC = "https://pub-0bc0d3c98bb94e3a86698f0aa603f181.r2.dev/audio/mixkit-correct-answer-tone-2870.wav";
 const notificationAudio = new Audio(AUDIO_SRC);
 notificationAudio.volume = 0.5;
 
-// Flag to track if the browser has allowed audio
 let isAudioUnlocked = false;
 
-/**
- * "Unlocks" the audio context on the first user interaction.
- * Browsers block auto-play until the user interacts with the DOM.
- */
 function unlockAudioEngine() {
     if (isAudioUnlocked) return;
 
-    // Attempt to play and immediately pause
-    const playPromise = notificationAudio.play();
+    // FIX: Mute audio before unlocking so the user hears nothing on click
+    notificationAudio.muted = true; 
 
+    const playPromise = notificationAudio.play();
+    
     if (playPromise !== undefined) {
         playPromise.then(() => {
-            // Success! The browser now trusts this audio object.
+            // Immediately pause and reset
             notificationAudio.pause();
             notificationAudio.currentTime = 0;
+            
+            // FIX: Unmute it now so it's ready for real notifications
+            notificationAudio.muted = false; 
+            
             isAudioUnlocked = true;
             
-            // Clean up listeners since we are done
+            // Remove listeners so this doesn't run again
             document.removeEventListener('click', unlockAudioEngine);
             document.removeEventListener('keydown', unlockAudioEngine);
-            // console.log("[Audio] System unlocked successfully.");
         }).catch(error => {
             console.log("[Audio] Unlock waiting for interaction:", error);
         });
@@ -44,15 +42,12 @@ function unlockAudioEngine() {
 // 2. UI UTILITIES & GLOBAL SETUP
 // ==================================================
 $(document).ready(function () {
-    // 1. Loader
     if (typeof myhideLoader === 'function') myhideLoader();
 
-    // 2. Audio Priming Listeners (The Fix)
-    // We listen for a click or keypress anywhere on the page
+    // Listeners for the first interaction to unlock audio silently
     document.addEventListener('click', unlockAudioEngine, { once: true });
     document.addEventListener('keydown', unlockAudioEngine, { once: true });
 
-    // 3. Toastr Configuration
     toastr.options = {
         "closeButton": true,
         "newestOnTop": true,
@@ -65,21 +60,16 @@ $(document).ready(function () {
         "hideMethod": "fadeOut"
     };
     
-    // 4. Sidebar Toggle
     $(document).on("click", ".toggle-sidebar-btn", function () {
         $("body").toggleClass("toggle-sidebar");
     });
 
-    // 5. Start Notification System
     initNotificationSystem();
 });
 
 function myshowLoader() { $("#loader").fadeIn(200); }
 function myhideLoader() { $("#loader").fadeOut(200); }
 
-// ==================================================
-// 3. HELPER FUNCTIONS
-// ==================================================
 function showToastMessage(type, text) {
     switch (type) {
         case 'success': toastr.success(text); break;
@@ -111,7 +101,6 @@ function handleLogout() {
     });
 }
 
-// Global Axios Interceptor for 401 Unauthorized
 if (typeof axios !== 'undefined') {
     axios.interceptors.response.use(
         response => response,
@@ -133,14 +122,15 @@ const NOTIFICATION_LIMIT = 10;
 let NOTIFICATION_LOADING = false;
 let wsConnection = null;
 
+// UPDATED MAP: Using 'bg-soft-...' classes for the pastel look
 const notificationMap = {
-    'task':     { icon: 'ri-clipboard-line', color: 'text-primary' },
-    'invoice':  { icon: 'ri-file-list-3-line', color: 'text-success' },
-    'system':   { icon: 'ri-settings-4-line', color: 'text-secondary' },
-    'approval': { icon: 'ri-checkbox-circle-line', color: 'text-warning' },
-    'critical': { icon: 'ri-alarm-warning-fill', color: 'text-danger' },
-    'announcement': { icon: 'ri-megaphone-line', color: 'text-info' },
-    'default':  { icon: 'ri-notification-badge-line', color: 'text-muted' }
+    'task':     { icon: 'ri-clipboard-line', bg: 'bg-soft-primary' },   
+    'invoice':  { icon: 'ri-file-list-3-line', bg: 'bg-soft-success' }, 
+    'approval': { icon: 'ri-checkbox-circle-line', bg: 'bg-soft-warning' }, 
+    'critical': { icon: 'ri-alarm-warning-fill', bg: 'bg-soft-danger' },    
+    'system':   { icon: 'ri-settings-4-line', bg: 'bg-soft-secondary' },  
+    'announcement': { icon: 'ri-megaphone-line', bg: 'bg-soft-info' },    
+    'default':  { icon: 'ri-notification-badge-line', bg: 'bg-soft-secondary' }
 };
 
 function initNotificationSystem() {
@@ -156,9 +146,7 @@ function connectWebSocket() {
 
     wsConnection = new WebSocket(wsUrl);
 
-    wsConnection.onopen = function() {
-        // Connected silently
-    };
+    wsConnection.onopen = function() { };
 
     wsConnection.onmessage = function(event) {
         try {
@@ -170,7 +158,6 @@ function connectWebSocket() {
     };
 
     wsConnection.onclose = function(e) {
-        // Reconnect logic
         setTimeout(() => connectWebSocket(), 5000);
     };
 
@@ -201,15 +188,11 @@ function fetchNotifications(reset = false) {
             if (reset) listContainer.empty();
 
             if (items.length === 0 && NOTIFICATION_SKIP === 0) {
-                listContainer.html(`<li class="d-flex flex-column align-items-center justify-content-center py-4 text-muted"><i class="ri-notification-off-line fs-3 mb-2"></i><small>No notifications</small></li>`);
+                listContainer.html(`<li class="d-flex flex-column align-items-center justify-content-center py-5 text-muted"><i class="ri-notification-off-line fs-3 mb-2"></i><small>No new notifications</small></li>`);
                 $("#notification-footer").hide();
             } else {
                 items.forEach(item => listContainer.append(renderNotificationItem(item)));
                 $("#notification-footer").show();
-                
-                if (items.length < NOTIFICATION_LIMIT) $("#notification-footer button").hide();
-                else $("#notification-footer button").show();
-                
                 NOTIFICATION_SKIP += NOTIFICATION_LIMIT;
             }
         })
@@ -223,62 +206,75 @@ function fetchUnreadCount() {
 
 function renderNotificationItem(notif) {
     const style = notificationMap[notif.category] || notificationMap['default'];
-    const bgClass = notif.is_read ? 'bg-white' : 'bg-light';
-    const borderClass = notif.is_read ? '' : 'border-start border-4 border-warning';
+    const unreadClass = notif.is_read ? '' : 'unread';
     
     let dateStr = "Just now";
     if (notif.created_at) {
-        dateStr = new Date(notif.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        const dateObj = new Date(notif.created_at);
+        const now = new Date();
+        const diffMs = now - dateObj;
+        if (diffMs < 60000) dateStr = "Just now";
+        else if (diffMs < 3600000) dateStr = `${Math.floor(diffMs/60000)} min ago`;
+        else if (diffMs < 86400000) dateStr = `${Math.floor(diffMs/3600000)} hr ago`;
+        else dateStr = dateObj.toLocaleDateString();
     }
 
     const linkUrl = notif.click_action_link || '#';
 
+    let severityBadge = '';
+    const sev = (notif.severity || 'normal').toLowerCase();
+    if (sev === 'critical') {
+        severityBadge = `<span class="severity-badge severity-critical me-2">Critical</span>`;
+    } else if (sev === 'high') {
+        severityBadge = `<span class="severity-badge severity-high me-2">High</span>`;
+    }
+
     return `
-    <li class="notification-item ${bgClass} ${borderClass} border-bottom position-relative" id="notif-${notif.id}">
+    <li class="position-relative" id="notif-${notif.id}">
         <a href="javascript:void(0)" 
-           class="d-flex align-items-start p-3 text-decoration-none text-dark w-100"
+           class="notification-item ${unreadClass}"
            onclick="handleNotificationClick(${notif.id}, '${linkUrl}')">
-            <div class="notif-icon-box rounded-circle bg-light d-flex align-items-center justify-content-center me-3" style="width: 35px; height: 35px; min-width: 35px;">
-                <i class="${style.icon} ${style.color} fs-5"></i>
+            
+            <div class="notif-icon-box ${style.bg}">
+                <i class="${style.icon}"></i>
             </div>
-            <div class="flex-grow-1">
-                <div class="d-flex justify-content-between align-items-start">
-                    <h6 class="mb-1 small fw-bold" style="font-size: 0.85rem;">${notif.title}</h6>
-                    <small class="text-muted ms-2" style="font-size: 0.65rem;">${dateStr}</small>
+            
+            <div class="flex-grow-1" style="min-width: 0;">
+                <div class="d-flex justify-content-between align-items-start mb-1">
+                    <h6 class="notif-title text-truncate">${notif.title}</h6>
                 </div>
-                <p class="mb-0 text-muted small text-truncate" style="max-width: 200px; font-size: 0.75rem;">${notif.body || ''}</p>
+                <p class="notif-body">${notif.body || 'No details.'}</p>
+                <div class="notif-meta mt-2">
+                    ${severityBadge}
+                    <i class="ri-time-line" style="font-size: 10px;"></i>
+                    <span>${dateStr}</span>
+                </div>
             </div>
         </a>
     </li>`;
 }
 
 function handleRealTimeNotification(data) {
-    // 1. Play Sound (Only if Unlocked)
+    // Only play sound if enabled and unlocked
     if (isAudioUnlocked) {
         notificationAudio.currentTime = 0;
+        notificationAudio.muted = false; // Ensure it's not muted from a glitch
         notificationAudio.play().catch(e => console.warn("Audio play prevented:", e));
     }
 
-    // 2. Toast Color Logic
     const severity = (data.severity || 'normal').toLowerCase();
+    if (severity === 'critical') toastr.error(data.body, data.title);
+    else if (severity === 'high') toastr.warning(data.body, data.title);
+    else toastr.success(data.body, data.title);
 
-    if (severity === 'critical') {
-        toastr.error(data.body, data.title);
-    } else if (severity === 'high') {
-        toastr.warning(data.body, data.title);
-    } else {
-        toastr.success(data.body, data.title);
-    }
-
-    // 3. Update Badge UI
     updateUnreadCount(1, true);
 
-    // 4. Construct & Prepend Item
     const tempItem = {
         id: data.id,
         title: data.title,
         body: data.body,
         category: data.category || 'system',
+        severity: data.severity,
         click_action_link: data.click_action_link, 
         is_read: false,
         created_at: data.created_at || new Date().toISOString()
@@ -297,7 +293,7 @@ function handleNotificationClick(id, link) {
         .then(() => {
             if (link && link !== 'null' && link !== '#' && link !== 'undefined') window.location.href = link;
             else {
-                $(`#notif-${id}`).removeClass('bg-light border-start border-4 border-warning').addClass('bg-white');
+                $(`#notif-${id} .notification-item`).removeClass('unread');
                 updateUnreadCount(-1, true);
             }
         })
@@ -310,7 +306,7 @@ function markAllAsRead(e) {
     if(e) { e.preventDefault(); e.stopPropagation(); }
     axios.put('/api/notification/mark-all-read')
         .then(() => {
-            $("#notification-list .notification-item").removeClass('bg-light border-start border-4 border-warning').addClass('bg-white');
+            $("#notification-list .notification-item").removeClass('unread');
             updateUnreadCount(0, false);
             showToastMessage('success', 'All marked as read');
         });
@@ -328,15 +324,12 @@ function updateUnreadCount(val, isRelative) {
 
     if (newVal > 0) {
         badge.show();
+        textBadge.show();
         badge.addClass('animate__animated animate__pulse'); 
     } else {
         badge.hide();
+        textBadge.hide();
     }
-}
-
-function loadMoreNotifications(e) {
-    if(e) { e.preventDefault(); e.stopPropagation(); }
-    fetchNotifications(false);
 }
 
 function viewAllNotifications() {
