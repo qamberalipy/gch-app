@@ -9,7 +9,7 @@ from app.user.models import User, UserRole
 import re
 from typing import Optional
 
-# ... [Keep your existing helper functions: extract_url, fetch_url_metadata] ...
+# ... [Keep extract_url and fetch_url_metadata helpers unchanged] ...
 def extract_url(text: str):
     url_regex = r'(https?://[^\s]+)'
     match = re.search(url_regex, text)
@@ -17,7 +17,7 @@ def extract_url(text: str):
 
 def fetch_url_metadata(url: str):
     try:
-        headers = {'User-Agent': 'Mozilla/5.0'} # Simplified for brevity
+        headers = {'User-Agent': 'Mozilla/5.0'} 
         response = requests.get(url, headers=headers, timeout=3)
         if response.status_code != 200: return {"link_url": url}
         soup = BeautifulSoup(response.content, "html.parser")
@@ -35,12 +35,12 @@ def fetch_url_metadata(url: str):
 
 # --- Service Logic ---
 
-# --- REPLACE THIS FUNCTION ---
-def get_feed(db: Session, last_id: Optional[int] = None, limit: int = 20):
+def get_feed(db: Session, direction: int = 0, last_id: Optional[int] = None, limit: int = 20):
     """
-    Fetches posts using Cursor Pagination.
-    - If last_id is provided, fetches posts with ID < last_id (Older posts).
-    - Always orders by ID DESC (Newest first).
+    Fetches posts with direction support (Like Chat).
+    - Direction 0: Latest posts (Default).
+    - Direction 1: Older posts (Scroll Down) -> ID < last_id.
+    - Direction 2: Newer posts (Refresh/Scroll Up) -> ID > last_id.
     """
     query = db.query(Announcement)\
         .options(
@@ -49,13 +49,27 @@ def get_feed(db: Session, last_id: Optional[int] = None, limit: int = 20):
             joinedload(Announcement.reactions)
         )
     
-    # Cursor Logic: Get older messages
-    if last_id:
-        query = query.filter(Announcement.id < last_id)
+    if direction == 1 and last_id:
+        # Load OLDER posts (Scroll Down)
+        query = query.filter(Announcement.id < last_id)\
+                     .order_by(Announcement.id.desc())
+                     
+    elif direction == 2 and last_id:
+        # Load NEWER posts (Pull to Refresh)
+        # We order ASC to get the immediate next ones, then reverse list later
+        query = query.filter(Announcement.id > last_id)\
+                     .order_by(Announcement.id.asc())
+    else:
+        # Default: Latest posts
+        query = query.order_by(Announcement.id.desc())
+
+    posts = query.limit(limit).all()
+
+    # If we fetched newer posts (ASC), reverse them to maintain DESC (Newest at top) order in response
+    if direction == 2:
+        posts.reverse()
         
-    return query.order_by(Announcement.id.desc())\
-                .limit(limit)\
-                .all()
+    return posts
 
 def create_announcement(db: Session, data: AnnouncementCreate, current_user: User):
     if current_user.role not in [UserRole.admin, UserRole.manager]:
@@ -114,7 +128,6 @@ def mark_as_viewed(db: Session, announcement_id: int, current_user: User):
         return {"status": "viewed"}
     except Exception:
         db.rollback()
-        # Silent fail is okay for view counting
         return {"status": "error"}
 
 def toggle_reaction(db: Session, announcement_id: int, emoji: str, current_user: User):
