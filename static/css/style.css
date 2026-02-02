@@ -454,3 +454,57 @@ body {
 .severity-critical { background-color: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
 .severity-high     { background-color: #fff3e0; color: #ef6c00; border: 1px solid #ffe0b2; }
 .severity-normal   { display: none; } /* Hide normal severity to keep it clean */
+/* --- Full Notification Page --- */
+
+/* Sidebar Navigation Pills */
+#notif-filters .nav-link {
+    color: var(--primary-text);
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+#notif-filters .nav-link:hover {
+    background-color: #f8f9fa;
+    color: var(--active-color);
+}
+
+#notif-filters .nav-link.active {
+    background-color: #fffbf2; /* Light Gold */
+    color: var(--active-color);
+    font-weight: 600;
+}
+
+/* The List Item */
+.notification-page-item {
+    border: none;
+    border-bottom: 1px solid #f1f1f1;
+    transition: background-color 0.2s;
+}
+
+.notification-page-item:last-child {
+    border-bottom: none;
+}
+
+.notification-page-item:hover {
+    background-color: #fafafa;
+}
+
+/* Unread State for Full Page */
+.notification-page-item.unread {
+    background-color: #fffbf2; /* Matches dropdown unread */
+}
+
+.notification-page-item.unread h6 {
+    color: #000 !important;
+}
+
+/* Buttons in the row */
+.btn-white {
+    background-color: #fff;
+    border-color: #e5e7eb;
+}
+.btn-white:hover {
+    background-color: #f9fafb;
+}

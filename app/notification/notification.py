@@ -85,7 +85,7 @@ def mark_read(
 ):
     return service.mark_as_read(db, current_user, id)
 
-@router.post("/mark-all-read", tags=["Notification API"])
+@router.put("/mark-all-read", tags=["Notification API"])
 def mark_all_read(
     db: Session = Depends(get_db),
     current_user = Depends(_user_auth.get_current_user)

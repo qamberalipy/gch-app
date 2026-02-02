@@ -232,7 +232,7 @@ function renderNotificationItem(notif) {
     return `
     <li class="position-relative" id="notif-${notif.id}">
         <a href="javascript:void(0)" 
-           class="notification-item ${unreadClass}"
+           class="notification-item shadow-sm my-1  rounded-3 ${unreadClass}"
            onclick="handleNotificationClick(${notif.id}, '${linkUrl}')">
             
             <div class="notif-icon-box ${style.bg}">
